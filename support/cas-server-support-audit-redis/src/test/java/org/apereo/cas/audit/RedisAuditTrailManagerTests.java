@@ -1,22 +1,16 @@
 package org.apereo.cas.audit;
 
 import org.apereo.cas.audit.spi.BaseAuditConfigurationTests;
-import org.apereo.cas.audit.spi.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasSupportRedisAuditConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.config.CasSupportRedisAuditAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import lombok.Getter;
 import org.apereo.inspektr.audit.AuditTrailManager;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 
 /**
  * This is {@link RedisAuditTrailManagerTests}.
@@ -25,14 +19,8 @@ import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
  * @since 6.1.0
  */
 @SpringBootTest(classes = {
-    CasCoreAuditConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasSupportRedisAuditConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    CasCoreWebConfiguration.class
+    BaseAuditConfigurationTests.SharedTestConfiguration.class,
+    CasSupportRedisAuditAutoConfiguration.class
 },
     properties = {
         "cas.audit.redis.host=localhost",
@@ -40,9 +28,10 @@ import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
         "cas.audit.redis.asynchronous=false"
     })
 @Tag("Redis")
+@ExtendWith(CasTestExtension.class)
 @Getter
-@EnabledIfPortOpen(port = 6379)
-public class RedisAuditTrailManagerTests extends BaseAuditConfigurationTests {
+@EnabledIfListeningOnPort(port = 6379)
+class RedisAuditTrailManagerTests extends BaseAuditConfigurationTests {
     @Autowired
     @Qualifier("redisAuditTrailManager")
     private AuditTrailManager auditTrailManager;

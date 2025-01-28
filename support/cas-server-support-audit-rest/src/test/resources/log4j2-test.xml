@@ -6,16 +6,14 @@
         </Console>
     </Appenders>
     <Loggers>
-        <Logger name="org.apereo" level="error">
-            <AppenderRef ref="console"/>
-        </Logger>
+        <Logger name="org.apereo" level="error" />
         <Logger name="org.apereo.cas.util.MockWebServer" level="warn">
             <AppenderRef ref="console"/>
         </Logger>
         <Logger name="org.apereo.cas.audit" level="warn">
             <AppenderRef ref="console"/>
         </Logger>
-        <Root level="off">
+        <Root level="error">
             <AppenderRef ref="console"/>
         </Root>
     </Loggers>

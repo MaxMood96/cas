@@ -18,11 +18,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.4.0
  */
 @Tag("Simple")
-public class GoogleCaptchaV3ValidatorTests {
+class GoogleCaptchaV3ValidatorTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val props = new GoogleRecaptchaProperties()
-            .setScore(.1)
+            .setScore(0.1)
             .setSecret(UUID.randomUUID().toString())
             .setVerifyUrl("http://localhost:8812");
         val validator = new GoogleCaptchaV3Validator(props);

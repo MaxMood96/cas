@@ -3,6 +3,7 @@ package org.apereo.cas.otp.web.flow;
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.actions.AbstractMultifactorAuthenticationAction;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.RequiredArgsConstructor;
@@ -22,8 +23,8 @@ public class OneTimeTokenAccountCheckRegistrationAction extends AbstractMultifac
     private final OneTimeTokenCredentialRepository repository;
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
-        val principal = resolvePrincipal(WebUtils.getAuthentication(requestContext).getPrincipal());
+    protected Event doExecuteInternal(final RequestContext requestContext) {
+        val principal = resolvePrincipal(WebUtils.getAuthentication(requestContext).getPrincipal(), requestContext);
         val uid = principal.getId();
 
         val accounts = repository.get(uid);
@@ -31,10 +32,10 @@ public class OneTimeTokenAccountCheckRegistrationAction extends AbstractMultifac
             return new EventFactorySupport().event(this, CasWebflowConstants.TRANSITION_ID_REGISTER);
         }
         if (accounts.size() > 1) {
-            WebUtils.putOneTimeTokenAccounts(requestContext, accounts);
+            MultifactorAuthenticationWebflowUtils.putOneTimeTokenAccounts(requestContext, accounts);
             return new EventFactorySupport().event(this, CasWebflowConstants.TRANSITION_ID_CONFIRM);
         }
-        WebUtils.putOneTimeTokenAccount(requestContext, accounts.iterator().next());
+        MultifactorAuthenticationWebflowUtils.putOneTimeTokenAccount(requestContext, accounts.iterator().next());
         return success();
     }
 }

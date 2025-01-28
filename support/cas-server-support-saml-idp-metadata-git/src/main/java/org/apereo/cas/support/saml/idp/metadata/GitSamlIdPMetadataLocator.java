@@ -1,17 +1,17 @@
 package org.apereo.cas.support.saml.idp.metadata;
 
 import org.apereo.cas.git.GitRepository;
-import org.apereo.cas.support.saml.idp.metadata.generator.SamlIdPMetadataGenerator;
 import org.apereo.cas.support.saml.idp.metadata.locator.FileSystemSamlIdPMetadataLocator;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.SamlIdPMetadataDocument;
+import org.apereo.cas.util.crypto.CipherExecutor;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
@@ -30,14 +30,16 @@ import java.util.Optional;
 public class GitSamlIdPMetadataLocator extends FileSystemSamlIdPMetadataLocator {
     private final GitRepository gitRepository;
 
-    public GitSamlIdPMetadataLocator(final GitRepository gitRepository, final Cache<String, SamlIdPMetadataDocument> metadataCache) {
-        super(gitRepository.getRepositoryDirectory(), metadataCache);
+    public GitSamlIdPMetadataLocator(final GitRepository gitRepository,
+                                     final Cache<String, SamlIdPMetadataDocument> metadataCache,
+                                     final CipherExecutor cipherExecutor,
+                                     final ConfigurableApplicationContext applicationContext) {
+        super(cipherExecutor, gitRepository.getRepositoryDirectory(), metadataCache, applicationContext);
         this.gitRepository = gitRepository;
     }
 
-    @SneakyThrows
     @Override
-    public SamlIdPMetadataDocument fetchInternal(final Optional<SamlRegisteredService> registeredService) {
+    public SamlIdPMetadataDocument fetchInternal(final Optional<SamlRegisteredService> registeredService) throws Exception {
         if (gitRepository.pull()) {
             LOGGER.debug("Successfully pulled metadata changes from the remote repository");
         } else {
@@ -60,7 +62,7 @@ public class GitSamlIdPMetadataLocator extends FileSystemSamlIdPMetadataLocator 
         LOGGER.trace("IdP metadata encryption certificate file to use is [{}]", metadataFile);
 
         return SamlIdPMetadataDocument.builder()
-            .appliesTo(SamlIdPMetadataGenerator.getAppliesToFor(registeredService))
+            .appliesTo(getAppliesToFor(registeredService))
             .encryptionCertificate(readFromFile(encryptionCert))
             .encryptionKey(readFromFile(encryptionKey))
             .signingCertificate(readFromFile(signingCert))
@@ -76,7 +78,7 @@ public class GitSamlIdPMetadataLocator extends FileSystemSamlIdPMetadataLocator 
     }
 
     private File getMetadataDirectory(final Optional<SamlRegisteredService> registeredService) {
-        val path = SamlIdPMetadataGenerator.getAppliesToFor(registeredService);
+        val path = getAppliesToFor(registeredService);
         val directory = new File(gitRepository.getRepositoryDirectory(), path);
         if (!directory.exists() && registeredService.isEmpty() && !directory.mkdir()) {
             throw new IllegalArgumentException("Metadata directory location " + directory + " cannot be located/created");

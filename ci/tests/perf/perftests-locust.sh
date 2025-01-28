@@ -1,8 +1,27 @@
 #!/bin/bash
 
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+ENDCOLOR="\e[0m"
+
+function printred() {
+  printf "🔥 ${RED}$1${ENDCOLOR}\n"
+}
+function printgreen() {
+  printf "☘️  ${GREEN}$1${ENDCOLOR}\n"
+}
+
+tmp="${TMPDIR}"
+if [[ -z "${tmp}" ]]; then
+  tmp="/tmp"
+fi
+export TMPDIR=${tmp}
+echo "Using temp directory: ${TMPDIR}"
+
 gradle="./gradlew "
 gradleBuild=""
-gradleBuildOptions="--build-cache --configure-on-demand --no-daemon --parallel "
+gradleBuildOptions="--build-cache --configure-on-demand --no-daemon --parallel --no-configuration-cache "
 webAppServerType="$1"
 
 echo -e "***********************************************"
@@ -35,14 +54,17 @@ if [ $retVal == 0 ]; then
   echo "Launching CAS web application ${webAppServerType} server..."
   casOutput="/tmp/logs/cas.log"
   cmd="java -jar webapp/cas-server-webapp-${webAppServerType}/build/libs/cas.war \\
-      --server.ssl.key-store=${keystore} --cas.service-registry.core.init-from-json=true --logging.level.org.apereo.cas=info"
+      --spring.profiles.active=none \\
+      --server.ssl.key-store=${keystore} \\
+      --cas.service-registry.core.init-from-json=true \\
+      --logging.level.org.apereo.cas=info"
   #    exec $cmd > ${casOutput} 2>&1 &
   exec $cmd &
   pid=$!
   echo "Launched CAS with pid ${pid}. Waiting for CAS server to come online..."
   sleep 30
 
-  cd etc/loadtests/locust
+  cd etc/loadtests/locust || exit
   echo -e "Current directory contains: \n\n$(ls)"
 
   echo -e "Installing virtual environment..."
@@ -58,7 +80,7 @@ if [ $retVal == 0 ]; then
   pip install locust
 
   echo -e "\nRunning locust...\n"
-  locust -f cas/casLocust.py --headless --host=https://localhost:8443 --hatch-rate 3 --users 1 --run-time 1m --exit-code-on-error 1
+  locust -f cas/casLocust.py --headless --host=https://localhost:8443 --spawn-rate 3 --users 1 --run-time 1m --exit-code-on-error 1
 
   retVal=$?
 

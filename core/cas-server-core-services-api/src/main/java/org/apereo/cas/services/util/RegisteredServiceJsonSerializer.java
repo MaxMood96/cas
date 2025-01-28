@@ -1,16 +1,15 @@
 package org.apereo.cas.services.util;
 
 import org.apereo.cas.services.RegisteredService;
-import org.apereo.cas.util.serialization.AbstractJacksonBackedStringSerializer;
-
+import org.apereo.cas.util.serialization.BaseJacksonSerializer;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.PrettyPrinter;
-import lombok.NoArgsConstructor;
 import lombok.val;
 import org.apache.commons.io.FileUtils;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.MediaType;
-
 import java.io.File;
+import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -20,13 +19,18 @@ import java.util.List;
  * @author Misagh Moayyed
  * @since 4.1.0
  */
-@NoArgsConstructor
-public class RegisteredServiceJsonSerializer extends AbstractJacksonBackedStringSerializer<RegisteredService> {
+public class RegisteredServiceJsonSerializer extends BaseJacksonSerializer<RegisteredService> {
 
+    @Serial
     private static final long serialVersionUID = 7645698151115635245L;
 
-    public RegisteredServiceJsonSerializer(final PrettyPrinter prettyPrinter) {
-        super(prettyPrinter);
+    public RegisteredServiceJsonSerializer(final ConfigurableApplicationContext applicationContext) {
+        super(applicationContext, RegisteredService.class);
+    }
+
+    public RegisteredServiceJsonSerializer(final PrettyPrinter prettyPrinter,
+                                           final ConfigurableApplicationContext applicationContext) {
+        super(prettyPrinter, applicationContext, RegisteredService.class);
     }
 
     @Override
@@ -43,14 +47,14 @@ public class RegisteredServiceJsonSerializer extends AbstractJacksonBackedString
     public boolean supports(final String content) {
         return content.contains(JsonTypeInfo.Id.CLASS.getDefaultPropertyName());
     }
-
-    @Override
-    public Class<RegisteredService> getTypeToSerialize() {
-        return RegisteredService.class;
-    }
-
+    
     @Override
     public List<MediaType> getContentTypes() {
         return List.of(MediaType.APPLICATION_JSON);
+    }
+
+    @Override
+    protected boolean isLenient() {
+        return true;
     }
 }

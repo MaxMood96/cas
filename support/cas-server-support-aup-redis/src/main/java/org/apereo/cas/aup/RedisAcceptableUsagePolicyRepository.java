@@ -1,14 +1,16 @@
 package org.apereo.cas.aup;
 
 import org.apereo.cas.configuration.model.support.aup.AcceptableUsagePolicyProperties;
+import org.apereo.cas.redis.core.CasRedisTemplate;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.webflow.execution.RequestContext;
+
+import java.io.Serial;
 
 /**
  * This is {@link RedisAcceptableUsagePolicyRepository}.
@@ -28,13 +30,14 @@ public class RedisAcceptableUsagePolicyRepository extends BaseAcceptableUsagePol
      */
     public static final String CAS_AUP_PREFIX = RedisAcceptableUsagePolicyRepository.class.getSimpleName() + ':';
 
+    @Serial
     private static final long serialVersionUID = 1600024683199961892L;
 
-    private final transient RedisTemplate redisTemplate;
+    private final CasRedisTemplate redisTemplate;
 
     public RedisAcceptableUsagePolicyRepository(final TicketRegistrySupport ticketRegistrySupport,
                                                 final AcceptableUsagePolicyProperties aupProperties,
-                                                final RedisTemplate redisTemplate) {
+                                                final CasRedisTemplate redisTemplate) {
         super(ticketRegistrySupport, aupProperties);
         this.redisTemplate = redisTemplate;
     }

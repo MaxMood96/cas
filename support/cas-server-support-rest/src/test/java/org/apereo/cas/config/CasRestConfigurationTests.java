@@ -1,23 +1,14 @@
 package org.apereo.cas.config;
 
-import org.apereo.cas.audit.spi.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.rest.config.CasCoreRestConfiguration;
 import org.apereo.cas.rest.factory.TicketGrantingTicketResourceEntityResponseFactory;
-import org.apereo.cas.web.config.CasCookieConfiguration;
-import org.apereo.cas.web.flow.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasWebflowContextConfiguration;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -26,45 +17,38 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreWebConfiguration.class,
+    CasCoreLogoutAutoConfiguration.class,
+    CasCoreNotificationsAutoConfiguration.class,
+    CasCoreServicesAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class,
     CasPersonDirectoryTestConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasCoreConfiguration.class,
-    CasWebflowContextConfiguration.class,
-    CasCoreWebflowConfiguration.class,
-    CasCoreMultifactorAuthenticationConfiguration.class,
-    CasMultifactorAuthenticationWebflowConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
+    CasCoreAutoConfiguration.class,
+    CasCoreWebflowAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+    CasCoreAuthenticationAutoConfiguration.class,
+    CasCoreTicketsAutoConfiguration.class,
     CasRegisteredServicesTestConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasThrottlingConfiguration.class,
-    CasCoreAuditConfiguration.class,
-    CasCookieConfiguration.class,
-    CasCoreRestConfiguration.class,
-    CasRestConfiguration.class
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class,
+    CasThrottlingAutoConfiguration.class,
+    CasCoreAuditAutoConfiguration.class,
+    CasCoreCookieAutoConfiguration.class,
+    CasCoreRestAutoConfiguration.class,
+    CasRestAutoConfiguration.class
 })
-@EnableWebMvc
 @Tag("CasConfiguration")
-public class CasRestConfigurationTests {
+@ExtendWith(CasTestExtension.class)
+class CasRestConfigurationTests {
 
     @Autowired
     @Qualifier("ticketGrantingTicketResourceEntityResponseFactory")
     private TicketGrantingTicketResourceEntityResponseFactory ticketGrantingTicketResourceEntityResponseFactory;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(ticketGrantingTicketResourceEntityResponseFactory);
     }
 }

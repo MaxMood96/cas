@@ -2,11 +2,11 @@ package org.apereo.cas.configuration.model.support.mfa;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -19,15 +19,17 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("GlobalMultifactorAuthenticationProperties")
+
 public class GlobalMultifactorAuthenticationProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 5426522468929733907L;
 
     /**
      * MFA can be triggered for all applications and users regardless of individual settings.
      * This setting holds the value of an MFA provider that shall be activated for all requests,
-     * regardless.
+     * regardless. Multiple provider identifiers can be specified here via a comma-separated syntax
+     * which may force CAS to launch into a provider selection and resolution flow.
      */
     private String globalProviderId;
 }

@@ -5,18 +5,18 @@ import org.apereo.cas.configuration.model.support.cookie.TicketGrantingCookiePro
 import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.registry.TicketRegistry;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.cookie.CookieGenerationContext;
+import org.apereo.cas.web.cookie.CookieValueManager;
 import org.apereo.cas.web.support.gen.CookieRetrievingCookieGenerator;
 
 import lombok.experimental.UtilityClass;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import java.util.Arrays;
-import java.util.Optional;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * This is {@link CookieUtils}.
@@ -30,14 +30,28 @@ public class CookieUtils {
     /**
      * Build cookie retrieving generator.
      *
-     * @param cookie the cookie
+     * @param cookie             the cookie
+     * @param cookieValueManager the cookie value manager
      * @return the cookie retrieving cookie generator
      */
-    public static CasCookieBuilder buildCookieRetrievingGenerator(final CookieProperties cookie) {
+    public static CasCookieBuilder buildCookieRetrievingGenerator(final CookieProperties cookie,
+                                                                  final CookieValueManager cookieValueManager) {
         val context = buildCookieGenerationContext(cookie);
-        return new CookieRetrievingCookieGenerator(context);
+        return buildCookieRetrievingGenerator(cookieValueManager, context);
     }
 
+    /**
+     * Build cookie retrieving generator cookie retrieving cookie generator.
+     *
+     * @param cookieValueManager the cookie value manager
+     * @param context            the context
+     * @return the cookie retrieving cookie generator
+     */
+    public static CookieRetrievingCookieGenerator buildCookieRetrievingGenerator(final CookieValueManager cookieValueManager,
+                                                                                  final CookieGenerationContext context) {
+        return new CookieRetrievingCookieGenerator(context, cookieValueManager);
+    }
+    
     /**
      * Gets ticket granting ticket from request.
      *
@@ -51,27 +65,12 @@ public class CookieUtils {
                                                                           final HttpServletRequest request) {
         val cookieValue = ticketGrantingTicketCookieGenerator.retrieveCookieValue(request);
         if (StringUtils.isNotBlank(cookieValue)) {
-            val tgt = ticketRegistry.getTicket(cookieValue, TicketGrantingTicket.class);
-            if (tgt != null && !tgt.isExpired()) {
-                return tgt;
-            }
+            return FunctionUtils.doAndHandle(() -> {
+                val state = ticketRegistry.getTicket(cookieValue, TicketGrantingTicket.class);
+                return state == null || state.isExpired() ? null : state;
+            });
         }
         return null;
-    }
-
-    /**
-     * Gets cookie from request.
-     *
-     * @param cookieName the cookie name
-     * @param request    the request
-     * @return the cookie from request
-     */
-    public static Optional<Cookie> getCookieFromRequest(final String cookieName, final HttpServletRequest request) {
-        val cookies = request.getCookies();
-        if (cookies == null) {
-            return Optional.empty();
-        }
-        return Arrays.stream(cookies).filter(c -> c.getName().equalsIgnoreCase(cookieName)).findFirst();
     }
 
     /**
@@ -85,25 +84,39 @@ public class CookieUtils {
     }
 
     /**
-     * Build cookie generation context cookie.
+     * Build cookie generation context.
      *
      * @param cookie the cookie
      * @return the cookie generation context
      */
     public static CookieGenerationContext buildCookieGenerationContext(final TicketGrantingCookieProperties cookie) {
-        val rememberMeMaxAge = (int) Beans.newDuration(cookie.getRememberMeMaxAge()).getSeconds();
+        val rememberMeMaxAge = getCookieMaxAge(cookie.getRememberMeMaxAge());
         val builder = buildCookieGenerationContextBuilder(cookie);
         return builder.rememberMeMaxAge(rememberMeMaxAge).build();
     }
 
-    private static CookieGenerationContext.CookieGenerationContextBuilder buildCookieGenerationContextBuilder(final CookieProperties cookie) {
+    /**
+     * Gets cookie max age.
+     *
+     * @param maxAge the max age
+     * @return the cookie max age
+     */
+    public static int getCookieMaxAge(final String maxAge) {
+        if (NumberUtils.isCreatable(maxAge)) {
+            return Integer.parseInt(maxAge);
+        }
+        return (int) Beans.newDuration(maxAge).toSeconds();
+    }
+    
+    private static CookieGenerationContext.CookieGenerationContextBuilder buildCookieGenerationContextBuilder(
+        final CookieProperties cookie) {
+        
         return CookieGenerationContext.builder()
             .name(cookie.getName())
-            .path(StringUtils.defaultString(cookie.getPath(), "/"))
-            .maxAge(cookie.getMaxAge())
+            .path(cookie.getPath())
+            .maxAge(getCookieMaxAge(cookie.getMaxAge()))
             .secure(cookie.isSecure())
             .domain(cookie.getDomain())
-            .comment(cookie.getComment())
             .sameSitePolicy(cookie.getSameSitePolicy())
             .httpOnly(cookie.isHttpOnly());
     }

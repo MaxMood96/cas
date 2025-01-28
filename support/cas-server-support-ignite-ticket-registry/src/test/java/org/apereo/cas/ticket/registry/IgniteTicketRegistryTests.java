@@ -1,10 +1,11 @@
 package org.apereo.cas.ticket.registry;
 
-import org.apereo.cas.config.IgniteTicketRegistryConfiguration;
-import org.apereo.cas.config.IgniteTicketRegistryTicketCatalogConfiguration;
+import org.apereo.cas.config.CasIgniteTicketRegistryAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.mock.MockTicketGrantingTicket;
+import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.ticket.TicketCatalog;
-
+import org.apereo.cas.util.crypto.CipherExecutor;
 import lombok.Getter;
 import lombok.val;
 import org.apache.commons.io.FileUtils;
@@ -14,12 +15,12 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.context.SpringBootTest;
-
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.test.context.TestPropertySource;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.security.KeyStore;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -31,11 +32,8 @@ import static org.mockito.Mockito.*;
  * @since 3.0.0
  */
 @Tag("Ignite")
-@SpringBootTest(classes = {
-    IgniteTicketRegistryConfiguration.class,
-    IgniteTicketRegistryTicketCatalogConfiguration.class,
-    BaseTicketRegistryTests.SharedTestConfiguration.class
-},
+@ImportAutoConfiguration(CasIgniteTicketRegistryAutoConfiguration.class)
+@TestPropertySource(
     properties = {
         "cas.ticket.registry.ignite.tickets-cache.write-synchronization-mode=FULL_ASYNC",
         "cas.ticket.registry.ignite.tickets-cache.atomicity-mode=ATOMIC",
@@ -52,7 +50,7 @@ import static org.mockito.Mockito.*;
         "cas.ticket.registry.ignite.trust-store-type=pkcs12"
     })
 @Getter
-public class IgniteTicketRegistryTests extends BaseTicketRegistryTests {
+class IgniteTicketRegistryTests extends BaseTicketRegistryTests {
     @Autowired
     @Qualifier(TicketRegistry.BEAN_NAME)
     private TicketRegistry newTicketRegistry;
@@ -63,6 +61,9 @@ public class IgniteTicketRegistryTests extends BaseTicketRegistryTests {
     @Autowired
     @Qualifier("igniteConfiguration")
     private IgniteConfiguration igniteConfiguration;
+
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
 
     @BeforeAll
     public static void beforeAll() throws Exception {
@@ -75,12 +76,12 @@ public class IgniteTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(1)
-    public void verifyDeleteUnknown() {
+    void verifyDeleteUnknown() {
         val catalog = mock(TicketCatalog.class);
-        val registry = new IgniteTicketRegistry(catalog, igniteConfiguration,
-            casProperties.getTicket().getRegistry().getIgnite());
+        val registry = new IgniteTicketRegistry(CipherExecutor.noOp(), ticketSerializationManager, catalog, applicationContext,
+            igniteConfiguration, casProperties.getTicket().getRegistry().getIgnite());
         registry.initialize();
-        assertTrue(registry.deleteSingleTicket("unknownticket"));
+        assertTrue(registry.deleteSingleTicket(new MockTicketGrantingTicket(RegisteredServiceTestUtils.getAuthentication())) > 0);
         registry.destroy();
     }
 }

@@ -31,8 +31,8 @@ public class SamlRegisteredServiceMetadataHealthIndicator extends AbstractHealth
 
     @Override
     protected void doHealthCheck(final Health.Builder builder) {
-        val samlServices = servicesManager.findServiceBy(registeredService -> registeredService instanceof SamlRegisteredService);
-        val availableResolvers = this.metadataResolutionPlan.getRegisteredMetadataResolvers();
+        val samlServices = servicesManager.findServiceBy(SamlRegisteredService.class::isInstance);
+        val availableResolvers = metadataResolutionPlan.getRegisteredMetadataResolvers();
         LOGGER.trace("There are [{}] metadata resolver(s) available in the chain", availableResolvers.size());
 
         builder.up();
@@ -59,7 +59,7 @@ public class SamlRegisteredServiceMetadataHealthIndicator extends AbstractHealth
                     count.getAndIncrement();
                 }
             });
-        if (count.intValue() == samlServices.size()) {
+        if (!samlServices.isEmpty() && count.intValue() == samlServices.size()) {
             builder.down();
         }
     }

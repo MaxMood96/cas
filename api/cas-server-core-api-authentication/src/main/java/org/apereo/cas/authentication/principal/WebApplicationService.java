@@ -1,6 +1,7 @@
 package org.apereo.cas.authentication.principal;
 
 import org.apereo.cas.validation.ValidationResponseType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * Represents a service using CAS that comes from the web.
@@ -9,6 +10,10 @@ import org.apereo.cas.validation.ValidationResponseType;
  * @since 3.1
  */
 public interface WebApplicationService extends Service {
+    /**
+     * Bean name for the factory implementation that creates this service type.
+     */
+    String BEAN_NAME_FACTORY = "webApplicationServiceFactory";
 
     /**
      * Retrieves the artifact supplied with the service. May be null.
@@ -24,14 +29,6 @@ public interface WebApplicationService extends Service {
      * @return the source if it exists, null otherwise.
      */
     String getSource();
-
-    /**
-     * Return the original url provided (as {@code service} or {@code targetService} request parameter).
-     * Used to reconstruct the redirect url.
-     *
-     * @return the original url provided.
-     */
-    String getOriginalUrl();
 
     /**
      * Ticket validation response MUST be produced based on the parameter value.
@@ -57,4 +54,20 @@ public interface WebApplicationService extends Service {
      * @param loggedOutAlready if the service is already logged out.
      */
     void setLoggedOutAlready(boolean loggedOutAlready);
+
+    /**
+     * Collect fragment in web application service.
+     *
+     * @param fragment the fragment
+     * @return the web application service
+     */
+    @JsonIgnore
+    WebApplicationService setFragment(String fragment);
+
+    /**
+     * Gets fragment.
+     *
+     * @return the fragment
+     */
+    String getFragment();
 }

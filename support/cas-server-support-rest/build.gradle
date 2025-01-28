@@ -1,4 +1,11 @@
 description = "Apereo CAS REST Implementation"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "REST Protocol",
+            title: "REST API"
+    ]
+}
 dependencies {
     api project(":api:cas-server-core-api-throttle")
     api project(":api:cas-server-core-api")
@@ -10,6 +17,7 @@ dependencies {
     implementation project(":support:cas-server-support-rest-core")
     
     implementation project(":core:cas-server-core-util-api")
+    implementation project(":core:cas-server-core-audit-api")
     implementation project(":core:cas-server-core-web-api")
     implementation project(":core:cas-server-core-logout-api")
     implementation project(":core:cas-server-core-configuration-api")
@@ -34,7 +42,8 @@ dependencies {
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-cookie")
     testImplementation project(":core:cas-server-core-audit")
-
+    testImplementation project(":core:cas-server-core-scripting")
+    
     testImplementation project(path: ":core:cas-server-core-authentication", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-tickets", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core", configuration: "tests")
@@ -44,4 +53,5 @@ dependencies {
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
 
     testImplementation project(path: ":support:cas-server-support-throttle", configuration: "tests")
+    testImplementation project(path: ":support:cas-server-support-person-directory-core", configuration: "tests")
 }

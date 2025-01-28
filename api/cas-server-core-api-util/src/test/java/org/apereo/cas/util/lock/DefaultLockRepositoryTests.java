@@ -1,17 +1,15 @@
 package org.apereo.cas.util.lock;
 
-import lombok.SneakyThrows;
 import lombok.val;
+import org.jooq.lambda.Unchecked;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -21,9 +19,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.5.0
  */
 @Tag("Utility")
-public class DefaultLockRepositoryTests {
+class DefaultLockRepositoryTests {
     @Test
-    public void verifyNoOp() throws Exception {
+    void verifyNoOp() {
         val repository = LockRepository.noOp();
         val lockKey = UUID.randomUUID().toString();
         val result = repository.execute(lockKey, () -> lockKey);
@@ -32,7 +30,7 @@ public class DefaultLockRepositoryTests {
     }
 
     @Test
-    public void verifyDefault() throws Exception {
+    void verifyDefault() {
         val repository = LockRepository.asDefault();
         val lockKey = UUID.randomUUID().toString();
 
@@ -41,17 +39,13 @@ public class DefaultLockRepositoryTests {
 
         val threads = new ArrayList<Thread>();
         IntStream.range(0, 10).forEach(i -> {
-            val thread = new Thread(new Runnable() {
-                @Override
-                @SneakyThrows
-                public void run() {
-                    Thread.sleep(250);
-                    repository.execute(lockKey, () -> {
-                        container.values.get(lockKey).add(UUID.randomUUID().toString());
-                        return null;
-                    });
-                }
-            });
+            val thread = new Thread(Unchecked.runnable(() -> {
+                Thread.sleep(250);
+                repository.execute(lockKey, () -> {
+                    container.values.get(lockKey).add(UUID.randomUUID().toString());
+                    return null;
+                });
+            }));
             thread.setName("Thread-" + i);
             threads.add(thread);
             thread.start();
@@ -66,7 +60,7 @@ public class DefaultLockRepositoryTests {
         assertEquals(10, container.values.get(lockKey).size());
     }
 
-    private static class Container {
+    private static final class Container {
         private final Map<String, List<String>> values = new HashMap<>();
     }
 }

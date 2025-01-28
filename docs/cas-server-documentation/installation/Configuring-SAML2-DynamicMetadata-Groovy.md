@@ -30,20 +30,13 @@ import org.apereo.cas.support.saml.*
 import org.apereo.cas.support.saml.services.*
 import org.opensaml.saml.metadata.resolver.*
 
-Collection<MetadataResolver> run(final Object... args) {
-   def registeredService = args[0]
-   def samlConfigBean = args[1]
-   def samlProperties = args[2]
-   def criteriaSet = args[3]
-   def logger = args[4]
-
+def run(final Object... args) {
+    def (registeredService,samlConfigBean,samlProperties,criteriaSet,logger) = args
     /*
-     Stuff happens where you build the relevant metadata resolver instance(s).
-     When done, wrap the results into a collection and return.
-     A null or empty collection will be ignored by CAS.
+      This is where you build the relevant metadata resolver instance(s).
     */
-   def metadataResolver = ...
-   return CollectionUtils.wrap(metadataResolver)
+    def metadataResolver = ...
+    return metadataResolver
 }
 ```
 
@@ -56,3 +49,5 @@ The parameters passed are as follows:
 | `samlProperties`    | The object responsible for capturing the CAS SAML IdP properties defined in the configuration.                     |
 | `criteriaSet`       | The object responsible for capturing the criteria for metadata solution, if any.                                   |
 | `logger`            | The object responsible for issuing log messages such as `logger.info(...)`.                                        |
+
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).

@@ -3,11 +3,11 @@ package org.apereo.cas.support.saml.web.idp.profile.slo;
 import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
 import org.apereo.cas.support.saml.SamlProtocolConstants;
 import org.apereo.cas.support.saml.SamlUtils;
-import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceServiceProviderMetadataFacade;
+import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceMetadataAdaptor;
 import org.apereo.cas.util.EncodingUtils;
 
 import lombok.val;
-import org.apache.http.HttpStatus;
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Tag;
@@ -32,10 +32,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Tag("SAML")
+@Tag("SAML2Web")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestPropertySource(properties = "cas.authn.saml-idp.metadata.file-system.location=file:src/test/resources/metadata")
-public class SLOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
+class SLOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
 
     @Autowired
     @Qualifier("sloPostProfileHandlerController")
@@ -43,7 +43,7 @@ public class SLOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(1)
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
         val response = new MockHttpServletResponse();
@@ -60,7 +60,7 @@ public class SLOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
         issuer.setValue(service.getServiceId());
         logoutRequest.setIssuer(issuer);
 
-        val adaptor = SamlRegisteredServiceServiceProviderMetadataFacade
+        val adaptor = SamlRegisteredServiceMetadataAdaptor
             .get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId()).get();
         logoutRequest = samlIdPObjectSigner.encode(logoutRequest, service,
             adaptor, response, request, SAMLConstants.SAML2_POST_BINDING_URI, logoutRequest, new MessageContext());

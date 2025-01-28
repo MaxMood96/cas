@@ -11,13 +11,17 @@ import org.apereo.cas.acct.AccountRegistrationResponse;
  */
 @FunctionalInterface
 public interface AccountRegistrationProvisioner {
+    /**
+     * Default bean name.
+     */
+    String BEAN_NAME = "accountMgmtRegistrationProvisioner";
 
     /**
      * Provision.
      *
      * @param request the request
      * @return the account registration response
-     * @throws Exception the exception
+     * @throws Throwable the throwable
      */
-    AccountRegistrationResponse provision(AccountRegistrationRequest request) throws Exception;
+    AccountRegistrationResponse provision(AccountRegistrationRequest request) throws Throwable;
 }

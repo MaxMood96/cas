@@ -3,10 +3,11 @@ package org.apereo.cas.configuration.model.support.oauth;
 import org.apereo.cas.configuration.model.support.cookie.CookieProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * Properties for the Cross-Site Request Forgery (CSRF) cookie used in some Oauth flows.
@@ -18,9 +19,10 @@ import lombok.experimental.Accessors;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("OAuthCsrfCookieProperties")
+
 public class OAuthCsrfCookieProperties extends CookieProperties {
 
+    @Serial
     private static final long serialVersionUID = 5298598088218873282L;
 
     /**

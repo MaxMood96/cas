@@ -1,4 +1,11 @@
 description = "Apereo CAS Passwordless Authentication LDAP Support"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "Passwordless Authentication",
+            title: "Passwordless Authentication via LDAP & Active Directory"
+    ]
+}
 dependencies {
     implementation libraries.ldaptive
 
@@ -12,21 +19,25 @@ dependencies {
     implementation project(":core:cas-server-core-tickets-api")
     implementation project(":core:cas-server-core-logout-api")
     implementation project(":core:cas-server-core-webflow")
+    implementation project(":core:cas-server-core-multitenancy")
     implementation project(":core:cas-server-core-web")
     
     implementation project(":support:cas-server-support-ldap-core")
     implementation project(":support:cas-server-support-actions")
     implementation project(":support:cas-server-support-actions-core")
-    implementation project(":support:cas-server-support-passwordless")
+    implementation project(":support:cas-server-support-passwordless-authentication")
+    implementation project(":support:cas-server-support-passwordless-api")
 
     testImplementation project(":core:cas-server-core-cookie")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-tickets")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core-webflow-mfa")
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-authentication")
+    testImplementation project(":core:cas-server-core-notifications")
     testImplementation project(":core:cas-server-core-authentication-mfa")
     testImplementation project(":core:cas-server-core-services-authentication")
     testImplementation project(":core:cas-server-core-authentication-attributes")
@@ -40,6 +51,8 @@ dependencies {
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-webflow", configuration: "tests")
+
+    testImplementation project(path: ":support:cas-server-support-person-directory-core", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-ldap-core", configuration: "tests")
-    testImplementation project(path: ":support:cas-server-support-passwordless", configuration: "tests")
+    testImplementation project(path: ":support:cas-server-support-passwordless-authentication", configuration: "tests")
 }

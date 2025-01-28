@@ -1,12 +1,12 @@
 package org.apereo.cas.authentication.principal;
 
 import org.apereo.cas.authentication.Authentication;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import java.io.Serial;
 
 /**
  * Null principal implementation that allows us to construct {@link Authentication}s in the event that no
@@ -22,6 +22,7 @@ import lombok.ToString;
 @ToString
 public class NullPrincipal implements Principal {
 
+    @Serial
     private static final long serialVersionUID = 2309300426720915104L;
 
     /**
@@ -32,8 +33,8 @@ public class NullPrincipal implements Principal {
     /**
      * The singleton instance.
      **/
-    private static NullPrincipal INSTANCE;
-    
+    private static final NullPrincipal INSTANCE = new NullPrincipal();
+
     /**
      * Returns the single instance of this class. Will create
      * one if none exists.
@@ -41,9 +42,6 @@ public class NullPrincipal implements Principal {
      * @return the instance
      */
     public static NullPrincipal getInstance() {
-        if (INSTANCE == null) {
-            INSTANCE = new NullPrincipal();
-        }
         return INSTANCE;
     }
 

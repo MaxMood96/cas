@@ -2,12 +2,12 @@ package org.apereo.cas.configuration.model.support.saml.idp;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -20,16 +20,17 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("SamlIdPTicketProperties")
+
 public class SamlIdPTicketProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 6837089259390742073L;
 
     /**
      * name that should be given to the saml artifact cache storage name.
      */
     private String samlArtifactsCacheStorageName = "samlArtifactsCache";
-    
+
     /**
      * The name that should be given to the saml attribute query cache storage name.
      */

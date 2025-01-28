@@ -2,10 +2,11 @@ description = "Apereo CAS Core Monitor Support"
 dependencies {
     api project(":api:cas-server-core-api-monitor")
     api project(":api:cas-server-core-api-ticket")
+
+    implementation libraries.metrics
     
     implementation project(":core:cas-server-core-configuration-api")
     implementation project(":core:cas-server-core-util-api")
-
     
     testImplementation project(":core:cas-server-core-tickets")
     testImplementation project(":core:cas-server-core-web")
@@ -14,8 +15,11 @@ dependencies {
     testImplementation project(":core:cas-server-core-services")
     testImplementation project(":core:cas-server-core-validation")
     testImplementation project(":core:cas-server-core-cookie")
+    testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-notifications")
     testImplementation project(":core:cas-server-core-services-authentication")
+    testImplementation project(":core:cas-server-core-authentication")
+    testImplementation project(":core:cas-server-core-scripting")
 
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")

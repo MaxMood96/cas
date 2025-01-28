@@ -11,6 +11,8 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.val;
 
+import java.io.Serial;
+
 /**
  * This is {@link AllowedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria}.
  *
@@ -24,11 +26,14 @@ import lombok.val;
 @Setter
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AllowedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria implements RegisteredServiceAuthenticationPolicyCriteria {
+    @Serial
     private static final long serialVersionUID = -7298017804877275864L;
 
+    private boolean tryAll;
+    
     @Override
     public AuthenticationPolicy toAuthenticationPolicy(final RegisteredService registeredService) {
         val handlers = registeredService.getAuthenticationPolicy().getRequiredAuthenticationHandlers();
-        return new RequiredAuthenticationHandlerAuthenticationPolicy(handlers, false);
+        return new RequiredAuthenticationHandlerAuthenticationPolicy(handlers, this.tryAll);
     }
 }

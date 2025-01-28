@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,12 +16,13 @@ import java.util.Map;
  * @author Misagh Moayyed
  * @since 6.5.0
  */
+@Getter
 @NoArgsConstructor
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 public class AccountRegistrationRequest implements Serializable {
+    @Serial
     private static final long serialVersionUID = -7833843820128948428L;
 
-    @Getter
     private final Map<String, Object> properties = new LinkedHashMap<>();
 
     public AccountRegistrationRequest(final Map<String, Object> properties) {
@@ -114,7 +116,7 @@ public class AccountRegistrationRequest implements Serializable {
      * Contains property.
      *
      * @param name the name
-     * @return the boolean
+     * @return true/false
      */
     public boolean containsProperty(final String name) {
         return properties.containsKey(name);

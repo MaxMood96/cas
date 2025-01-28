@@ -2,50 +2,34 @@ package org.apereo.cas.syncope.authentication;
 
 import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
+import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.exceptions.AccountDisabledException;
 import org.apereo.cas.authentication.exceptions.AccountPasswordMustChangeException;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.SyncopeAuthenticationConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.util.MockWebServer;
-import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-import org.apereo.cas.util.spring.BeanContainer;
+import org.apereo.cas.syncope.BaseSyncopeTests;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import org.apereo.cas.util.spring.beans.BeanContainer;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Cleanup;
-import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * This is {@link SyncopeAuthenticationHandlerTests}.
@@ -53,122 +37,97 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@SuppressWarnings("unused")
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    SyncopeAuthenticationConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCoreConfiguration.class,
-    CasPersonDirectoryTestConfiguration.class
-},
-    properties = "cas.authn.syncope.url=http://localhost:8095")
-@ResourceLock("Syncope")
-@Tag("AuthenticationHandler")
-@EnableConfigurationProperties(CasConfigurationProperties.class)
-public class SyncopeAuthenticationHandlerTests {
+@Slf4j
+@Tag("Syncope")
+@ExtendWith(CasTestExtension.class)
+class SyncopeAuthenticationHandlerTests extends BaseSyncopeTests {
+    private static final Credential CREDENTIAL =
+        CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword("casuser", "password");
 
-    private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
-        .defaultTypingEnabled(true).build().toObjectMapper();
+    @Nested
+    @EnableConfigurationProperties(CasConfigurationProperties.class)
+    @EnabledIfListeningOnPort(port = 18080)
+    @SpringBootTest(classes = BaseSyncopeTests.SharedTestConfiguration.class,
+        properties = "cas.authn.syncope.url=http://localhost:18080/syncope")
+    class SyncopeCoreServerTests {
+        @Autowired
+        @Qualifier("syncopeAuthenticationHandlers")
+        private BeanContainer<AuthenticationHandler> syncopeAuthenticationHandlers;
 
-    @Autowired
-    @Qualifier("syncopeAuthenticationHandlers")
-    private BeanContainer<AuthenticationHandler> syncopeAuthenticationHandlers;
-
-    @SneakyThrows
-    private static MockWebServer startMockSever(final JsonNode user) {
-        val data = MAPPER.writeValueAsString(user);
-        val webServer = new MockWebServer(8095,
-            new ByteArrayResource(data.getBytes(StandardCharsets.UTF_8), "REST Output"),
-            MediaType.APPLICATION_JSON_VALUE);
-        webServer.start();
-        return webServer;
+        @Test
+        void verifyHandlerPasses() throws Throwable {
+            assertNotNull(syncopeAuthenticationHandlers);
+            val syncopeAuthenticationHandler = syncopeAuthenticationHandlers.first();
+            val credential = CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword("syncopecas", "Mellon");
+            val result = syncopeAuthenticationHandler.authenticate(credential, mock(Service.class));
+            assertNotNull(result);
+        }
     }
 
-    @Test
-    @SuppressWarnings("JavaUtilDate")
-    public void verifyHandlerPasses() {
-        val user = MAPPER.createObjectNode();
-        user.put("username", "casuser");
-        user.putArray("roles").add("role1");
-        user.putArray("dynRoles").add("DynRole1");
-        user.putArray("dynRealms").add("Realm1");
-        user.putArray("memberships").add(MAPPER.createObjectNode()
-            .put("groupName", "G1"));
-        user.putArray("dynMemberships").add(MAPPER.createObjectNode().
-            put("groupName", "G1"));
-        user.putArray("relationships").add(MAPPER.createObjectNode()
-            .put("type", "T1").put("otherEndName", "Other1"));
+    @Nested
+    @EnableConfigurationProperties(CasConfigurationProperties.class)
+    @SpringBootTest(classes = BaseSyncopeTests.SharedTestConfiguration.class,
+        properties = "cas.authn.syncope.url=http://localhost:8096")
+    @Execution(ExecutionMode.SAME_THREAD)
+    class SyncopeMockDataTests {
 
-        val plainAttrs = MAPPER.createObjectNode();
-        plainAttrs.put("schema", "S1");
-        plainAttrs.putArray("values").add("V1");
-        user.putArray("plainAttrs").add(plainAttrs);
+        @Autowired
+        @Qualifier("syncopeAuthenticationHandlers")
+        private BeanContainer<AuthenticationHandler> syncopeAuthenticationHandlers;
 
-        val derAttrs = MAPPER.createObjectNode();
-        derAttrs.put("schema", "S2");
-        derAttrs.putArray("values").add("V2");
-        user.putArray("derAttrs").add(derAttrs);
+        @Test
+        void verifyHandlerPasses() throws Throwable {
+            val syncopeAuthenticationHandler = syncopeAuthenticationHandlers.first();
+            try (val webserver = startMockSever(user(), HttpStatus.OK, 8096)) {
+                assertDoesNotThrow(() ->
+                    syncopeAuthenticationHandler.authenticate(CREDENTIAL, mock(Service.class)));
+            }
+        }
 
-        val virAttrs = MAPPER.createObjectNode();
-        virAttrs.put("schema", "S3");
-        virAttrs.putArray("values").add("V3");
-        user.putArray("virAttrs").add(virAttrs);
+        @Test
+        void verifyHandlerMustChangePassword() throws Throwable {
+            val user = MAPPER.createObjectNode();
+            user.put("username", "casuser");
+            user.put("mustChangePassword", true);
+            try (val webserver = startMockSever(user, HttpStatus.OK, 8096)) {
+                val syncopeAuthenticationHandler = syncopeAuthenticationHandlers.first();
+                assertThrows(AccountPasswordMustChangeException.class,
+                    () -> syncopeAuthenticationHandler.authenticate(CREDENTIAL, mock(Service.class)));
+            }
+        }
 
-        user.put("securityQuestion", "Q1");
-        user.put("status", "OK");
-        user.put("realm", "Master");
-        user.put("creator", "admin");
-        user.put("creationDate", new Date().toString());
-        user.put("changePwdDate", new Date().toString());
-        user.put("lastLoginDate", new Date().toString());
+        @Test
+        void verifyHandlerSuspended() throws Throwable {
+            val user = MAPPER.createObjectNode();
+            user.put("username", "casuser");
+            user.put("suspended", true);
+            try (val webserver = startMockSever(user, HttpStatus.OK, 8096)) {
+                val syncopeAuthenticationHandler = syncopeAuthenticationHandlers.first();
+                assertThrows(AccountDisabledException.class,
+                    () -> syncopeAuthenticationHandler.authenticate(CREDENTIAL, mock(Service.class)));
+            }
+        }
 
-        val syncopeAuthenticationHandler = syncopeAuthenticationHandlers.first();
-
-        @Cleanup("stop")
-        val webserver = startMockSever(user);
-        assertDoesNotThrow(() ->
-            syncopeAuthenticationHandler.authenticate(
-                CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword("casuser", "password")));
-    }
-
-    @Test
-    public void verifyHandlerMustChangePassword() {
-        val user = MAPPER.createObjectNode();
-        user.put("username", "casuser");
-        user.put("mustChangePassword", true);
-        @Cleanup("stop")
-        val webserver = startMockSever(user);
-
-        val syncopeAuthenticationHandler = syncopeAuthenticationHandlers.first();
-        assertThrows(AccountPasswordMustChangeException.class,
-            () -> syncopeAuthenticationHandler.authenticate(
-                CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword("casuser", "password")));
-    }
-
-    @Test
-    public void verifyHandlerSuspended() {
-        val user = MAPPER.createObjectNode();
-        user.put("username", "casuser");
-        user.put("suspended", true);
-        @Cleanup("stop")
-        val webserver = startMockSever(user);
-
-        val syncopeAuthenticationHandler = syncopeAuthenticationHandlers.first();
-        assertThrows(AccountDisabledException.class,
-            () -> syncopeAuthenticationHandler.authenticate(
-                CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword("casuser", "password")));
+        @Test
+        void verifyMembershipInfoPassed() throws Throwable {
+            val syncopeAuthenticationHandler = syncopeAuthenticationHandlers.first();
+            try (val webserver = startMockSever(userForMembershipsTypeExtension(), HttpStatus.OK, 8096)) {
+                assertDoesNotThrow(() ->
+                        syncopeAuthenticationHandler.authenticate(CREDENTIAL, mock(Service.class)));
+                val result = syncopeAuthenticationHandler.authenticate(CREDENTIAL, mock(Service.class));
+                assertNotNull(result);
+                assertFalse(result.getPrincipal().getAttributes().get("syncopeUserMemberships").isEmpty());
+                assertEquals(1, result.getPrincipal().getAttributes().get("syncopeUserMemberships").size());
+                Map<String, String> membershipAttrs =
+                        (Map<String, String>) result.getPrincipal().getAttributes().get("syncopeUserMemberships").get(0);
+                assertEquals(3, membershipAttrs.size());
+                assertTrue(membershipAttrs.containsKey("groupName"));
+                assertTrue(membershipAttrs.containsKey("testSchema1"));
+                assertTrue(membershipAttrs.containsKey("testSchema2"));
+                assertEquals(membershipAttrs.get("groupName"), "G1");
+                assertEquals(membershipAttrs.get("testSchema1"), "[\"valueSchema1\"]");
+                assertEquals(membershipAttrs.get("testSchema2"), "[\"valueSchema2\"]");
+            }
+        }
     }
 }

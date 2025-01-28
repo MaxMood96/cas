@@ -10,7 +10,7 @@
 </head>
 
 <body>
-    <main role="main" class="container mt-3 mb-3">
+    <main class="container mt-3 mb-3">
         <div layout:fragment="content" id="reset">
             <div class="row">
                 <div class="col-lg-6 offset-lg-3">
@@ -27,7 +27,7 @@
                                         th:utext="${message.text}">Message Text
                                     </p>
                                 </div>
-                                
+
                                 <input type="hidden" name="execution" th:value="${flowExecutionKey}" />
                                 <input type="hidden" name="_eventId" value="findUsername" />
                                 <div class="d-flex">
@@ -43,7 +43,7 @@
                                                type="text"
                                                name="email"
                                                id="email"
-                                               size="45"
+                                               size="65"
                                                autocomplete="off" required />
                                     </label>
 
@@ -51,15 +51,12 @@
                             </section>
 
                             <span class="mdc-card__actions_actions p-4" th:if="${recaptchaForgotUsernameEnabled}">
-                                <div th:replace="fragments/recaptcha :: recaptchaToken" />
+                                <div th:replace="~{fragments/recaptcha :: recaptchaToken}" />
                             </span>
 
                             <div class="mdc-card__actions_actions p-4">
-                                <button
-                                    class="mdc-button mdc-button--raised btn btn-primary mdc-card__actions_action mdc-card__actions_action--button mr-2"
-                                    accesskey="s" th:value="#{screen.pm.button.submit}" type="submit" value="SUBMIT">
-                                    <span class="mdc-button__label" th:text="#{screen.pm.button.submit}">Submit</span>
-                                </button>
+                                <div th:replace="~{fragments/submitbutton :: submitButton (messageKey='screen.pm.button.submit')}"/>
+                                
                                 <button class="mdc-button mdc-button--outline btn btn-outline-secondary mdc-card__actions_action mdc-card__actions_action--button"
                                     name="cancel" accesskey="c" th:value="#{screen.pm.button.cancel}" type="button"
                                     onclick="location.href = location.href;" value="CANCEL">

@@ -1,8 +1,8 @@
 package org.apereo.cas.config;
 
-import org.apereo.cas.CentralAuthenticationService;
 import org.apereo.cas.audit.AuditableExecution;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.web.endpoints.OAuth20AccessTokenEndpointController;
 import org.apereo.cas.support.oauth.web.endpoints.OAuth20AuthorizeEndpointController;
@@ -13,10 +13,13 @@ import org.apereo.cas.support.oauth.web.endpoints.OAuth20IntrospectionEndpointCo
 import org.apereo.cas.support.oauth.web.endpoints.OAuth20RevocationEndpointController;
 import org.apereo.cas.support.oauth.web.endpoints.OAuth20UserProfileEndpointController;
 import org.apereo.cas.support.oauth.web.mgmt.OAuth20TokenManagementEndpoint;
+import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.token.JwtBuilder;
-import org.apereo.cas.web.ProtocolEndpointWebSecurityConfigurer;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
+import org.apereo.cas.web.CasWebSecurityConfigurer;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.autoconfigure.endpoint.condition.ConditionalOnAvailableEndpoint;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -34,13 +37,14 @@ import java.util.List;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Configuration(value = "CasOAuth20EndpointsConfiguration", proxyBeanMethods = false)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-public class CasOAuth20EndpointsConfiguration {
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.OAuth)
+@Configuration(value = "CasOAuth20EndpointsConfiguration", proxyBeanMethods = false)
+class CasOAuth20EndpointsConfiguration {
 
     @Configuration(value = "CasOAuth20EndpointControllersConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasOAuth20EndpointControllersConfiguration {
+    static class CasOAuth20EndpointControllersConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "callbackAuthorizeController")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -69,7 +73,7 @@ public class CasOAuth20EndpointsConfiguration {
             final OAuth20ConfigurationContext context) {
             return new OAuth20AccessTokenEndpointController(context, accessTokenGrantAuditableRequestExtractor);
         }
-        
+
         @ConditionalOnMissingBean(name = "deviceUserCodeApprovalEndpointController")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -108,24 +112,25 @@ public class CasOAuth20EndpointsConfiguration {
 
         @Bean
         @ConditionalOnAvailableEndpoint
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public OAuth20TokenManagementEndpoint oauth20TokenManagementEndpoint(
-            @Qualifier("accessTokenJwtBuilder")
-            final JwtBuilder accessTokenJwtBuilder,
-            @Qualifier(CentralAuthenticationService.BEAN_NAME)
-            final CentralAuthenticationService centralAuthenticationService,
+            @Qualifier(TicketRegistry.BEAN_NAME)
+            final ObjectProvider<TicketRegistry> ticketRegistry,
+            @Qualifier(JwtBuilder.ACCESS_TOKEN_JWT_BUILDER_BEAN_NAME)
+            final ObjectProvider<JwtBuilder> accessTokenJwtBuilder,
             final CasConfigurationProperties casProperties) {
-            return new OAuth20TokenManagementEndpoint(casProperties,
-                centralAuthenticationService, accessTokenJwtBuilder);
+            return new OAuth20TokenManagementEndpoint(casProperties, ticketRegistry, accessTokenJwtBuilder);
         }
     }
 
     @Configuration(value = "CasOAuth20EndpointSecurityConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasOAuth20EndpointSecurityConfiguration {
+    static class CasOAuth20EndpointSecurityConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "oauth20ProtocolEndpointConfigurer")
-        public ProtocolEndpointWebSecurityConfigurer<Void> oauth20ProtocolEndpointConfigurer() {
-            return new ProtocolEndpointWebSecurityConfigurer<>() {
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public CasWebSecurityConfigurer<Void> oauth20ProtocolEndpointConfigurer() {
+            return new CasWebSecurityConfigurer<>() {
                 @Override
                 public List<String> getIgnoredEndpoints() {
                     return List.of(StringUtils.prependIfMissing(OAuth20Constants.BASE_OAUTH20_URL, "/"));

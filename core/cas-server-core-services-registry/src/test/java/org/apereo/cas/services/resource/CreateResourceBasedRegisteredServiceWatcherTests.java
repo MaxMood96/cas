@@ -24,10 +24,10 @@ import static org.mockito.Mockito.*;
  * @since 6.0.0
  */
 @Tag("RegisteredService")
-public class CreateResourceBasedRegisteredServiceWatcherTests {
+class CreateResourceBasedRegisteredServiceWatcherTests {
 
     @Test
-    public void verifyOperationFoundCreated() throws Exception {
+    void verifyOperationFoundCreated() {
         val result = new AtomicBoolean(false);
         val mockAppContext = mock(ConfigurableApplicationContext.class);
         doAnswer(args -> {
@@ -37,7 +37,7 @@ public class CreateResourceBasedRegisteredServiceWatcherTests {
         }).when(mockAppContext).publishEvent(any());
 
         val registry = new AbstractResourceBasedServiceRegistry(new ClassPathResource("services"),
-            List.of(new RegisteredServiceJsonSerializer()), mockAppContext,
+            List.of(new RegisteredServiceJsonSerializer(mockAppContext)), mockAppContext,
             new ArrayList<>()) {
             @Override
             protected String[] getExtensions() {

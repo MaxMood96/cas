@@ -2,7 +2,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
@@ -19,6 +18,7 @@ public class CheckSpringConfigurationBeanProxying {
 
     private static void print(final String message, final Object... args) {
         //CHECKSTYLE:OFF
+        System.out.print("\uD83C\uDFC1 ");
         System.out.printf(message, args);
         //CHECKSTYLE:ON
     }
@@ -33,12 +33,8 @@ public class CheckSpringConfigurationBeanProxying {
 
     protected static void checkPattern(final String arg) throws IOException {
         var failBuild = new AtomicBoolean(false);
-        final var results = new ArrayList<>();
-
-        var patternBeanMethods = Pattern.compile("public\\s\\w+(<\\w+>)*\\s(\\w+)\\(");
-
         Files.walk(Paths.get(arg))
-            .filter(file -> Files.isRegularFile(file) && file.toFile().getName().endsWith("SurrogateAuthenticationAuditConfiguration.java"))
+            .filter(file -> Files.isRegularFile(file) && file.toFile().getName().endsWith(".java"))
             .forEach(file -> {
                 var text = readFile(file);
                 if (text.contains("@Configuration")) {
@@ -54,6 +50,17 @@ public class CheckSpringConfigurationBeanProxying {
                     }
                 }
 
+
+                if (text.contains("@AutoConfiguration") && file.toFile().getAbsolutePath().contains("src/main/java")) {
+                    var packagePattern = Pattern.compile("package (.+);").matcher(text);
+                    if (packagePattern.find()) {
+                        var packageName = packagePattern.group(1);
+                        if (!packageName.equals("org.apereo.cas.config")) {
+                            print("Configuration class %s in package %s must be placed inside the package 'org.apereo.cas.config'%n", file, packageName);
+                            failBuild.set(true);
+                        }
+                    }
+                }
             });
         if (failBuild.get()) {
             System.exit(1);

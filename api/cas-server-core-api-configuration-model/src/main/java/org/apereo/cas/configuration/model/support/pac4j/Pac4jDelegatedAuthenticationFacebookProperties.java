@@ -2,10 +2,11 @@ package org.apereo.cas.configuration.model.support.pac4j;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * This is {@link Pac4jDelegatedAuthenticationFacebookProperties}.
@@ -17,9 +18,10 @@ import lombok.experimental.Accessors;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("Pac4jDelegatedAuthenticationFacebookProperties")
+
 public class Pac4jDelegatedAuthenticationFacebookProperties extends Pac4jIdentifiableClientProperties {
 
+    @Serial
     private static final long serialVersionUID = -2737594266552466076L;
 
     /**

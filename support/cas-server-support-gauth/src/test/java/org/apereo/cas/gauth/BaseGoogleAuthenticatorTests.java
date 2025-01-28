@@ -1,41 +1,26 @@
 package org.apereo.cas.gauth;
 
-import org.apereo.cas.audit.spi.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
+import org.apereo.cas.config.CasGoogleAuthenticatorAutoConfiguration;
+import org.apereo.cas.config.CasMultifactorAuthnTrustAutoConfiguration;
+import org.apereo.cas.config.CasOneTimeTokenAuthenticationAutoConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.GoogleAuthenticatorConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.support.authentication.GoogleAuthenticatorAuthenticationComponentSerializationConfiguration;
-import org.apereo.cas.config.support.authentication.GoogleAuthenticatorAuthenticationEventExecutionPlanConfiguration;
-import org.apereo.cas.config.support.authentication.GoogleAuthenticatorAuthenticationMultifactorProviderBypassConfiguration;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.otp.config.OneTimeTokenAuthenticationConfiguration;
-import org.apereo.cas.trusted.config.MultifactorAuthnTrustConfiguration;
-import org.apereo.cas.trusted.config.MultifactorAuthnTrustWebflowConfiguration;
-import org.apereo.cas.trusted.config.MultifactorAuthnTrustedDeviceFingerprintConfiguration;
-import org.apereo.cas.web.config.CasCookieConfiguration;
-import org.apereo.cas.web.flow.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasWebflowContextConfiguration;
-
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.annotation.Import;
 
 /**
@@ -45,48 +30,31 @@ import org.springframework.context.annotation.Import;
  * @since 6.2.0
  */
 public abstract class BaseGoogleAuthenticatorTests {
-    
+    @SpringBootTestAutoConfigurations
     @ImportAutoConfiguration({
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        AopAutoConfiguration.class
-    })
-    @SpringBootConfiguration
-    @Import({
-        CasCoreMultifactorAuthenticationConfiguration.class,
-        CasMultifactorAuthenticationWebflowConfiguration.class,
-        OneTimeTokenAuthenticationConfiguration.class,
-        CasPersonDirectoryTestConfiguration.class,
-        CasCoreNotificationsConfiguration.class,
-        CasCoreServicesConfiguration.class,
-        CasCoreAuthenticationConfiguration.class,
-        CasCoreAuthenticationSupportConfiguration.class,
-        CasCoreAuthenticationPrincipalConfiguration.class,
-        CasCoreTicketsConfiguration.class,
-        CasCoreTicketIdGeneratorsConfiguration.class,
-        CasCoreTicketCatalogConfiguration.class,
-        CasWebApplicationServiceFactoryConfiguration.class,
-        CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-        CasCoreLogoutConfiguration.class,
-        CasCookieConfiguration.class,
-        CasCoreHttpConfiguration.class,
-        CasCoreConfiguration.class,
-        CasCoreWebConfiguration.class,
-        CasCoreWebflowConfiguration.class,
-        CasWebflowContextConfiguration.class,
-        CasCoreUtilConfiguration.class,
-        CasCoreAuditConfiguration.class,
+        CasCoreMultifactorAuthenticationAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+        CasOneTimeTokenAuthenticationAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreCookieAutoConfiguration.class,
+        CasCoreAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreWebflowAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class,
+        CasCoreAuditAutoConfiguration.class,
 
-        MultifactorAuthnTrustConfiguration.class,
-        MultifactorAuthnTrustedDeviceFingerprintConfiguration.class,
-        MultifactorAuthnTrustWebflowConfiguration.class,
-        GoogleAuthenticatorConfiguration.GoogleAuthenticatorMultifactorTrustConfiguration.class,
+        CasMultifactorAuthnTrustAutoConfiguration.class,
 
-        GoogleAuthenticatorConfiguration.class,
-        GoogleAuthenticatorAuthenticationComponentSerializationConfiguration.class,
-        GoogleAuthenticatorAuthenticationEventExecutionPlanConfiguration.class,
-        GoogleAuthenticatorAuthenticationMultifactorProviderBypassConfiguration.class
+        CasGoogleAuthenticatorAutoConfiguration.GoogleAuthenticatorMultifactorTrustConfiguration.class,
+        CasGoogleAuthenticatorAutoConfiguration.class
     })
+    @SpringBootConfiguration(proxyBeanMethods = false)
+    @Import(CasPersonDirectoryTestConfiguration.class)
     public static class SharedTestConfiguration {
     }
 }

@@ -1,53 +1,42 @@
 package org.apereo.cas.pm.web.flow.actions;
 
 import org.apereo.cas.CentralAuthenticationService;
-import org.apereo.cas.audit.spi.config.CasCoreAuditConfiguration;
 import org.apereo.cas.authentication.principal.ServiceFactory;
 import org.apereo.cas.authentication.principal.WebApplicationService;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
+import org.apereo.cas.config.CasPasswordManagementAutoConfiguration;
+import org.apereo.cas.config.CasPasswordManagementWebflowAutoConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
+import org.apereo.cas.config.CasThemesAutoConfiguration;
+import org.apereo.cas.config.CasWebAppAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
 import org.apereo.cas.pm.PasswordManagementService;
-import org.apereo.cas.pm.config.PasswordManagementConfiguration;
-import org.apereo.cas.pm.config.PasswordManagementForgotUsernameConfiguration;
-import org.apereo.cas.pm.config.PasswordManagementWebflowConfiguration;
-import org.apereo.cas.services.web.config.CasThemesConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.ticket.TicketFactory;
 import org.apereo.cas.ticket.registry.TicketRegistry;
-import org.apereo.cas.web.config.CasCookieConfiguration;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.apereo.cas.web.flow.CasWebflowConstants;
-import org.apereo.cas.web.flow.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasWebflowContextConfiguration;
-
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
-import org.springframework.boot.autoconfigure.mail.MailSenderValidatorAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.webflow.execution.Action;
 
@@ -57,21 +46,21 @@ import org.springframework.webflow.execution.Action;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@SpringBootTest(classes = {
-    BasePasswordManagementActionTests.SharedTestConfiguration.class,
-    CasPersonDirectoryTestConfiguration.class
-}, properties = {
-    "spring.mail.host=localhost",
-    "spring.mail.port=25000",
+@SpringBootTest(
+    classes = BasePasswordManagementActionTests.SharedTestConfiguration.class,
+    properties = {
+        "spring.mail.host=localhost",
+        "spring.mail.port=25000",
 
-    "cas.authn.pm.core.enabled=true",
-    "cas.authn.pm.groovy.location=classpath:PasswordManagementService.groovy",
-    "cas.authn.pm.forgot-username.mail.from=cas@example.org",
-    "cas.authn.pm.reset.mail.from=cas@example.org",
-    "cas.authn.pm.reset.security-questions-enabled=true"
-})
+        "cas.authn.pm.core.enabled=true",
+        "cas.authn.pm.groovy.location=classpath:PasswordManagementService.groovy",
+        "cas.authn.pm.forgot-username.mail.from=cas@example.org",
+        "cas.authn.pm.reset.mail.from=cas@example.org",
+        "cas.authn.pm.reset.security-questions-enabled=true"
+    })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-public class BasePasswordManagementActionTests {
+@ExtendWith(CasTestExtension.class)
+public abstract class BasePasswordManagementActionTests {
     @Autowired
     protected CasConfigurationProperties casProperties;
 
@@ -88,11 +77,11 @@ public class BasePasswordManagementActionTests {
     protected PasswordManagementService passwordManagementService;
 
     @Autowired
-    @Qualifier("verifySecurityQuestionsAction")
+    @Qualifier(CasWebflowConstants.ACTION_ID_PASSWORD_RESET_VERIFY_SECURITY_QUESTIONS)
     protected Action verifySecurityQuestionsAction;
 
     @Autowired
-    @Qualifier("initPasswordResetAction")
+    @Qualifier(CasWebflowConstants.ACTION_ID_PASSWORD_RESET_INIT)
     protected Action initPasswordResetAction;
 
     @Autowired
@@ -100,15 +89,15 @@ public class BasePasswordManagementActionTests {
     protected Action initPasswordChangeAction;
 
     @Autowired
-    @Qualifier("verifyPasswordResetRequestAction")
+    @Qualifier(CasWebflowConstants.ACTION_ID_PASSWORD_RESET_VERIFY_REQUEST)
     protected Action verifyPasswordResetRequestAction;
 
     @Autowired
-    @Qualifier("validatePasswordResetTokenAction")
+    @Qualifier(CasWebflowConstants.ACTION_ID_PASSWORD_RESET_VALIDATE_TOKEN)
     protected Action validatePasswordResetTokenAction;
 
     @Autowired
-    @Qualifier("sendPasswordResetInstructionsAction")
+    @Qualifier(CasWebflowConstants.ACTION_ID_PASSWORD_RESET_SEND_INSTRUCTIONS)
     protected Action sendPasswordResetInstructionsAction;
 
     @Autowired
@@ -116,47 +105,35 @@ public class BasePasswordManagementActionTests {
     protected TicketFactory ticketFactory;
 
     @Autowired
-    @Qualifier("webApplicationServiceFactory")
+    @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
     protected ServiceFactory<WebApplicationService> webApplicationServiceFactory;
 
+    @Autowired
+    protected ConfigurableApplicationContext applicationContext;
+
+    @SpringBootTestAutoConfigurations
     @ImportAutoConfiguration({
-        AopAutoConfiguration.class,
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        MailSenderAutoConfiguration.class,
-        MailSenderValidatorAutoConfiguration.class,
-        RefreshAutoConfiguration.class
+        CasPasswordManagementAutoConfiguration.class,
+        CasPasswordManagementWebflowAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreCookieAutoConfiguration.class,
+        CasThemesAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreAuditAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+        CasCoreWebflowAutoConfiguration.class,
+        CasWebAppAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class
     })
-    @SpringBootConfiguration
-    @Import({
-        PasswordManagementConfiguration.class,
-        PasswordManagementWebflowConfiguration.class,
-        PasswordManagementForgotUsernameConfiguration.class,
-        CasCoreServicesConfiguration.class,
-        CasCoreServicesAuthenticationConfiguration.class,
-        CasCoreTicketsConfiguration.class,
-        CasWebApplicationServiceFactoryConfiguration.class,
-        CasCoreTicketCatalogConfiguration.class,
-        CasCoreAuthenticationSupportConfiguration.class,
-        CasCoreConfiguration.class,
-        CasCoreLogoutConfiguration.class,
-        CasCoreAuthenticationConfiguration.class,
-        CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-        CasCoreAuthenticationPrincipalConfiguration.class,
-        CasCoreAuthenticationMetadataConfiguration.class,
-        CasCoreTicketIdGeneratorsConfiguration.class,
-        CasCookieConfiguration.class,
-        CasThemesConfiguration.class,
-        CasCoreUtilConfiguration.class,
-        CasCoreWebConfiguration.class,
-        CasCoreAuditConfiguration.class,
-        CasCoreWebflowConfiguration.class,
-        CasCoreHttpConfiguration.class,
-        CasCoreNotificationsConfiguration.class,
-        CasCoreMultifactorAuthenticationConfiguration.class,
-        CasMultifactorAuthenticationWebflowConfiguration.class,
-        CasWebflowContextConfiguration.class
-    })
+    @SpringBootConfiguration(proxyBeanMethods = false)
+    @Import(CasPersonDirectoryTestConfiguration.class)
     public static class SharedTestConfiguration {
     }
 }

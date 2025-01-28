@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.jackson.Jacksonized;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -26,8 +28,10 @@ import java.io.Serializable;
 @EqualsAndHashCode
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 @SuperBuilder
+@Jacksonized
 public class YubiKeyDeviceRegistrationRequest implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 661869140885521905L;
 
     @JsonProperty("username")

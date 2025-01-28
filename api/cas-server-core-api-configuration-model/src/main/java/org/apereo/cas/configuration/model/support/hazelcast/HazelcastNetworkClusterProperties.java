@@ -3,16 +3,15 @@ package org.apereo.cas.configuration.model.support.hazelcast;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -25,8 +24,9 @@ import java.util.stream.Stream;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("HazelcastClusterProperties")
+
 public class HazelcastNetworkClusterProperties implements Serializable {
+    @Serial
     private static final long serialVersionUID = -8474968308106013185L;
 
     /**
@@ -40,12 +40,13 @@ public class HazelcastNetworkClusterProperties implements Serializable {
 
     /**
      * Sets the well known members.
-     * If members is empty, calling this method will have the same effect as calling clear().
-     * A member can be a comma separated string, e..g '10.11.12.1,10.11.12.2' which
-     * indicates multiple members are going to be added.
+     * If members is empty, calling this method will have the same effect as calling {@code clear()}.
+     * A member can be a comma separated string, e..g {@code 10.11.12.1,10.11.12.2} which
+     * indicates multiple members are going to be added. The list of members must include ALL
+     * CAS server node, including the current node that owns this configuration.
      */
     @RequiredProperty
-    private List<String> members = Stream.of("localhost").collect(Collectors.toList());
+    private List<String> members = Stream.of("localhost").toList();
 
     /**
      * You may also want to choose to use only one port. In that case,

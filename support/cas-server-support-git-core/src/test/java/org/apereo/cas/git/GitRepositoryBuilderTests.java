@@ -3,24 +3,23 @@ package org.apereo.cas.git;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.model.support.git.services.BaseGitProperties;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.ResourceUtils;
-
 import lombok.val;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.file.PathUtils;
-import org.apache.commons.io.file.StandardDeleteOption;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.core.io.ClassPathResource;
-
-import java.io.*;
+import java.io.File;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -30,15 +29,17 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @SpringBootTest(classes = RefreshAutoConfiguration.class)
+@ExtendWith(CasTestExtension.class)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-@Tag("FileSystem")
-public class GitRepositoryBuilderTests {
+@Tag("Git")
+@Execution(ExecutionMode.SAME_THREAD)
+class GitRepositoryBuilderTests {
 
     @Autowired
     private CasConfigurationProperties casProperties;
 
     @Test
-    public void verifyTestPrivateKey() throws Exception {
+    void verifyTestPrivateKey() throws Throwable {
         val props = casProperties.getServiceRegistry().getGit();
         props.setRepositoryUrl("git@github.com:mmoayyed/sample-data.git");
         props.setBranchesToClone("master");
@@ -53,12 +54,13 @@ public class GitRepositoryBuilderTests {
     }
 
     @Test
-    public void verifyBuild() throws Exception {
+    void verifyBuild() throws Throwable {
         val props = casProperties.getServiceRegistry().getGit();
         props.setRepositoryUrl("git@github.com:mmoayyed/sample-data.git");
         props.setUsername("casuser");
         props.setPassword("password");
         props.setBranchesToClone("master");
+        props.setHttpClientType(BaseGitProperties.HttpClientTypes.HTTP_CLIENT);
         props.getCloneDirectory().setLocation(ResourceUtils.getRawResourceFrom(
             FileUtils.getTempDirectoryPath() + File.separator + UUID.randomUUID()));
         props.setPrivateKeyPassphrase("something");
@@ -77,7 +79,7 @@ public class GitRepositoryBuilderTests {
      * Uses the file:// prefix rather than file: because it should work on windows or linux.
      */
     @Test
-    public void verifyBuildWithFilePrefix() throws Exception {
+    void verifyBuildWithFilePrefix() throws Throwable {
         val props = casProperties.getServiceRegistry().getGit();
         props.setRepositoryUrl("https://github.com/mmoayyed/sample-data.git");
         props.setUsername("casuser");
@@ -88,30 +90,4 @@ public class GitRepositoryBuilderTests {
         val builder = GitRepositoryBuilder.newInstance(props);
         assertDoesNotThrow(builder::build);
     }
-
-    /**
-     * This test uses a dummy private repo on gitlab and the username password is a read-only deploy token.
-     * Tests client auth of https and cloning repositories with multiple jgit http client implementations.
-     * @throws IOException IO error
-     */
-    @Test
-    public void verifyBuildWithHttpClientOptions() throws IOException {
-        val readonlyDeployToken = "ST8hSZUWDs7ujS83EVnk";
-        for (BaseGitProperties.HttpClientTypes type : BaseGitProperties.HttpClientTypes.values()) {
-            val props = casProperties.getServiceRegistry().getGit();
-            props.setHttpClientType(type);
-            props.setRepositoryUrl("https://gitlab.com/hdeadman-bah/cas-git-auth-test.git");
-            props.setUsername("cas-app");
-            props.setPassword(readonlyDeployToken);
-            props.setBranchesToClone("master");
-            val cloneDir = "file://" + FileUtils.getTempDirectoryPath() + File.separator + UUID.randomUUID();
-            props.getCloneDirectory().setLocation(ResourceUtils.getRawResourceFrom(cloneDir));
-            val builder = GitRepositoryBuilder.newInstance(props);
-            val gitRepository = builder.build();
-            assertTrue(new File(gitRepository.getRepositoryDirectory(), "README.md").exists());
-            gitRepository.destroy();
-            PathUtils.deleteDirectory(gitRepository.getRepositoryDirectory().toPath(), StandardDeleteOption.OVERRIDE_READ_ONLY);
-        }
-    }
-
 }

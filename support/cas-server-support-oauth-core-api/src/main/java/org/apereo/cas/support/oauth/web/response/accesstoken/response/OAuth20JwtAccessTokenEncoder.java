@@ -1,24 +1,21 @@
 package org.apereo.cas.support.oauth.web.response.accesstoken.response;
 
 import org.apereo.cas.authentication.principal.Service;
-import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.RegisteredService;
-import org.apereo.cas.services.RegisteredServiceCipherExecutor;
+import org.apereo.cas.support.oauth.OAuth20GrantTypes;
+import org.apereo.cas.support.oauth.OAuth20TokenExchangeTypes;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
+import org.apereo.cas.support.oauth.web.endpoints.OAuth20ConfigurationContext;
+import org.apereo.cas.ticket.OAuth20Token;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.token.JwtBuilder;
-import org.apereo.cas.util.DateTimeUtils;
-
-import com.nimbusds.jwt.JWTParser;
-import lombok.Builder;
+import org.apereo.cas.util.crypto.DecodableCipher;
+import org.apereo.cas.util.crypto.EncodableCipher;
 import lombok.Getter;
-import lombok.SneakyThrows;
+import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-
-import java.text.ParseException;
-import java.util.HashMap;
 import java.util.Optional;
 
 /**
@@ -27,103 +24,130 @@ import java.util.Optional;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@Builder
 @Getter
 @Slf4j
+@UtilityClass
 public class OAuth20JwtAccessTokenEncoder {
-    private final JwtBuilder accessTokenJwtBuilder;
-
-    private final OAuth20AccessToken accessToken;
-
-    private final RegisteredService registeredService;
-
-    private final Service service;
-
-    private final CasConfigurationProperties casProperties;
-
-    private final String issuer;
+    /**
+     * To decodable cipher.
+     *
+     * @param accessTokenJwtBuilder the access token jwt builder
+     * @param registeredService     the registered service
+     * @return the decodable cipher
+     */
+    public static DecodableCipher<String, String> toDecodableCipher(final JwtBuilder accessTokenJwtBuilder,
+                                                                    final RegisteredService registeredService) {
+        return new OAuth20JwtAccessTokenDecodableCipher(registeredService, accessTokenJwtBuilder);
+    }
 
     /**
-     * Encode access token as JWT.
+     * To decodable cipher.
      *
-     * @return the string
+     * @param accessTokenJwtBuilder the access token jwt builder
+     * @return the decodable cipher
      */
-    public String encode() {
-        val oAuthRegisteredService = OAuthRegisteredService.class.cast(this.registeredService);
-        if (shouldEncodeAsJwt(oAuthRegisteredService)) {
-            val request = getJwtRequestBuilder(Optional.ofNullable(oAuthRegisteredService), accessToken);
-            return accessTokenJwtBuilder.build(request);
+    public static DecodableCipher<String, String> toDecodableCipher(final JwtBuilder accessTokenJwtBuilder) {
+        return toDecodableCipher(accessTokenJwtBuilder, null);
+    }
+
+    /**
+     * To encodable cipher.
+     *
+     * @param configurationContext the configuration context
+     * @param tokenResult          the token result
+     * @param token          the access token
+     * @param issuer               the issuer
+     * @return the encodable cipher
+     */
+    public static EncodableCipher<String, String> toEncodableCipher(
+        final OAuth20ConfigurationContext configurationContext,
+        final OAuth20AccessTokenResponseResult tokenResult,
+        final OAuth20Token token,
+        final String issuer) {
+        val cipher = new OAuth20JwtAccessTokenEncodableCipher(configurationContext, tokenResult.getRegisteredService(),
+            token, tokenResult.getService(), issuer,
+            tokenResult.getRequestedTokenType() == OAuth20TokenExchangeTypes.JWT);
+        if (tokenResult.getGrantType() == OAuth20GrantTypes.TOKEN_EXCHANGE && tokenResult.getRequestedTokenType() == OAuth20TokenExchangeTypes.JWT) {
+            val audience = Optional.ofNullable(tokenResult.getTokenExchangeAudience())
+                .or(() -> Optional.ofNullable(tokenResult.getTokenExchangeResource()).map(Service::getId))
+                .orElse(StringUtils.EMPTY);
+            cipher.setTokenAudience(audience);
         }
-
-        return accessToken.getId();
+        return cipher;
     }
 
     /**
-     * Decode access token as JWT..
+     * To encodable cipher.
      *
-     * @param tokenId the token id
-     * @return the string
+     * @param configurationContext the configuration context
+     * @param registeredService    the registered service
+     * @param accessToken          the access token
+     * @param issuer               the issuer
+     * @return the encodable cipher
      */
-    @SneakyThrows
-    public String decode(final String tokenId) {
-        try {
-            if (StringUtils.isBlank(tokenId)) {
-                LOGGER.warn("No access token is provided to decode");
-                return null;
-            }
-            val header = JWTParser.parse(tokenId).getHeader();
-            var oAuthRegisteredService = (OAuthRegisteredService) this.registeredService;
-            if (oAuthRegisteredService == null) {
-                val serviceId = header.getCustomParam(RegisteredServiceCipherExecutor.CUSTOM_HEADER_REGISTERED_SERVICE_ID);
-                if (serviceId != null) {
-                    val serviceIdentifier = Long.parseLong(serviceId.toString());
-                    oAuthRegisteredService = accessTokenJwtBuilder.getServicesManager()
-                        .findServiceBy(serviceIdentifier, OAuthRegisteredService.class);
-                }
-            }
-            val claims = accessTokenJwtBuilder.unpack(Optional.ofNullable(oAuthRegisteredService), tokenId);
-            return claims.getJWTID();
-        } catch (final ParseException e) {
-            LOGGER.trace(e.getMessage(), e);
+    public static EncodableCipher<String, String> toEncodableCipher(final OAuth20ConfigurationContext configurationContext,
+                                                                    final RegisteredService registeredService,
+                                                                    final OAuth20AccessToken accessToken,
+                                                                    final String issuer) {
+        return new OAuth20JwtAccessTokenEncodableCipher(configurationContext, registeredService,
+            accessToken, accessToken.getService(), issuer, false);
+    }
+
+
+    /**
+     * To encodable cipher.
+     *
+     * @param configurationContext the configuration context
+     * @param registeredService    the registered service
+     * @param accessToken          the access token
+     * @return the object
+     */
+    public static EncodableCipher<String, String> toEncodableCipher(final OAuth20ConfigurationContext configurationContext,
+                                                                    final OAuthRegisteredService registeredService,
+                                                                    final OAuth20AccessToken accessToken) {
+        return toEncodableCipher(configurationContext, registeredService,
+            accessToken, configurationContext.getCasProperties().getServer().getPrefix());
+    }
+
+    /**
+     * To encodable cipher.
+     *
+     * @param configurationContext the configuration context
+     * @param registeredService    the registered service
+     * @param token          the access token
+     * @param service              the service
+     * @param forceEncodeAsJwt     the force encode as jwt
+     * @return the encodable cipher
+     */
+    public static EncodableCipher<String, String> toEncodableCipher(final OAuth20ConfigurationContext configurationContext,
+                                                                    final RegisteredService registeredService,
+                                                                    final OAuth20Token token,
+                                                                    final Service service,
+                                                                    final boolean forceEncodeAsJwt) {
+        return new OAuth20JwtAccessTokenEncodableCipher(configurationContext, registeredService,
+            token, service, configurationContext.getCasProperties().getServer().getPrefix(), forceEncodeAsJwt);
+    }
+
+    /**
+     * To encodable cipher.
+     *
+     * @param configurationContext the configuration context
+     * @param tokenResult          the token result
+     * @param token          the access token
+     * @return the encodable cipher
+     */
+    public static EncodableCipher<String, String> toEncodableCipher(final OAuth20ConfigurationContext configurationContext,
+                                                                    final OAuth20AccessTokenResponseResult tokenResult,
+                                                                    final OAuth20Token token) {
+        val cipher = new OAuth20JwtAccessTokenEncodableCipher(configurationContext, tokenResult.getRegisteredService(),
+            token, tokenResult.getService(), configurationContext.getCasProperties().getServer().getPrefix(),
+            tokenResult.getRequestedTokenType() == OAuth20TokenExchangeTypes.JWT);
+        if (tokenResult.getGrantType() == OAuth20GrantTypes.TOKEN_EXCHANGE && tokenResult.getRequestedTokenType() == OAuth20TokenExchangeTypes.JWT) {
+            val audience = Optional.ofNullable(tokenResult.getTokenExchangeAudience())
+                .or(() -> Optional.ofNullable(tokenResult.getTokenExchangeResource()).map(Service::getId))
+                .orElse(StringUtils.EMPTY);
+            cipher.setTokenAudience(audience);
         }
-        return tokenId;
-    }
-
-    /**
-     * Gets jwt request builder.
-     *
-     * @param oAuthRegisteredService the o auth registered service
-     * @param accessToken            the access token
-     * @return the jwt request builder
-     */
-    protected JwtBuilder.JwtRequest getJwtRequestBuilder(final Optional<RegisteredService> oAuthRegisteredService,
-                                                         final OAuth20AccessToken accessToken) {
-        val authentication = accessToken.getAuthentication();
-        val attributes = new HashMap<>(authentication.getAttributes());
-        attributes.putAll(authentication.getPrincipal().getAttributes());
-
-        val builder = JwtBuilder.JwtRequest.builder();
-        val dt = authentication.getAuthenticationDate().plusSeconds(accessToken.getExpirationPolicy().getTimeToLive());
-        return builder
-            .serviceAudience(service.getId())
-            .issueDate(DateTimeUtils.dateOf(authentication.getAuthenticationDate()))
-            .jwtId(accessToken.getId())
-            .subject(authentication.getPrincipal().getId())
-            .validUntilDate(DateTimeUtils.dateOf(dt))
-            .attributes(attributes)
-            .registeredService(oAuthRegisteredService)
-            .issuer(StringUtils.defaultIfBlank(this.issuer, casProperties.getServer().getPrefix()))
-            .build();
-    }
-
-    /**
-     * Should encode as jwt.
-     *
-     * @param oAuthRegisteredService the o auth registered service
-     * @return true/false
-     */
-    protected boolean shouldEncodeAsJwt(final OAuthRegisteredService oAuthRegisteredService) {
-        return casProperties.getAuthn().getOauth().getAccessToken().isCreateAsJwt()
-            || (oAuthRegisteredService != null && oAuthRegisteredService.isJwtAccessToken());
+        return cipher;
     }
 }

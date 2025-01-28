@@ -3,6 +3,9 @@ package org.apereo.cas.services;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.notifications.CommunicationsManager;
 import org.apereo.cas.notifications.mail.EmailMessageBodyBuilder;
+import org.apereo.cas.notifications.mail.EmailMessageRequest;
+import org.apereo.cas.notifications.sms.SmsBodyBuilder;
+import org.apereo.cas.notifications.sms.SmsRequest;
 import org.apereo.cas.support.events.service.CasRegisteredServiceExpiredEvent;
 import org.apereo.cas.support.events.service.CasRegisteredServicesRefreshEvent;
 
@@ -10,10 +13,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.Unchecked;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -32,22 +36,16 @@ public class DefaultRegisteredServicesEventListener implements RegisteredService
     private final CommunicationsManager communicationsManager;
 
     @Override
-    @EventListener
-    @Async
     public void handleRefreshEvent(final CasRegisteredServicesRefreshEvent event) {
         servicesManager.load();
     }
 
     @Override
-    @EventListener
-    @Async
     public void handleEnvironmentChangeEvent(final EnvironmentChangeEvent event) {
         servicesManager.load();
     }
-    
+
     @Override
-    @EventListener
-    @Async
     public void handleRegisteredServiceExpiredEvent(final CasRegisteredServiceExpiredEvent event) {
         val registeredService = event.getRegisteredService();
         val contacts = registeredService.getContacts();
@@ -64,20 +62,37 @@ public class DefaultRegisteredServicesEventListener implements RegisteredService
         communicationsManager.validate();
         if (communicationsManager.isMailSenderDefined()) {
             val mail = serviceRegistry.getMail();
-            val body = EmailMessageBodyBuilder.builder().properties(mail)
-                .parameters(Map.of("service", serviceName)).build().produce();
+            val body = EmailMessageBodyBuilder.builder()
+                .properties(mail)
+                .parameters(Map.of("service", serviceName))
+                .build().get();
+
             contacts
                 .stream()
-                .filter(c -> StringUtils.isNotBlank(c.getEmail()))
-                .forEach(c -> communicationsManager.email(mail, c.getEmail(), body));
+                .filter(contact -> StringUtils.isNotBlank(contact.getEmail()))
+                .forEach(contact -> {
+                    val emailRequest = EmailMessageRequest.builder()
+                        .emailProperties(mail)
+                        .to(List.of(contact.getEmail()))
+                        .body(body).build();
+                    communicationsManager.email(emailRequest);
+                });
         }
         if (communicationsManager.isSmsSenderDefined()) {
             val sms = serviceRegistry.getSms();
-            val message = sms.getFormattedText(serviceName);
+            val message = SmsBodyBuilder.builder().properties(sms).parameters(Map.of("service", serviceName)).build().get();
             contacts
                 .stream()
-                .filter(c -> StringUtils.isNotBlank(c.getPhone()))
-                .forEach(c -> communicationsManager.sms(sms.getFrom(), c.getPhone(), message));
+                .filter(contact -> StringUtils.isNotBlank(contact.getPhone()))
+                .forEach(Unchecked.consumer(contact -> {
+                    val recipients = new ArrayList<>(org.springframework.util.StringUtils.commaDelimitedListToSet(contact.getPhone()));
+                    val smsRequest = SmsRequest.builder()
+                        .from(sms.getFrom())
+                        .to(recipients)
+                        .text(message)
+                        .build();
+                    communicationsManager.sms(smsRequest);
+                }));
         }
     }
 }

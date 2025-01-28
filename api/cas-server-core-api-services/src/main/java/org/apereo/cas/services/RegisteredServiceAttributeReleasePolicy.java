@@ -1,8 +1,8 @@
 package org.apereo.cas.services;
 
 import org.apereo.cas.authentication.principal.RegisteredServicePrincipalAttributesRepository;
+import org.apereo.cas.util.NamedObject;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.springframework.core.Ordered;
 
@@ -18,7 +18,7 @@ import java.util.Map;
  * @since 4.1.0
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
-public interface RegisteredServiceAttributeReleasePolicy extends Serializable, Ordered {
+public interface RegisteredServiceAttributeReleasePolicy extends Serializable, Ordered, NamedObject {
 
     /**
      * Is authorized to release authentication attributes boolean.
@@ -77,16 +77,18 @@ public interface RegisteredServiceAttributeReleasePolicy extends Serializable, O
      *
      * @param context the context
      * @return the attributes
+     * @throws Throwable the throwable
      */
-    Map<String, List<Object>> getAttributes(RegisteredServiceAttributeReleasePolicyContext context);
+    Map<String, List<Object>> getAttributes(RegisteredServiceAttributeReleasePolicyContext context) throws Throwable;
 
     /**
      * Gets the attributes that qualify for consent.
      *
      * @param context the context
      * @return the attributes
+     * @throws Throwable the throwable
      */
-    default Map<String, List<Object>> getConsentableAttributes(final RegisteredServiceAttributeReleasePolicyContext context) {
+    default Map<String, List<Object>> getConsentableAttributes(final RegisteredServiceAttributeReleasePolicyContext context) throws Throwable {
         return getAttributes(context);
     }
 
@@ -94,14 +96,14 @@ public interface RegisteredServiceAttributeReleasePolicy extends Serializable, O
     default int getOrder() {
         return 0;
     }
+    
 
     /**
-     * Gets name.
+     * Gets condition that controls whether this policy should be activated.
      *
-     * @return the name
+     * @return the condition
      */
-    @JsonIgnore
-    default String getName() {
-        return getClass().getSimpleName();
+    default RegisteredServiceAttributeReleaseActivationCriteria getActivationCriteria() {
+        return null;
     }
 }

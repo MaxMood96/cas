@@ -3,10 +3,11 @@ package org.apereo.cas.configuration.model.support.ldap;
 import org.apereo.cas.configuration.model.core.authentication.PasswordPolicyProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * This is {@link LdapPasswordPolicyProperties}.
@@ -18,8 +19,9 @@ import lombok.experimental.Accessors;
 @Setter
 @RequiresModule(name = "cas-server-support-ldap")
 @Accessors(chain = true)
-@JsonFilter("LdapPasswordPolicyProperties")
+
 public class LdapPasswordPolicyProperties extends PasswordPolicyProperties {
+    @Serial
     private static final long serialVersionUID = -1878237508646993100L;
 
     /**
@@ -33,4 +35,13 @@ public class LdapPasswordPolicyProperties extends PasswordPolicyProperties {
      */
     private AbstractLdapProperties.LdapType type = AbstractLdapProperties.LdapType.GENERIC;
 
+    /**
+     * This is used to calculate an expiration period for the account password.
+     * When defined, LDAP password policy handling will use the {@code pwdLastSet} attribute
+     * which must be returned from the LDAP authentication attempt.
+     * LDAP password policy handling will emit a warning for the {@code pwdLastSet}
+     * value plus the expiration amount.
+     * A negative value will disable the operations that calculate the expiration period.
+     */
+    private int passwordExpirationNumberOfDays = 180;
 }

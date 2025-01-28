@@ -4,6 +4,7 @@ import org.apereo.cas.support.saml.BaseGitSamlMetadataTests;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.SamlMetadataDocument;
 import org.apereo.cas.util.LoggingUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -16,14 +17,13 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.context.TestPropertySource;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystemException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -34,6 +34,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @TestPropertySource(properties = {
+    "cas.authn.saml-idp.metadata.http.metadata-backup-location=file://${java.io.tmpdir}/metadata-backups",
+
+    "cas.authn.saml-idp.metadata.git.schedule.enabled=true",
+    
     "cas.authn.saml-idp.metadata.git.sign-commits=false",
     "cas.authn.saml-idp.metadata.git.push-changes=true",
     "cas.authn.saml-idp.metadata.git.idp-metadata-enabled=true",
@@ -42,8 +46,12 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.saml-idp.metadata.git.clone-directory.location=file://${java.io.tmpdir}/cas-saml-metadata-gsrsmrt"
 })
 @Slf4j
-@Tag("FileSystem")
-public class GitSamlRegisteredServiceMetadataResolverTests extends BaseGitSamlMetadataTests {
+@Tag("Git")
+class GitSamlRegisteredServiceMetadataResolverTests extends BaseGitSamlMetadataTests {
+    @Autowired
+    @Qualifier("gitSamlRegisteredServiceRepositoryScheduler")
+    private Runnable gitSamlRegisteredServiceRepositoryScheduler;
+    
     @BeforeAll
     public static void setup() {
         try {
@@ -63,25 +71,22 @@ public class GitSamlRegisteredServiceMetadataResolverTests extends BaseGitSamlMe
     }
 
     @AfterAll
-    public static void cleanUp() throws Exception {
+    public static void cleanUp() {
         val gitRepoDir = new File(FileUtils.getTempDirectory(), "cas-metadata-data");
         if (gitRepoDir.exists()) {
-            PathUtils.deleteDirectory(gitRepoDir.toPath(), StandardDeleteOption.OVERRIDE_READ_ONLY);
+            FunctionUtils.doAndHandle(
+                __ -> PathUtils.deleteDirectory(gitRepoDir.toPath(), StandardDeleteOption.OVERRIDE_READ_ONLY));
         }
         val cloneDirectory = "cas-saml-metadata-gsrsmrt";
         val gitCloneRepoDir = new File(FileUtils.getTempDirectory(), cloneDirectory);
-        val cloneRepoPath = gitCloneRepoDir.toPath();
         if (gitCloneRepoDir.exists()) {
-            try {
-                PathUtils.deleteDirectory(cloneRepoPath, StandardDeleteOption.OVERRIDE_READ_ONLY);
-            } catch (final FileSystemException e) {
-                LOGGER.warn("Can't cleanup [{}] until bean closed: [{}]", cloneRepoPath, e.getMessage());
-            }
+            FunctionUtils.doAndHandle(
+                __ -> PathUtils.deleteDirectory(gitCloneRepoDir.toPath(), StandardDeleteOption.OVERRIDE_READ_ONLY));
         }
     }
 
     @Test
-    public void verifyResolver() throws IOException {
+    void verifyResolver() throws Throwable {
         val md = new SamlMetadataDocument();
         md.setName("SP");
         md.setValue(IOUtils.toString(new ClassPathResource("sp-metadata.xml").getInputStream(), StandardCharsets.UTF_8));
@@ -101,12 +106,12 @@ public class GitSamlRegisteredServiceMetadataResolverTests extends BaseGitSamlMe
         service.setMetadataLocation("https://example.com/endswith.git");
         assertTrue(resolver.supports(service));
 
-        assertDoesNotThrow(new Executable() {
-            @Override
-            public void execute() {
-                resolver.resolve(null, null);
-                resolver.saveOrUpdate(null);
-            }
+        assertDoesNotThrow(() -> {
+            gitSamlRegisteredServiceRepositoryScheduler.run();
+            
+            resolver.resolve(null, null);
+            resolver.saveOrUpdate(null);
+
         });
     }
 }

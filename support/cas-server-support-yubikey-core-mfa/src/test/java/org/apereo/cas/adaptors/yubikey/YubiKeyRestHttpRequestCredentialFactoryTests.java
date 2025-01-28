@@ -16,21 +16,21 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.3.0
  */
 @Tag("MFAProvider")
-public class YubiKeyRestHttpRequestCredentialFactoryTests {
+class YubiKeyRestHttpRequestCredentialFactoryTests {
     @Test
-    public void verifyAction() {
-        val f = new YubiKeyRestHttpRequestCredentialFactory();
+    void verifyAction() {
+        val factory = new YubiKeyRestHttpRequestCredentialFactory();
         val body = new LinkedMultiValueMap<String, String>();
         body.add(YubiKeyRestHttpRequestCredentialFactory.PARAMETER_NAME_YUBIKEY_OTP, "token");
-        assertFalse(f.fromRequest(null, body).isEmpty());
+        assertFalse(factory.fromRequest(null, body).isEmpty());
     }
 
     @Test
-    public void verifyEmptyBody() {
-        val f = new YubiKeyRestHttpRequestCredentialFactory();
+    void verifyEmptyBody() {
+        val factory = new YubiKeyRestHttpRequestCredentialFactory();
         val body = new LinkedMultiValueMap<String, String>();
-        assertTrue(f.fromRequest(null, body).isEmpty());
+        assertTrue(factory.fromRequest(null, body).isEmpty());
         body.put("some-other-key", List.of("value1"));
-        assertTrue(f.fromRequest(null, body).isEmpty());
+        assertTrue(factory.fromRequest(null, body).isEmpty());
     }
 }

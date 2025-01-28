@@ -47,13 +47,13 @@ public class OktaAuthenticationHandler extends AbstractUsernamePasswordAuthentic
         try {
             val username = credential.getUsername();
             val adapter = new OktaAuthenticationStateHandlerAdapter(getPasswordPolicyHandlingStrategy(), getPasswordPolicyConfiguration());
-            val response = oktaAuthenticationClient.authenticate(username, credential.getPassword().toCharArray(), null, adapter);
+            val response = oktaAuthenticationClient.authenticate(username, credential.getPassword(), null, adapter);
             Objects.requireNonNull(response, "Authentication response cannot be null");
             adapter.throwExceptionIfNecessary();
             LOGGER.debug("Created principal for id [{}] and [{}] attributes", adapter.getUsername(), adapter.getUserAttributes());
             val principal = this.principalFactory.createPrincipal(adapter.getUsername(), adapter.getUserAttributes());
             return createHandlerResult(credential, principal, adapter.getWarnings());
-        } catch (final Exception e) {
+        } catch (final Throwable e) {
             LoggingUtils.error(LOGGER, e);
             throw new FailedLoginException("Invalid credentials: " + e.getMessage());
         }

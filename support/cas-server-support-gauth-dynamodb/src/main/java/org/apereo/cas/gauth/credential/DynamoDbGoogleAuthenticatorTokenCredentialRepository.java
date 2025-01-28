@@ -8,6 +8,7 @@ import lombok.val;
 
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -21,21 +22,22 @@ public class DynamoDbGoogleAuthenticatorTokenCredentialRepository extends BaseGo
 
     public DynamoDbGoogleAuthenticatorTokenCredentialRepository(final IGoogleAuthenticator googleAuthenticator,
                                                                 final CipherExecutor<String, String> tokenCredentialCipher,
+                                                                final CipherExecutor<Number, Number> scratchCodesCipher,
                                                                 final DynamoDbGoogleAuthenticatorTokenCredentialRepositoryFacilitator facilitator) {
-        super(tokenCredentialCipher, googleAuthenticator);
+        super(tokenCredentialCipher, scratchCodesCipher, googleAuthenticator);
         this.facilitator = facilitator;
     }
 
     @Override
     public OneTimeTokenAccount get(final long id) {
         val r = facilitator.find(id);
-        return r != null ? decode(r) : null;
+        return Optional.ofNullable(r).map(this::decode).orElse(null);
     }
 
     @Override
     public OneTimeTokenAccount get(final String username, final long id) {
         val r = facilitator.find(username, id);
-        return r != null ? decode(r) : null;
+        return Optional.ofNullable(r).map(this::decode).orElse(null);
     }
 
     @Override
@@ -55,7 +57,7 @@ public class DynamoDbGoogleAuthenticatorTokenCredentialRepository extends BaseGo
 
     @Override
     public OneTimeTokenAccount save(final OneTimeTokenAccount account) {
-        return update(account);
+        return update(account.assignIdIfNecessary());
     }
 
     @Override

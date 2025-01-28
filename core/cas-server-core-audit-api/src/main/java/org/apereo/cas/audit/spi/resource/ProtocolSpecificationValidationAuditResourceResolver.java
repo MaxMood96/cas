@@ -11,7 +11,8 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apereo.inspektr.audit.spi.support.ParametersAsStringResourceResolver;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -30,18 +31,17 @@ public class ProtocolSpecificationValidationAuditResourceResolver extends Parame
     protected String[] createResource(final Object[] args) {
         val results = new LinkedHashMap<>();
         Arrays.stream(args).forEach(arg -> {
-            if (arg instanceof HttpServletRequest) {
-                val request = HttpServletRequest.class.cast(arg);
+            if (arg instanceof final HttpServletRequest request) {
                 results.put(CasProtocolConstants.PARAMETER_RENEW,
-                    StringUtils.defaultString(request.getParameter(CasProtocolConstants.PARAMETER_RENEW), "false"));
+                    StringUtils.defaultIfBlank(request.getParameter(CasProtocolConstants.PARAMETER_RENEW), "false"));
                 results.put(CasProtocolConstants.PARAMETER_GATEWAY,
-                    StringUtils.defaultString(request.getParameter(CasProtocolConstants.PARAMETER_GATEWAY), "false"));
+                    StringUtils.defaultIfBlank(request.getParameter(CasProtocolConstants.PARAMETER_GATEWAY), "false"));
             }
-            if (arg instanceof Assertion) {
-                val assertion = Assertion.class.cast(arg);
+            if (arg instanceof final Assertion assertion) {
                 val authn = assertion.getPrimaryAuthentication();
                 results.put("principal", authn.getPrincipal().getId());
-                results.put("service", DigestUtils.abbreviate(assertion.getService().getId()));
+                results.put("service", DigestUtils.abbreviate(assertion.getService().getId(),
+                    casProperties.getAudit().getEngine().getAbbreviationLength()));
                 if (casProperties.getAudit().getEngine().isIncludeValidationAssertion()) {
                     val attributes = new HashMap<String, Object>(authn.getAttributes());
                     attributes.putAll(authn.getPrincipal().getAttributes());

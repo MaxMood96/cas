@@ -12,6 +12,7 @@ dependencies {
     implementation project(":core:cas-server-core-validation")
     implementation project(":core:cas-server-core-web")
     implementation project(":core:cas-server-core-notifications")
+    implementation project(":core:cas-server-core-multitenancy")
 
     compileOnly project(":support:cas-server-support-jpa-util")
 
@@ -22,33 +23,38 @@ dependencies {
     implementation project(":support:cas-server-support-validation")
     implementation project(":support:cas-server-support-thymeleaf")
     implementation project(":support:cas-server-support-pm-webflow")
+    implementation project(":support:cas-server-support-webconfig")
 
-    implementation project(":webapp:cas-server-webapp-config")
     implementation project(":webapp:cas-server-webapp-init")
     implementation project(":webapp:cas-server-webapp-resources")
 
-    def casModules = providers.systemProperty("casModules").forUseAtConfigurationTime().getOrNull()
-    if (casModules != null) {
+    def casModules = providers.systemProperty("casModules").getOrNull()
+    if (casModules != null && casModules.trim().length() > 0) {
         def dependencies = casModules.split(",")
-        dependencies.each {
+        dependencies.findAll {it.length() > 0 }.each {
             def projectsToAdd = rootProject.subprojects.findAll {project ->
                 def pattern = /cas-server-${it}|cas-server-core-${it}|cas-server-support-${it}/
                 logger.debug("Matching ${pattern} against CAS module ${project.name}")
                 project.name.matches(pattern)
             }
 
-            ansi.green("Including CAS module(s): ${projectsToAdd}")
-            projectsToAdd.each {
-                implementation it
+            if (projectsToAdd.isEmpty()) {
+                ansi.yellow("No CAS module(s) found for ${it}")
+            } else {
+                ansi.green("Including CAS module(s): ${projectsToAdd}")
+                projectsToAdd.each {
+                    implementation it
+                }
             }
         }
     }
 
     implementation libraries.springcloudconfigclient
-    if (!rootProject.publishFlag) {
+    implementation libraries.springcloudbootstrap
+    implementation libraries.springbootpropertymigrator
+    if (!rootProject.publishFlag && !rootProject.skipSpringBootDevTools) {
         runtimeOnly libraries.springbootdevtools
     }
-
 }
 
 

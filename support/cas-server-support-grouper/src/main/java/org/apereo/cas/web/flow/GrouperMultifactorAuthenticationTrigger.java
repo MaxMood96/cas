@@ -21,10 +21,10 @@ import lombok.val;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.Ordered;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -52,7 +52,9 @@ public class GrouperMultifactorAuthenticationTrigger implements MultifactorAuthe
     @Override
     public Optional<MultifactorAuthenticationProvider> isActivated(final Authentication authentication,
                                                                    final RegisteredService registeredService,
-                                                                   final HttpServletRequest request, final Service service) {
+                                                                   final HttpServletRequest request,
+                                                                   final HttpServletResponse response,
+                                                                   final Service service) {
         val grouperField = casProperties.getAuthn().getMfa()
             .getTriggers().getGrouper().getGrouperGroupField();
         if (StringUtils.isBlank(grouperField)) {
@@ -80,8 +82,7 @@ public class GrouperMultifactorAuthenticationTrigger implements MultifactorAuthe
         val groupField = GrouperGroupField.valueOf(grouperField);
 
         val values = results.stream()
-            .map(wsGetGroupsResult -> Stream.of(wsGetGroupsResult.getWsGroups()))
-            .flatMap(Function.identity())
+            .flatMap(wsGetGroupsResult -> Stream.of(wsGetGroupsResult.getWsGroups()))
             .map(g -> GrouperFacade.getGrouperGroupAttribute(groupField, g))
             .collect(Collectors.toSet());
 

@@ -1,14 +1,19 @@
 package org.apereo.cas.web.flow.configurer;
 
+import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
 import org.apereo.cas.web.flow.CasWebflowLoginContextProvider;
 import org.apereo.cas.web.flow.configurer.plan.DefaultCasWebflowExecutionPlan;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
-
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -19,10 +24,16 @@ import static org.mockito.Mockito.*;
  * @since 6.4.0
  */
 @Tag("Webflow")
-public class DefaultCasWebflowExecutionPlanTests {
+@SpringBootTest(classes = RefreshAutoConfiguration.class)
+@ExtendWith(CasTestExtension.class)
+@EnableConfigurationProperties(CasConfigurationProperties.class)
+class DefaultCasWebflowExecutionPlanTests {
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+    
     @Test
-    public void verifyOperation() {
-        val plan = new DefaultCasWebflowExecutionPlan();
+    void verifyOperation() {
+        val plan = new DefaultCasWebflowExecutionPlan(applicationContext);
 
         val p1 = mock(CasWebflowLoginContextProvider.class);
         when(p1.getOrder()).thenReturn(1);
@@ -35,15 +46,10 @@ public class DefaultCasWebflowExecutionPlanTests {
         plan.registerWebflowLoginContextProvider(p2);
 
         plan.registerWebflowConfigurer(mock(CasWebflowConfigurer.class));
-        assertDoesNotThrow(new Executable() {
-            @Override
-            public void execute() {
-                plan.execute();
-            }
-        });
+        assertDoesNotThrow(plan::execute);
         assertEquals(2, plan.getWebflowLoginContextProviders().size());
         assertEquals(1, plan.getWebflowConfigurers().size());
-        assertEquals(p2.getName(), plan.getWebflowLoginContextProviders().get(0).getName());
-        assertEquals(p1.getName(), plan.getWebflowLoginContextProviders().get(1).getName());
+        assertEquals("P2", plan.getWebflowLoginContextProviders().getFirst().getName());
+        assertEquals("P1", plan.getWebflowLoginContextProviders().get(1).getName());
     }
 }

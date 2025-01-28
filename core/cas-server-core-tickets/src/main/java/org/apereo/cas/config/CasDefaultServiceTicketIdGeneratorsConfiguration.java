@@ -2,10 +2,12 @@ package org.apereo.cas.config;
 
 import org.apereo.cas.authentication.principal.SimpleWebApplicationServiceImpl;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.ticket.UniqueTicketIdGenerator;
 import org.apereo.cas.ticket.UniqueTicketIdGeneratorConfigurer;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.ServiceTicketIdGenerator;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -21,9 +23,10 @@ import org.springframework.context.annotation.ScopedProxyMode;
  * @author Misagh Moayyed
  * @since 5.1.0
  */
-@Configuration(value = "CasDefaultServiceTicketIdGeneratorsConfiguration", proxyBeanMethods = false)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-public class CasDefaultServiceTicketIdGeneratorsConfiguration {
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.TicketRegistry)
+@Configuration(value = "CasDefaultServiceTicketIdGeneratorsConfiguration", proxyBeanMethods = false)
+class CasDefaultServiceTicketIdGeneratorsConfiguration {
 
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @Bean
@@ -36,8 +39,7 @@ public class CasDefaultServiceTicketIdGeneratorsConfiguration {
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     public UniqueTicketIdGeneratorConfigurer casDefaultServiceTicketUniqueTicketIdGeneratorConfigurer(
-        @Qualifier("serviceTicketUniqueIdGenerator")
-        final UniqueTicketIdGenerator serviceTicketUniqueIdGenerator) {
+        @Qualifier("serviceTicketUniqueIdGenerator") final UniqueTicketIdGenerator serviceTicketUniqueIdGenerator) {
         return () -> CollectionUtils.wrap(
             Pair.of(SimpleWebApplicationServiceImpl.class.getName(), serviceTicketUniqueIdGenerator));
     }

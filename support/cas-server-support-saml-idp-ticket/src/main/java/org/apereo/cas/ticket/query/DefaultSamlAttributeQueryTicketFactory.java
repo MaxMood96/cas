@@ -9,9 +9,10 @@ import org.apereo.cas.ticket.ExpirationPolicyBuilder;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.val;
 import org.opensaml.saml.common.SAMLObject;
 
@@ -27,10 +28,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class DefaultSamlAttributeQueryTicketFactory implements SamlAttributeQueryTicketFactory {
 
-    /**
-     * ExpirationPolicy for tokens.
-     */
-    protected final ExpirationPolicyBuilder expirationPolicy;
+    @Getter
+    protected final ExpirationPolicyBuilder expirationPolicyBuilder;
 
     /**
      * The Web application service factory.
@@ -43,20 +42,21 @@ public class DefaultSamlAttributeQueryTicketFactory implements SamlAttributeQuer
     protected final OpenSamlConfigBean configBean;
 
     @Override
-    @SneakyThrows
     public SamlAttributeQueryTicket create(final String id, final SAMLObject samlObject,
                                            final String relyingParty,
                                            final TicketGrantingTicket ticketGrantingTicket) {
-        try (val w = SamlUtils.transformSamlObject(this.configBean, samlObject)) {
-            val codeId = createTicketIdFor(id, relyingParty);
-            val service = webApplicationServiceFactory.createService(relyingParty);
-            service.getAttributes().put(TicketGrantingTicket.class.getSimpleName(), CollectionUtils.wrapList(ticketGrantingTicket.getId()));
-            service.getAttributes().put(RegisteredService.class.getSimpleName(), CollectionUtils.wrapList(relyingParty));
-            service.getAttributes().put("owner", CollectionUtils.wrapList(getTicketType().getName()));
-            return new SamlAttributeQueryTicketImpl(codeId, service,
-                expirationPolicy.buildTicketExpirationPolicy(),
-                relyingParty, w.toString(), Objects.requireNonNull(ticketGrantingTicket).getAuthentication());
-        }
+        return FunctionUtils.doUnchecked(() -> {
+            try (val w = SamlUtils.transformSamlObject(this.configBean, samlObject)) {
+                val codeId = createTicketIdFor(id, relyingParty);
+                val service = webApplicationServiceFactory.createService(relyingParty);
+                service.getAttributes().put(TicketGrantingTicket.class.getSimpleName(), CollectionUtils.wrapList(ticketGrantingTicket.getId()));
+                service.getAttributes().put(RegisteredService.class.getSimpleName(), CollectionUtils.wrapList(relyingParty));
+                service.getAttributes().put("owner", CollectionUtils.wrapList(getTicketType().getName()));
+                return new SamlAttributeQueryTicketImpl(codeId, service,
+                    expirationPolicyBuilder.buildTicketExpirationPolicy(),
+                    relyingParty, w.toString(), Objects.requireNonNull(ticketGrantingTicket).getAuthentication());
+            }
+        });
     }
 
     @Override

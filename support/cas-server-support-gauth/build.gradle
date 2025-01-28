@@ -1,6 +1,16 @@
 description = "Apereo CAS Google Authenticator Support"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "Google Authenticator Multifactor Authentication",
+            title: "Google Authenticator Support",
+            aliases: ["gauth", "googlemfa"]
+    ]
+}
 dependencies {
     api project(":api:cas-server-core-api-webflow")
+
+    implementation libraries.jose4j
     
     implementation project(":support:cas-server-support-gauth-core")
     implementation project(":support:cas-server-support-otp-mfa")
@@ -14,6 +24,7 @@ dependencies {
     implementation project(":core:cas-server-core-util-api")
     implementation project(":core:cas-server-core-configuration-api")
     implementation project(":core:cas-server-core-webflow")
+    implementation project(":core:cas-server-core-multitenancy")
     implementation project(":core:cas-server-core-web-api")
     implementation project(":core:cas-server-core-webflow-api")
     implementation project(":core:cas-server-core-webflow-mfa")
@@ -22,12 +33,18 @@ dependencies {
     compileOnly project(":core:cas-server-core-rest-api")
     compileOnly project(":support:cas-server-support-trusted-mfa")
 
+    testImplementation libraries.springboottomcat
+    
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-rest")
 
     testImplementation project(":support:cas-server-support-person-directory")
     testImplementation project(":support:cas-server-support-trusted-mfa")
     testImplementation project(":support:cas-server-support-reports")
+    testImplementation project(":support:cas-server-support-webconfig")
+    testImplementation project(":support:cas-server-support-validation")
+    testImplementation project(":support:cas-server-support-thymeleaf")
+
     testImplementation project(":core:cas-server-core-tickets")
     testImplementation project(":core:cas-server-core-audit")
     testImplementation project(":core:cas-server-core-authentication")
@@ -36,6 +53,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-web")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-cookie")
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core-logging")
@@ -48,6 +66,8 @@ dependencies {
     testImplementation project(path: ":core:cas-server-core-webflow", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-audit-api", configuration: "tests")
+    testImplementation project(path: ":core:cas-server-core-authentication-mfa-api", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-reports", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-gauth-core", configuration: "tests")
+    testImplementation project(path: ":support:cas-server-support-person-directory-core", configuration: "tests")
 }

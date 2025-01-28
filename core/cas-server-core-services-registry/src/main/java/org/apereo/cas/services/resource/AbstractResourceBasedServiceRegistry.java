@@ -1,5 +1,6 @@
 package org.apereo.cas.services.resource;
 
+import org.apereo.cas.configuration.api.CasConfigurationPropertiesSourceLocator;
 import org.apereo.cas.services.AbstractServiceRegistry;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.ResourceBasedServiceRegistry;
@@ -13,24 +14,27 @@ import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.RegexUtils;
 import org.apereo.cas.util.ResourceUtils;
+import org.apereo.cas.util.concurrent.CasReentrantLock;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.io.PathWatcherService;
 import org.apereo.cas.util.io.WatcherService;
+import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
 import org.apereo.cas.util.serialization.StringSerializer;
-
 import lombok.Getter;
 import lombok.Setter;
-import lombok.SneakyThrows;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.util.Assert;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,6 +44,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,22 +62,23 @@ import java.util.stream.Stream;
  */
 @Slf4j
 @ToString
-public abstract class AbstractResourceBasedServiceRegistry extends AbstractServiceRegistry implements ResourceBasedServiceRegistry, DisposableBean {
+public abstract class AbstractResourceBasedServiceRegistry extends AbstractServiceRegistry
+    implements ResourceBasedServiceRegistry, DisposableBean {
     /**
-     * The Service registry directory.
+     * Fallback location to use if the given location is determined as invalid.
      */
+    public static final File FALLBACK_REGISTERED_SERVICES_LOCATION =
+        new File(CasConfigurationPropertiesSourceLocator.DEFAULT_CAS_CONFIG_DIRECTORIES.getFirst(), "services");
+
+
     @Getter
     protected Path serviceRegistryDirectory;
-
-    /**
-     * Map of service ID to registered service.
-     */
+    
     @Getter
     protected Map<Long, RegisteredService> services = new ConcurrentHashMap<>();
 
-    /**
-     * The Registered service json serializers.
-     */
+    private final CasReentrantLock lock = new CasReentrantLock();
+
     private Collection<StringSerializer<RegisteredService>> registeredServiceSerializers;
 
     @Setter
@@ -86,7 +93,7 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
     protected AbstractResourceBasedServiceRegistry(final Resource configDirectory,
                                                    final Collection<StringSerializer<RegisteredService>> serializers,
                                                    final ConfigurableApplicationContext applicationContext,
-                                                   final Collection<ServiceRegistryListener> serviceRegistryListeners) throws Exception {
+                                                   final Collection<ServiceRegistryListener> serviceRegistryListeners) {
         this(configDirectory, serializers, applicationContext,
             new NoOpRegisteredServiceReplicationStrategy(),
             new DefaultRegisteredServiceResourceNamingStrategy(),
@@ -97,7 +104,7 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
                                                    final Collection<StringSerializer<RegisteredService>> serializers,
                                                    final ConfigurableApplicationContext applicationContext,
                                                    final Collection<ServiceRegistryListener> serviceRegistryListeners,
-                                                   final WatcherService serviceRegistryConfigWatcher) throws Exception {
+                                                   final WatcherService serviceRegistryConfigWatcher) {
         this(configDirectory, serializers, applicationContext,
             new NoOpRegisteredServiceReplicationStrategy(),
             new DefaultRegisteredServiceResourceNamingStrategy(),
@@ -105,7 +112,8 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
     }
 
 
-    protected AbstractResourceBasedServiceRegistry(final Path configDirectory, final StringSerializer<RegisteredService> serializer,
+    protected AbstractResourceBasedServiceRegistry(final Path configDirectory,
+                                                   final StringSerializer<RegisteredService> serializer,
                                                    final ConfigurableApplicationContext applicationContext,
                                                    final RegisteredServiceReplicationStrategy registeredServiceReplicationStrategy,
                                                    final RegisteredServiceResourceNamingStrategy resourceNamingStrategy,
@@ -134,46 +142,62 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
                                                    final RegisteredServiceReplicationStrategy registeredServiceReplicationStrategy,
                                                    final RegisteredServiceResourceNamingStrategy resourceNamingStrategy,
                                                    final Collection<ServiceRegistryListener> serviceRegistryListeners,
-                                                   final WatcherService serviceRegistryConfigWatcher) throws Exception {
+                                                   final WatcherService serviceRegistryConfigWatcher) {
         super(applicationContext, serviceRegistryListeners);
         LOGGER.trace("Provided service registry directory is specified at [{}]", configDirectory);
-        val pattern = String.join("|", getExtensions());
-        val servicesDirectory = ResourceUtils.prepareClasspathResourceIfNeeded(configDirectory, true, pattern);
-        if (servicesDirectory == null) {
-            throw new IllegalArgumentException("Could not determine the services configuration directory from " + configDirectory);
-        }
-        val file = servicesDirectory.getFile();
-        LOGGER.trace("Prepared service registry directory is specified at [{}]", file);
 
-        initializeRegistry(Paths.get(file.getCanonicalPath()), serializers,
-            registeredServiceReplicationStrategy, resourceNamingStrategy, serviceRegistryConfigWatcher);
+        FunctionUtils.doAndHandle(__ -> {
+            val servicesDirectory = prepareRegisteredServicesDirectory(configDirectory);
+            val file = servicesDirectory.getFile();
+            LOGGER.trace("Prepared service registry directory is specified at [{}]", file);
+
+            initializeRegistry(Paths.get(file.getCanonicalPath()), serializers,
+                registeredServiceReplicationStrategy, resourceNamingStrategy, serviceRegistryConfigWatcher);
+        });
+    }
+
+    private Resource prepareRegisteredServicesDirectory(final Resource configDirectory) throws IOException {
+        val externalForm = configDirectory.getURI().toASCIIString();
+        if (CasRuntimeHintsRegistrar.inNativeImage() && ResourceUtils.isEmbeddedResource(externalForm)) {
+            val servicesDirectory = CasConfigurationPropertiesSourceLocator.DEFAULT_CAS_CONFIG_DIRECTORIES
+                .stream()
+                .map(directory -> new File(directory, "services"))
+                .filter(File::exists)
+                .findFirst()
+                .orElse(FALLBACK_REGISTERED_SERVICES_LOCATION);
+            LOGGER.warn("""
+                GraalVM native image executable is unable to discover embedded resources at [{}]. The services directory location is changed to use [{}] instead. \
+                To adjust this behavior, update your CAS settings to use a directory location outside the CAS native executable."""
+                .stripIndent(), externalForm, servicesDirectory);
+            return new FileSystemResource(servicesDirectory);
+        }
+        val pattern = String.join("|", getExtensions());
+        return Objects.requireNonNull(ResourceUtils.prepareClasspathResourceIfNeeded(configDirectory, true, pattern),
+            () -> "Could not determine the services configuration directory from " + configDirectory);
     }
 
     /**
      * Enable default watcher service.
      */
     public void enableDefaultWatcherService() {
-        LOGGER.info("Watching service registry directory at [{}]", this.serviceRegistryDirectory);
+        LOGGER.info("Watching service registry directory at [{}]", serviceRegistryDirectory);
         serviceRegistryWatcherService.close();
         val onCreate = new CreateResourceBasedRegisteredServiceWatcher(this);
         val onDelete = new DeleteResourceBasedRegisteredServiceWatcher(this);
         val onModify = new ModifyResourceBasedRegisteredServiceWatcher(this);
-        serviceRegistryWatcherService = new PathWatcherService(this.serviceRegistryDirectory, onCreate, onModify, onDelete);
+        serviceRegistryWatcherService = new PathWatcherService(serviceRegistryDirectory, onCreate, onModify, onDelete);
         serviceRegistryWatcherService.start(getClass().getSimpleName());
     }
 
     @Override
     public RegisteredService save(final RegisteredService service) {
-        if (service.getId() == RegisteredService.INITIAL_IDENTIFIER_VALUE) {
-            LOGGER.debug("Service id not set. Calculating id based on system time...");
-            service.setId(System.currentTimeMillis());
-        }
-        val f = getRegisteredServiceFileName(service);
-        try (val out = Files.newOutputStream(f.toPath())) {
+        service.assignIdIfNecessary();
+        val fileName = getRegisteredServiceFileName(service);
+        try (val out = Files.newOutputStream(fileName.toPath())) {
             invokeServiceRegistryListenerPreSave(service);
-            val result = this.registeredServiceSerializers.stream().anyMatch(s -> {
+            val result = registeredServiceSerializers.stream().anyMatch(serializer -> {
                 try {
-                    s.to(out, service);
+                    serializer.to(out, service);
                     return true;
                 } catch (final Exception e) {
                     LOGGER.debug(e.getMessage(), e);
@@ -181,13 +205,13 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
                 }
             });
             if (!result) {
-                throw new IOException("The service definition file could not be saved at " + f.getCanonicalPath());
+                throw new IOException("The service definition file could not be saved at " + fileName.getCanonicalPath());
             }
             if (this.services.containsKey(service.getId())) {
                 LOGGER.debug("Found existing service definition by id [{}]. Saving...", service.getId());
             }
-            this.services.put(service.getId(), service);
-            LOGGER.debug("Saved service to [{}]", f.getCanonicalPath());
+            services.put(service.getId(), service);
+            LOGGER.debug("Saved service to [{}]", fileName.getCanonicalPath());
         } catch (final IOException e) {
             throw new IllegalArgumentException("IO error opening file stream.", e);
         }
@@ -195,19 +219,21 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
     }
 
     @Override
-    @SneakyThrows
-    public synchronized boolean delete(final RegisteredService service) {
-        val f = getRegisteredServiceFileName(service);
-        publishEvent(new CasRegisteredServicePreDeleteEvent(this, service));
-        val result = !f.exists() || f.delete();
-        if (!result) {
-            LOGGER.warn("Failed to delete service definition file [{}]", f.getCanonicalPath());
-        } else {
-            removeRegisteredService(service);
-            LOGGER.debug("Successfully deleted service definition file [{}]", f.getCanonicalPath());
-        }
-        publishEvent(new CasRegisteredServiceDeletedEvent(this, service));
-        return result;
+    public boolean delete(final RegisteredService service) {
+        return lock.tryLock(() -> FunctionUtils.doUnchecked(() -> {
+            val filename = getRegisteredServiceFileName(service);
+            val clientInfo = ClientInfoHolder.getClientInfo();
+            publishEvent(new CasRegisteredServicePreDeleteEvent(this, service, clientInfo));
+            val result = !filename.exists() || filename.delete();
+            if (result) {
+                removeRegisteredService(service);
+                LOGGER.debug("Successfully deleted service definition file [{}]", filename.getCanonicalPath());
+            } else {
+                LOGGER.warn("Failed to delete service definition file [{}]", filename.getCanonicalPath());
+            }
+            publishEvent(new CasRegisteredServiceDeletedEvent(this, service, clientInfo));
+            return result;
+        }));
     }
 
     @Override
@@ -217,30 +243,37 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
     }
 
     @Override
-    public synchronized Collection<RegisteredService> load() {
-        LOGGER.trace("Loading files from [{}]", this.serviceRegistryDirectory);
-        val files = FileUtils.listFiles(this.serviceRegistryDirectory.toFile(), getExtensions(), true);
-        LOGGER.trace("Located [{}] files from [{}] are [{}]", getExtensions(), this.serviceRegistryDirectory, files);
+    public Collection<RegisteredService> load() {
+        return lock.tryLock(() -> {
+            LOGGER.trace("Loading files from [{}]", this.serviceRegistryDirectory);
+            val serviceRegistryDirectoryFile = serviceRegistryDirectory.toFile();
+            val files = serviceRegistryDirectoryFile.exists()
+                ? FileUtils.listFiles(serviceRegistryDirectoryFile, getExtensions(), true)
+                : List.<File>of();
+            
+            LOGGER.trace("Located [{}] files from [{}] are [{}]", getExtensions(), this.serviceRegistryDirectory, files);
+            val clientInfo = ClientInfoHolder.getClientInfo();
 
-        this.services = files
-            .stream()
-            .map(this::load)
-            .filter(Objects::nonNull)
-            .flatMap(Collection::stream)
-            .sorted()
-            .collect(Collectors.toMap(RegisteredService::getId, Function.identity(),
-                (s1, s2) -> {
-                    BaseResourceBasedRegisteredServiceWatcher.LOG_SERVICE_DUPLICATE.accept(s2);
-                    return s1;
-                }, LinkedHashMap::new));
-        val listedServices = new ArrayList<>(this.services.values());
-        val results = this.registeredServiceReplicationStrategy.updateLoadedRegisteredServicesFromCache(listedServices, this);
-        results.forEach(service -> publishEvent(new CasRegisteredServiceLoadedEvent(this, service)));
-        return results;
+            this.services = files
+                .stream()
+                .map(this::load)
+                .filter(Objects::nonNull)
+                .flatMap(Collection::stream)
+                .filter(service -> StringUtils.isNotBlank(service.getServiceId()) && StringUtils.isNotBlank(service.getName()))
+                .sorted()
+                .collect(Collectors.toMap(RegisteredService::getId, Function.identity(),
+                    (s1, s2) -> {
+                        BaseResourceBasedRegisteredServiceWatcher.LOG_SERVICE_DUPLICATE.accept(s2);
+                        return s1;
+                    }, LinkedHashMap::new));
+            val listedServices = new ArrayList<>(this.services.values());
+            val results = registeredServiceReplicationStrategy.updateLoadedRegisteredServicesFromCache(listedServices, this);
+            results.forEach(service -> publishEvent(new CasRegisteredServiceLoadedEvent(this, service, clientInfo)));
+            return results;
+        });
     }
 
     @Override
-    @SneakyThrows
     public Collection<RegisteredService> load(final File file) {
         val fileName = file.getName();
         if (!file.canRead()) {
@@ -255,7 +288,7 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
             LOGGER.debug("[{}] appears to be empty so no service definition will be loaded", fileName);
             return new ArrayList<>(0);
         }
-        if (fileName.startsWith(".")) {
+        if (!fileName.isEmpty() && fileName.charAt(0) == '.') {
             LOGGER.debug("[{}] starts with ., ignoring", fileName);
             return new ArrayList<>(0);
         }
@@ -272,14 +305,15 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
                 fileName, this.serviceFileNamePattern.pattern());
         }
 
-        LOGGER.debug("Attempting to read and parse [{}]", file.getCanonicalFile());
+        LOGGER.debug("Attempting to read and parse [{}]", file.getAbsoluteFile());
         try (val in = Files.newBufferedReader(file.toPath())) {
-            return this.registeredServiceSerializers
+            return registeredServiceSerializers
                 .stream()
-                .filter(s -> s.supports(file))
-                .map(s -> s.load(in))
+                .filter(serializer -> serializer.supports(file))
+                .map(serializer -> serializer.load(in))
                 .filter(Objects::nonNull)
                 .flatMap(Collection::stream)
+                .filter(service -> StringUtils.isNotBlank(service.getServiceId()) && StringUtils.isNotBlank(service.getName()))
                 .map(this::invokeServiceRegistryListenerPostLoad)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -316,47 +350,13 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
         this.serviceRegistryWatcherService.close();
     }
 
-    private void initializeRegistry(final Path configDirectory,
-                                    final Collection<StringSerializer<RegisteredService>> serializers,
-                                    final RegisteredServiceReplicationStrategy registeredServiceReplicationStrategy,
-                                    final RegisteredServiceResourceNamingStrategy resourceNamingStrategy,
-                                    final WatcherService serviceRegistryConfigWatcher) {
-        this.registeredServiceReplicationStrategy = ObjectUtils.defaultIfNull(registeredServiceReplicationStrategy,
-            new NoOpRegisteredServiceReplicationStrategy());
-        this.resourceNamingStrategy = ObjectUtils.defaultIfNull(resourceNamingStrategy, new DefaultRegisteredServiceResourceNamingStrategy());
-        this.registeredServiceSerializers = serializers;
-
-        this.serviceFileNamePattern = resourceNamingStrategy.buildNamingPattern(getExtensions());
-        LOGGER.trace("Constructed service name file pattern [{}]", serviceFileNamePattern.pattern());
-
-        this.serviceRegistryDirectory = configDirectory;
-        val file = this.serviceRegistryDirectory.toFile();
-        Assert.isTrue(file.exists(), this.serviceRegistryDirectory + " does not exist");
-        Assert.isTrue(file.isDirectory(), this.serviceRegistryDirectory + " is not a directory");
-        LOGGER.trace("Service registry directory is specified at [{}]", file);
-
-        this.serviceRegistryWatcherService = serviceRegistryConfigWatcher;
-        this.serviceRegistryWatcherService.start(getClass().getSimpleName());
-    }
-
-    /**
-     * Remove registered service.
-     *
-     * @param service the service
-     */
     protected void removeRegisteredService(final RegisteredService service) {
         this.services.remove(service.getId());
     }
 
-    /**
-     * Gets registered service from file.
-     *
-     * @param file the file
-     * @return the registered service from file
-     */
     protected RegisteredService getRegisteredServiceFromFile(final File file) {
         val fileName = file.getName();
-        if (fileName.startsWith(".")) {
+        if (!fileName.isEmpty() && fileName.charAt(0) == '.') {
             LOGGER.trace("[{}] starts with ., ignoring...", fileName);
             return null;
         }
@@ -380,20 +380,28 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
         return null;
     }
 
-    /**
-     * Creates a file for a registered service.
-     * The file is named as {@code [SERVICE-NAME]-[SERVICE-ID]-.{@value #getExtensions()}}
-     *
-     * @param service Registered service.
-     * @return file in service registry directory.
-     * @throws IllegalArgumentException if file name is invalid
-     */
-    @SneakyThrows
     protected File getRegisteredServiceFileName(final RegisteredService service) {
         val fileName = resourceNamingStrategy.build(service, getExtensions()[0]);
-        val svcFile = new File(this.serviceRegistryDirectory.toFile(), fileName);
+
+        val parentDirectory = determineParentDirectoryFor(service);
+        val svcFile = new File(parentDirectory, fileName);
         LOGGER.debug("Using [{}] as the service definition file", svcFile.getAbsolutePath());
         return svcFile;
+    }
+
+    private File determineParentDirectoryFor(final RegisteredService service) {
+        val defaultServicesDirectory = serviceRegistryDirectory.toFile();
+
+        val friendlyName = service.getFriendlyName();
+        val candidateParentDirectories = List.of(
+            new File(defaultServicesDirectory, friendlyName.toLowerCase(Locale.ENGLISH).replace(" ", "-")),
+            new File(defaultServicesDirectory, friendlyName)
+        );
+        return candidateParentDirectories
+            .stream()
+            .filter(dir -> dir.exists() && dir.isDirectory())
+            .findFirst()
+            .orElse(defaultServicesDirectory);
     }
 
     /**
@@ -402,5 +410,28 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
      * @return the extension
      */
     protected abstract String[] getExtensions();
+
+    private void initializeRegistry(final Path configDirectory,
+                                    final Collection<StringSerializer<RegisteredService>> serializers,
+                                    final RegisteredServiceReplicationStrategy registeredServiceReplicationStrategy,
+                                    final RegisteredServiceResourceNamingStrategy resourceNamingStrategy,
+                                    final WatcherService serviceRegistryConfigWatcher) {
+        this.registeredServiceReplicationStrategy = ObjectUtils.defaultIfNull(registeredServiceReplicationStrategy,
+            new NoOpRegisteredServiceReplicationStrategy());
+        this.resourceNamingStrategy = ObjectUtils.defaultIfNull(resourceNamingStrategy, new DefaultRegisteredServiceResourceNamingStrategy());
+        this.registeredServiceSerializers = serializers;
+
+        this.serviceFileNamePattern = resourceNamingStrategy.buildNamingPattern(getExtensions());
+        LOGGER.trace("Constructed service name file pattern [{}]", serviceFileNamePattern.pattern());
+
+        this.serviceRegistryDirectory = configDirectory;
+        val file = this.serviceRegistryDirectory.toFile();
+        Assert.isTrue(file.exists(), this.serviceRegistryDirectory + " does not exist");
+        Assert.isTrue(file.isDirectory(), this.serviceRegistryDirectory + " is not a directory");
+        LOGGER.trace("Service registry directory is specified at [{}]", file);
+
+        this.serviceRegistryWatcherService = serviceRegistryConfigWatcher;
+        this.serviceRegistryWatcherService.start(getClass().getSimpleName());
+    }
 
 }

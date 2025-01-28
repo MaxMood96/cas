@@ -1,7 +1,8 @@
 {
   "dependencies": "spnego-webflow",
+
   "properties": [
-    "--logging.level.org.apereo.cas=debug",
+
     "--logging.level.org.apereo.cas.web.flow=debug",
 
     "--cas.server.name=https://localhost:8443",

@@ -1,12 +1,13 @@
 package org.apereo.cas.web.flow;
 
+import org.apereo.cas.api.PasswordlessRequestParser;
 import org.apereo.cas.api.PasswordlessUserAccountStore;
+import org.apereo.cas.authentication.AuthenticationSystemSupport;
+import org.apereo.cas.authentication.MultifactorAuthenticationTriggerSelectionStrategy;
+import org.apereo.cas.authentication.principal.PrincipalFactory;
+import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.web.support.WebUtils;
-
-import lombok.RequiredArgsConstructor;
 import lombok.val;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.action.EventFactorySupport;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
@@ -17,27 +18,44 @@ import org.springframework.webflow.execution.RequestContext;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@RequiredArgsConstructor
-public class VerifyPasswordlessAccountAuthenticationAction extends AbstractAction {
+public class VerifyPasswordlessAccountAuthenticationAction extends BasePasswordlessCasWebflowAction {
     private final PasswordlessUserAccountStore passwordlessUserAccountStore;
+    private final PasswordlessRequestParser passwordlessRequestParser;
+
+    public VerifyPasswordlessAccountAuthenticationAction(final CasConfigurationProperties casProperties,
+                                                         final MultifactorAuthenticationTriggerSelectionStrategy multifactorTriggerSelectionStrategy,
+                                                         final PrincipalFactory passwordlessPrincipalFactory,
+                                                         final AuthenticationSystemSupport authenticationSystemSupport,
+                                                         final PasswordlessUserAccountStore passwordlessUserAccountStore,
+                                                         final PasswordlessRequestParser passwordlessRequestParser) {
+        super(casProperties, multifactorTriggerSelectionStrategy, passwordlessPrincipalFactory, authenticationSystemSupport);
+        this.passwordlessUserAccountStore = passwordlessUserAccountStore;
+        this.passwordlessRequestParser = passwordlessRequestParser;
+    }
 
     @Override
-    public Event doExecute(final RequestContext requestContext) {
-        val username = requestContext.getRequestParameters().getRequired("username");
-        val account = passwordlessUserAccountStore.findUser(username);
+    protected Event doExecuteInternal(final RequestContext requestContext) throws Throwable {
+        val username = requestContext.getRequestParameters().getRequired(PasswordlessRequestParser.PARAMETER_USERNAME);
+        val passwordlessRequest = passwordlessRequestParser.parse(username);
+        val account = passwordlessUserAccountStore.findUser(passwordlessRequest);
         if (account.isEmpty()) {
             WebUtils.addErrorMessageToContext(requestContext, "passwordless.error.unknown.user");
             return error();
         }
         val user = account.get();
-        if (StringUtils.isBlank(user.getPhone()) && StringUtils.isBlank(user.getEmail())) {
-            WebUtils.addErrorMessageToContext(requestContext, "passwordless.error.invalid.user");
-            return error();
+        PasswordlessWebflowUtils.putPasswordlessAuthenticationAccount(requestContext, user);
+        PasswordlessWebflowUtils.putPasswordlessAuthenticationRequest(requestContext, passwordlessRequest);
+        val isDelegationActive = isDelegatedAuthenticationActiveFor(requestContext, user);
+        DelegationWebflowUtils.putDelegatedAuthenticationDisabled(requestContext, !isDelegationActive);
+
+        if (user.isAllowSelectionMenu()) {
+            return new EventFactorySupport().event(this, CasWebflowConstants.TRANSITION_ID_SELECT);
         }
-        WebUtils.putPasswordlessAuthenticationAccount(requestContext, user);
-        if (user.isRequestPassword()) {
-            return new EventFactorySupport().event(this, CasWebflowConstants.TRANSITION_ID_PROMPT);
-        }
-        return success();
+        
+        val requestPassword = doesPasswordlessAccountRequestPassword(user);
+        WebUtils.putCasLoginFormViewable(requestContext, requestPassword);
+        return requestPassword || user.getAllowedDelegatedClients().size() > 1
+            ? new EventFactorySupport().event(this, CasWebflowConstants.TRANSITION_ID_PROMPT)
+            : success();
     }
 }

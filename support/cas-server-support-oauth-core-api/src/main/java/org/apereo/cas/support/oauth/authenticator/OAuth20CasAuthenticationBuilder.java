@@ -4,7 +4,7 @@ import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 
-import org.pac4j.core.context.JEEContext;
+import org.pac4j.core.context.WebContext;
 import org.pac4j.core.profile.UserProfile;
 
 /**
@@ -23,7 +23,7 @@ public interface OAuth20CasAuthenticationBuilder {
      * @return the service
      */
     Service buildService(OAuthRegisteredService registeredService,
-                         JEEContext context, boolean useServiceHeader);
+                         WebContext context, boolean useServiceHeader);
 
     /**
      * Create an authentication from a user profile.
@@ -36,9 +36,10 @@ public interface OAuth20CasAuthenticationBuilder {
      * @param context           the context
      * @param service           the service
      * @return the built authentication
+     * @throws Throwable the throwable
      */
     Authentication build(UserProfile profile,
                          OAuthRegisteredService registeredService,
-                         JEEContext context,
-                         Service service);
+                         WebContext context,
+                         Service service) throws Throwable;
 }

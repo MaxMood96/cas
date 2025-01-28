@@ -5,18 +5,16 @@ import org.apereo.cas.authentication.AuthenticationHandlerResolver;
 import org.apereo.cas.authentication.AuthenticationServiceSelectionPlan;
 import org.apereo.cas.authentication.AuthenticationTransaction;
 import org.apereo.cas.authentication.MultifactorAuthenticationHandler;
-import org.apereo.cas.authentication.handler.support.HttpBasedServiceCredentialsAuthenticationHandler;
+import org.apereo.cas.authentication.handler.support.ProxyAuthenticationHandler;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.services.UnauthorizedSsoServiceException;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -46,7 +44,34 @@ public class RegisteredServiceAuthenticationHandlerResolver implements Authentic
 
     private int order;
 
-    private static Set<AuthenticationHandler> filterExcludedAuthenticationHandlers(
+    @Override
+    public Set<AuthenticationHandler> resolve(final Set<AuthenticationHandler> candidateHandlers,
+                                              final AuthenticationTransaction transaction) throws Throwable {
+        val service = authenticationServiceSelectionPlan.resolveService(transaction.getService());
+        val registeredService = servicesManager.findServiceBy(service);
+
+        val requiredHandlers = filterRequiredAuthenticationHandlers(candidateHandlers, service, registeredService, transaction);
+        return filterExcludedAuthenticationHandlers(requiredHandlers, service, registeredService);
+    }
+
+    @Override
+    public boolean supports(final Set<AuthenticationHandler> handlers, final AuthenticationTransaction transaction) throws Throwable {
+        val service = authenticationServiceSelectionPlan.resolveService(transaction.getService());
+        if (service != null) {
+            val registeredService = servicesManager.findServiceBy(service);
+            LOGGER.trace("Located registered service definition [{}] for this authentication transaction", registeredService);
+            if (registeredService == null || !registeredService.getAccessStrategy().isServiceAccessAllowed(registeredService, service)) {
+                LOGGER.warn("Service [{}] is not allowed to use SSO.", service);
+                throw new UnauthorizedSsoServiceException("Denied: %s".formatted(service));
+            }
+            val authenticationPolicy = registeredService.getAuthenticationPolicy();
+            return !authenticationPolicy.getRequiredAuthenticationHandlers().isEmpty()
+                   || !authenticationPolicy.getExcludedAuthenticationHandlers().isEmpty();
+        }
+        return false;
+    }
+
+    protected Set<AuthenticationHandler> filterExcludedAuthenticationHandlers(
         final Set<AuthenticationHandler> candidateHandlers,
         final Service service,
         final RegisteredService registeredService) {
@@ -56,7 +81,7 @@ public class RegisteredServiceAuthenticationHandlerResolver implements Authentic
         LOGGER.debug("Authentication transaction excludes [{}] for service [{}]", excludedHandlers, service);
 
         val handlerSet = new LinkedHashSet<>(candidateHandlers);
-        LOGGER.debug("Candidate authentication handlers examined for this transaction are [{}]", handlerSet);
+        LOGGER.debug("Candidate authentication handlers examined for exclusion in this transaction are [{}]", handlerSet);
 
         if (!excludedHandlers.isEmpty()) {
             val it = handlerSet.iterator();
@@ -73,9 +98,10 @@ public class RegisteredServiceAuthenticationHandlerResolver implements Authentic
         return handlerSet;
     }
 
-    private static Set<AuthenticationHandler> filterRequiredAuthenticationHandlers(
+    protected Set<AuthenticationHandler> filterRequiredAuthenticationHandlers(
         final Set<AuthenticationHandler> candidateHandlers,
-        final Service service, final RegisteredService registeredService) {
+        final Service service, final RegisteredService registeredService,
+        final AuthenticationTransaction transaction) {
 
         val authenticationPolicy = registeredService.getAuthenticationPolicy();
         val requiredHandlers = authenticationPolicy.getRequiredAuthenticationHandlers();
@@ -89,7 +115,7 @@ public class RegisteredServiceAuthenticationHandlerResolver implements Authentic
                 val handler = it.next();
                 val handlerName = handler.getName();
                 val removeHandler = !(handler instanceof MultifactorAuthenticationHandler)
-                    && !(handler instanceof HttpBasedServiceCredentialsAuthenticationHandler)
+                    && !(handler instanceof ProxyAuthenticationHandler)
                     && !requiredHandlers.contains(handlerName);
                 if (removeHandler) {
                     it.remove();
@@ -99,32 +125,5 @@ public class RegisteredServiceAuthenticationHandlerResolver implements Authentic
         }
         LOGGER.info("Final authentication handlers after inclusion rules are [{}]", handlerSet);
         return handlerSet;
-    }
-
-    @Override
-    public Set<AuthenticationHandler> resolve(final Set<AuthenticationHandler> candidateHandlers,
-                                              final AuthenticationTransaction transaction) {
-        val service = authenticationServiceSelectionPlan.resolveService(transaction.getService());
-        val registeredService = this.servicesManager.findServiceBy(service);
-
-        val requiredHandlers = filterRequiredAuthenticationHandlers(candidateHandlers, service, registeredService);
-        return filterExcludedAuthenticationHandlers(requiredHandlers, service, registeredService);
-    }
-
-    @Override
-    public boolean supports(final Set<AuthenticationHandler> handlers, final AuthenticationTransaction transaction) {
-        val service = authenticationServiceSelectionPlan.resolveService(transaction.getService());
-        if (service != null) {
-            val registeredService = this.servicesManager.findServiceBy(service);
-            LOGGER.trace("Located registered service definition [{}] for this authentication transaction", registeredService);
-            if (registeredService == null || !registeredService.getAccessStrategy().isServiceAccessAllowed()) {
-                LOGGER.warn("Service [{}] is not allowed to use SSO.", service);
-                throw new UnauthorizedSsoServiceException();
-            }
-            val authenticationPolicy = registeredService.getAuthenticationPolicy();
-            return !authenticationPolicy.getRequiredAuthenticationHandlers().isEmpty()
-                || !authenticationPolicy.getExcludedAuthenticationHandlers().isEmpty();
-        }
-        return false;
     }
 }

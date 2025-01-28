@@ -3,6 +3,7 @@ package org.apereo.cas.cosmosdb;
 import org.apereo.cas.authentication.CasSSLContext;
 import org.apereo.cas.configuration.model.support.cosmosdb.BaseCosmosDbProperties;
 import org.apereo.cas.configuration.support.Beans;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
 
 import com.azure.cosmos.ConsistencyLevel;
@@ -14,13 +15,19 @@ import com.azure.cosmos.implementation.Configs;
 import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.IndexingMode;
 import com.azure.cosmos.models.IndexingPolicy;
+import com.azure.cosmos.models.PartitionKeyDefinition;
+import com.azure.cosmos.models.PartitionKind;
 import com.azure.cosmos.models.ThroughputProperties;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
-import lombok.SneakyThrows;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.data.util.ReflectionUtils;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * This is {@link CosmosDbObjectFactory}.
@@ -34,7 +41,6 @@ public class CosmosDbObjectFactory {
 
     private final CosmosClient client;
 
-    @SneakyThrows
     public CosmosDbObjectFactory(final BaseCosmosDbProperties properties,
                                  final CasSSLContext casSSLContext) {
         this.properties = properties;
@@ -46,8 +52,9 @@ public class CosmosDbObjectFactory {
         val builder = new CosmosClientBuilder()
             .endpoint(uri)
             .key(SpringExpressionLanguageValueResolver.getInstance().resolve(properties.getKey()))
-            .preferredRegions(this.properties.getPreferredRegions())
+            .preferredRegions(properties.getPreferredRegions())
             .consistencyLevel(ConsistencyLevel.valueOf(properties.getConsistencyLevel()))
+            .directMode()
             .contentResponseOnWriteEnabled(false)
             .clientTelemetryEnabled(properties.isAllowTelemetry())
             .userAgentSuffix(properties.getUserAgentSuffix())
@@ -55,17 +62,19 @@ public class CosmosDbObjectFactory {
             .endpointDiscoveryEnabled(properties.isEndpointDiscoveryEnabled())
             .directMode();
         LOGGER.debug("Building CosmosDb client for [{}]", uri);
-        val sslContext = SslContextBuilder
-            .forClient()
-            .sslProvider(SslProvider.JDK)
-            .trustManager(casSSLContext.getTrustManagerFactory())
-            .build();
-        val configsMethod = ReflectionUtils.findRequiredMethod(builder.getClass(), "configs");
-        configsMethod.trySetAccessible();
-        val configs = (Configs) configsMethod.invoke(builder);
-        val sslContextField = ReflectionUtils.findRequiredField(configs.getClass(), "sslContext");
-        sslContextField.trySetAccessible();
-        sslContextField.set(configs, sslContext);
+        FunctionUtils.doUnchecked(__ -> {
+            val sslContext = SslContextBuilder
+                .forClient()
+                .sslProvider(SslProvider.JDK)
+                .trustManager(casSSLContext.getTrustManagerFactory())
+                .keyManager(casSSLContext.getKeyManagerFactory())
+                .build();
+            val cosmosDbConfigs = new CosmosDbConfigs(sslContext);
+            val configs = ReflectionUtils.findRequiredField(builder.getClass(), "configs");
+            configs.trySetAccessible();
+            configs.set(builder, cosmosDbConfigs);
+            
+        });
         this.client = builder.buildClient();
     }
 
@@ -93,18 +102,54 @@ public class CosmosDbObjectFactory {
     }
 
     /**
+     * Drop database.
+     */
+    public void dropDatabase() {
+        client.getDatabase(properties.getDatabase()).delete();
+        LOGGER.debug("Removed database [{}]", properties.getDatabase());
+    }
+
+    /**
+     * Create container.
+     *
+     * @param name         the name
+     * @param timeout      the timeout
+     * @param partitionKey the partition key
+     * @return the cosmos container
+     */
+    public CosmosContainer createContainer(final String name, final Long timeout, final String... partitionKey) {
+        val database = client.getDatabase(properties.getDatabase());
+        LOGGER.debug("Creating CosmosDb container [{}]", name);
+
+        val partitionDefn = new PartitionKeyDefinition();
+        partitionDefn.setPaths(Arrays.stream(partitionKey).map(key -> '/' + key).collect(Collectors.toList()));
+        partitionDefn.setKind(PartitionKind.HASH);
+        val containerProperties = new CosmosContainerProperties(name, partitionDefn);
+        containerProperties.setIndexingPolicy(new IndexingPolicy()
+            .setIndexingMode(IndexingMode.valueOf(properties.getIndexingMode())));
+        containerProperties.setDefaultTimeToLiveInSeconds(timeout.intValue());
+        val response = database.createContainerIfNotExists(containerProperties);
+        LOGGER.debug("Created CosmosDb container [{}]", response.getProperties().getId());
+        return getContainer(name);
+    }
+
+    /**
      * Create container.
      *
      * @param name         the name
      * @param partitionKey the partition key
      */
-    public void createContainer(final String name, final String partitionKey) {
-        val database = client.getDatabase(properties.getDatabase());
-        LOGGER.debug("Creating CosmosDb container [{}]", name);
-        val containerProperties = new CosmosContainerProperties(name, '/' + partitionKey);
-        containerProperties.setIndexingPolicy(new IndexingPolicy()
-            .setIndexingMode(IndexingMode.valueOf(properties.getIndexingMode())));
-        val response = database.createContainerIfNotExists(containerProperties);
-        LOGGER.debug("Created CosmosDb container [{}]", response.getProperties().getId());
+    public CosmosContainer createContainer(final String name, final String... partitionKey) {
+        return createContainer(name, -1L, partitionKey);
+    }
+
+    @RequiredArgsConstructor
+    private static final class CosmosDbConfigs extends Configs {
+        private final SslContext sslContext;
+
+        @Override
+        public SslContext getSslContext(final boolean serverCertValidationDisabled, final boolean http2Enabled) {
+            return sslContext;
+        }
     }
 }

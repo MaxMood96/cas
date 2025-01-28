@@ -4,11 +4,12 @@ import org.apereo.cas.configuration.model.support.ldap.AbstractLdapAuthenticatio
 import org.apereo.cas.configuration.model.support.ldap.LdapAuthorizationProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+
+import java.io.Serial;
 
 /**
  * This is {@link LdapSecurityActuatorEndpointsMonitorProperties}.
@@ -19,10 +20,10 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 @Getter
 @Setter
 @RequiresModule(name = "cas-server-core-monitor", automated = true)
-@JsonFilter("LdapSecurityActuatorEndpointsMonitorProperties")
 @Accessors(chain = true)
 public class LdapSecurityActuatorEndpointsMonitorProperties extends AbstractLdapAuthenticationProperties {
 
+    @Serial
     private static final long serialVersionUID = -7333244539096172557L;
 
     /**

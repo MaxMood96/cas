@@ -23,14 +23,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.4.0
  */
 @Tag("X509")
-public class X509CertificateCredentialJsonSerializerTests {
+class X509CertificateCredentialJsonSerializerTests {
     private static final CasX509Certificate VALID_CERTIFICATE = new CasX509Certificate(true);
 
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
     @Test
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val c = new X509CertificateCredential(new X509Certificate[]{VALID_CERTIFICATE});
         val json = MAPPER.writeValueAsString(c);
         assertNotNull(json);
@@ -39,11 +39,11 @@ public class X509CertificateCredentialJsonSerializerTests {
         assertNotNull(obj);
 
         val ser = new X509CertificateCredentialJsonSerializer();
-        assertEquals(X509CertificateCredential.class, ser.handledType());
+        assertSame(X509CertificateCredential.class, ser.handledType());
     }
 
     @Test
-    public void verifyAuditableOperation() {
+    void verifyAuditableOperation() {
         val c = new X509CertificateCredential(new X509Certificate[]{VALID_CERTIFICATE});
         val set = new LinkedHashSet<>();
         set.add(c);

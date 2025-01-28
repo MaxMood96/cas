@@ -1,10 +1,10 @@
 package org.apereo.cas.support.saml.authentication.principal;
 
 import org.apereo.cas.authentication.principal.AbstractServiceFactory;
+import org.apereo.cas.multitenancy.TenantExtractor;
 import org.apereo.cas.support.saml.SamlProtocolConstants;
 import org.apereo.cas.support.saml.util.AbstractSamlObjectBuilder;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.NotImplementedException;
@@ -13,7 +13,7 @@ import org.jdom2.Namespace;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.StringUtils;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.stream.Collectors;
 
 /**
@@ -23,11 +23,14 @@ import java.util.stream.Collectors;
  * @since 4.2
  */
 @Slf4j
-@RequiredArgsConstructor
 public class SamlServiceFactory extends AbstractServiceFactory<SamlService> {
     private static final Namespace NAMESPACE_ENVELOPE = Namespace.getNamespace("http://schemas.xmlsoap.org/soap/envelope/");
 
     private static final Namespace NAMESPACE_SAML1 = Namespace.getNamespace("urn:oasis:names:tc:SAML:1.0:protocol");
+
+    public SamlServiceFactory(final TenantExtractor tenantExtractor) {
+        super(tenantExtractor);
+    }
 
     @Override
     public SamlService createService(final HttpServletRequest request) {
@@ -78,7 +81,7 @@ public class SamlServiceFactory extends AbstractServiceFactory<SamlService> {
 
     private static String readRequestBodyIfAny(final HttpServletRequest request) {
         try (val reader = request.getReader()) {
-            return reader.lines().collect(Collectors.joining());
+            return reader.lines().collect(Collectors.joining(" "));
         } catch (final Exception e) {
             LOGGER.trace("Could not obtain the saml request body from the http request", e);
         }

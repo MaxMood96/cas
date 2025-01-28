@@ -10,6 +10,11 @@ import org.apereo.cas.acct.provision.AccountRegistrationProvisioner;
  */
 public interface AccountRegistrationService {
     /**
+     * Implementation bean name.
+     */
+    String BEAN_NAME = "accountMgmtRegistrationService";
+
+    /**
      * Gets account mgmt registration property loader.
      *
      * @return the account mgmt registration property loader
@@ -22,6 +27,13 @@ public interface AccountRegistrationService {
      * @return the account registration username builder
      */
     AccountRegistrationUsernameBuilder getAccountRegistrationUsernameBuilder();
+
+    /**
+     * Gets account registration request validator.
+     *
+     * @return the account registration request validator
+     */
+    AccountRegistrationRequestValidator getAccountRegistrationRequestValidator();
 
     /**
      * Gets account registration provisioner.

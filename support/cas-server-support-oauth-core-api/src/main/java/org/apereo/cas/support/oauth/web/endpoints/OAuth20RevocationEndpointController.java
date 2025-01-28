@@ -2,25 +2,26 @@ package org.apereo.cas.support.oauth.web.endpoints;
 
 import org.apereo.cas.audit.AuditableContext;
 import org.apereo.cas.support.oauth.OAuth20Constants;
-import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
 import org.apereo.cas.ticket.OAuth20Token;
-import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.ticket.refreshtoken.OAuth20RefreshToken;
-
+import org.apereo.cas.util.function.FunctionUtils;
+import org.apereo.cas.util.spring.beans.BeanSupplier;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.pac4j.core.context.JEEContext;
+import org.jooq.lambda.Unchecked;
+import org.pac4j.core.context.CallContext;
+import org.pac4j.core.context.WebContext;
 import org.pac4j.core.profile.ProfileManager;
+import org.pac4j.jee.context.JEEContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.json.MappingJackson2JsonView;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * This is {@link OAuth20RevocationEndpointController}.
@@ -40,11 +41,12 @@ public class OAuth20RevocationEndpointController<T extends OAuth20ConfigurationC
      * @param request  the request
      * @param response the response
      * @return the response entity
+     * @throws Throwable the throwable
      */
-    @PostMapping(path = '/' + OAuth20Constants.BASE_OAUTH20_URL + '/' + OAuth20Constants.REVOCATION_URL,
+    @PostMapping(path = OAuth20Constants.BASE_OAUTH20_URL + '/' + OAuth20Constants.REVOCATION_URL,
         produces = MediaType.APPLICATION_JSON_VALUE)
     public ModelAndView handleRequest(final HttpServletRequest request,
-                                      final HttpServletResponse response) {
+                                      final HttpServletResponse response) throws Throwable {
         val context = new JEEContext(request, response);
 
         if (!verifyRevocationRequest(context)) {
@@ -53,7 +55,9 @@ public class OAuth20RevocationEndpointController<T extends OAuth20ConfigurationC
         }
 
         val manager = new ProfileManager(context, getConfigurationContext().getSessionStore());
-        val clientId = OAuth20Utils.getClientIdAndClientSecret(context, getConfigurationContext().getSessionStore()).getLeft();
+        val callContext = new CallContext(context, getConfigurationContext().getSessionStore());
+        val clientId = getConfigurationContext().getRequestParameterResolver()
+            .resolveClientIdAndClientSecret(callContext).getLeft();
         val registeredService = getRegisteredServiceByClientId(clientId);
 
         if (OAuth20Utils.doesServiceNeedAuthentication(registeredService)) {
@@ -79,20 +83,13 @@ public class OAuth20RevocationEndpointController<T extends OAuth20ConfigurationC
         return generateRevocationResponse(token, clientId, response);
     }
 
-    /**
-     * Generate revocation token response.
-     *
-     * @param token the token to revoke
-     * @param clientId the client who requests the revocation
-     * @param response the response
-     * @return the model and view
-     */
     protected ModelAndView generateRevocationResponse(final String token,
                                                       final String clientId,
-                                                      final HttpServletResponse response) {
-
-        val registryToken = getConfigurationContext().getTicketRegistry().getTicket(token, OAuth20Token.class);
-
+                                                      final HttpServletResponse response) throws Exception {
+        val registryToken = FunctionUtils.doAndHandle(() -> {
+            val state = getConfigurationContext().getTicketRegistry().getTicket(token, OAuth20Token.class);
+            return state == null || state.isExpired() ? null : state;
+        });
         if (registryToken == null) {
             LOGGER.error("Provided token [{}] has not been found in the ticket registry", token);
         } else if (isRefreshToken(registryToken) || isAccessToken(registryToken)) {
@@ -116,66 +113,11 @@ public class OAuth20RevocationEndpointController<T extends OAuth20ConfigurationC
         return mv;
     }
 
-    /**
-     * Revoke the provided Refresh Token and it's related Access Tokens.
-     *
-     * @param token the token
-     */
-    private void revokeToken(final OAuth20RefreshToken token) {
-        revokeToken(token.getId());
-        token.getAccessTokens().forEach(this::revokeToken);
-    }
-
-    /**
-     * Revoke the provided OAuth Token.
-     *
-     * @param token the token
-     */
-    private void revokeToken(final String token) {
-        LOGGER.debug("Revoking token [{}]", token);
-        getConfigurationContext().getTicketRegistry().deleteTicket(token);
-    }
-
-    /**
-     * Is the OAuth token a Refresh Token?
-     *
-     * @param token the token
-     * @return whether the token type is a RefreshToken
-     */
-    private static boolean isRefreshToken(final OAuth20Token token) {
-        return token instanceof OAuth20RefreshToken;
-    }
-
-    /**
-     * Is the OAuth token an Access Token?
-     *
-     * @param token the token
-     * @return whether the token type is a RefreshToken
-     */
-    private static boolean isAccessToken(final OAuth20Token token) {
-        return token instanceof OAuth20AccessToken;
-    }
-
-    /**
-     * Gets registered service by client id.
-     *
-     * @param clientId the client id
-     * @return the registered service by client id
-     */
-    private OAuthRegisteredService getRegisteredServiceByClientId(final String clientId) {
-        return OAuth20Utils.getRegisteredOAuthServiceByClientId(getConfigurationContext().getServicesManager(), clientId);
-    }
-
-    /**
-     * Verify the revocation request.
-     *
-     * @param context the context
-     * @return whether the authorize request is valid
-     */
-    private boolean verifyRevocationRequest(final JEEContext context) {
+    private boolean verifyRevocationRequest(final WebContext context) throws Throwable {
         val validator = getConfigurationContext().getAccessTokenGrantRequestValidators().getObject()
             .stream()
-            .filter(b -> b.supports(context))
+            .filter(BeanSupplier::isNotProxy)
+            .filter(Unchecked.predicate(b -> b.supports(context)))
             .findFirst()
             .orElse(null);
         if (validator == null) {

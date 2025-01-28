@@ -1,58 +1,55 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
+
+const cas = require("../../cas.js");
 const assert = require("assert");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
 
-    const redirectUrl = "https://apereo.github.io";
-    const request = "eyJhbGciOiJub25lIn0.eyJzY29wZSI6Im9wZW5pZCIsInJlc3BvbnNlX3R5cGUiOiJj"
-        + "b2RlIiwicmVkaXJlY3RfdXJpIjoiaHR0cHM6XC9cL2FwZXJlby5naXRod"
-        + "WIuaW8iLCJzdGF0ZSI6InZJTjFiMFk0Q2siLCJub25jZSI6IjFOOW1xUE"
-        + "85ZnQiLCJjbGllbnRfaWQiOiJjbGllbnQifQ.";
+    const redirectUrl = "https://localhost:9859/anything/cas";
+    const request = "eyJhbGciOiJub25lIn0.eyJyZXNwb25zZV90eXBlIjoiY29kZSIsInJlZGlyZWN0X3VyaSI6Imh0dHBzOi8vbG9jYWxob3N0Ojk4NTkvYW55dGhpbmcvY2FzIiwic3RhdGUiOiJ2SU4xYjBZNENrIiwibm9uY2UiOiIxTjltcVBPOWZ0IiwiY2xpZW50X2lkIjoiY2xpZW50Iiwic2NvcGUiOiJvcGVuaWQifQ.";
     const url = `https://localhost:8443/cas/oidc/authorize?request=${request}&scope=openid`;
 
-    console.log(`Navigating to ${url}`);
-    await page.goto(url);
-    await cas.loginWith(page, "casuser", "Mellon");
+    await cas.log(`Navigating to ${url}`);
+    await cas.goto(page, url);
+    await cas.loginWith(page);
 
     if (await cas.isVisible(page, "#allow")) {
         await cas.click(page, "#allow");
-        await page.waitForNavigation();
+        await cas.waitForNavigation(page);
     }
 
-    let code = await cas.assertParameter(page, "code");
-    console.log(`OAuth code ${code}`);
+    const code = await cas.assertParameter(page, "code");
+    await cas.log(`OAuth code ${code}`);
 
     let accessTokenParams = "client_id=client&";
     accessTokenParams += "client_secret=secret&";
     accessTokenParams += "grant_type=authorization_code&";
     accessTokenParams += `redirect_uri=${redirectUrl}`;
 
-    let accessTokenUrl = `https://localhost:8443/cas/oidc/token?${accessTokenParams}&code=${code}`;
-    console.log(`Calling ${accessTokenUrl}`);
+    const accessTokenUrl = `https://localhost:8443/cas/oidc/token?${accessTokenParams}&code=${code}`;
+    await cas.log(`Calling ${accessTokenUrl}`);
 
     let accessToken = null;
     await cas.doPost(accessTokenUrl, "", {
-        'Content-Type': "application/json"
-    }, async res => {
-        console.log(res.data);
-        assert(res.data.access_token !== null);
+        "Content-Type": "application/json"
+    }, async (res) => {
+        await cas.log(res.data);
+        assert(res.data.access_token !== undefined);
 
         accessToken = res.data.access_token;
-        console.log(`Received access token ${accessToken}`);
+        await cas.log(`Received access token ${accessToken}`);
 
-        console.log("Decoding ID token...");
-        let decoded = await cas.decodeJwt(res.data.id_token);
-        assert(decoded.sub != null)
-        assert(decoded.aud != null)
-        assert(decoded.jti != null)
-        assert(decoded.sid != null)
-        assert(decoded.iss != null)
-        assert(decoded.state != null)
-        assert(decoded.nonce != null)
-    }, error => {
+        await cas.log("Decoding ID token...");
+        const decoded = await cas.decodeJwt(res.data.id_token);
+        assert(decoded.sub !== undefined);
+        assert(decoded.aud !== undefined);
+        assert(decoded.jti !== undefined);
+        assert(decoded.sid !== undefined);
+        assert(decoded.iss !== undefined);
+        assert(decoded.state !== undefined);
+        assert(decoded.nonce !== undefined);
+    }, (error) => {
         throw `Operation failed to obtain access token: ${error}`;
     });
 

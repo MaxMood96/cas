@@ -1,6 +1,11 @@
 description = "Apereo CAS Google Authenticator Redis"
 ext {
-    maxParallelForksForTests = 1
+
+    publishMetadata = true
+    projectMetadata = [
+            category: "Google Authenticator Multifactor Authentication",
+            title: "Google Authenticator Support via Redis"
+    ]
 }
 dependencies {
     implementation libraries.redis
@@ -25,7 +30,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-notifications")
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-services-authentication")
-    
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-authentication")
     testImplementation project(":core:cas-server-core-authentication-mfa")
     testImplementation project(":core:cas-server-core-web")

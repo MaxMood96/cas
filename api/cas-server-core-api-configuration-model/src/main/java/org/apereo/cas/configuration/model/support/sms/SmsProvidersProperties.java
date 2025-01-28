@@ -1,5 +1,7 @@
 package org.apereo.cas.configuration.model.support.sms;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.configuration.model.support.email.MailjetProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
 import lombok.Getter;
@@ -7,6 +9,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -19,7 +22,8 @@ import java.io.Serializable;
 @Setter
 @RequiresModule(name = "cas-server-core-util", automated = true)
 @Accessors(chain = true)
-public class SmsProvidersProperties implements Serializable {
+public class SmsProvidersProperties implements CasFeatureModule, Serializable {
+    @Serial
     private static final long serialVersionUID = -3713886839517507306L;
 
     /**
@@ -57,6 +61,12 @@ public class SmsProvidersProperties implements Serializable {
      */
     @NestedConfigurationProperty
     private NexmoProperties nexmo = new NexmoProperties();
+
+    /**
+     * Mailjet settings.
+     */
+    @NestedConfigurationProperty
+    private MailjetProperties mailjet = new MailjetProperties();
 
     /**
      * Groovy script for sending sms notifications.

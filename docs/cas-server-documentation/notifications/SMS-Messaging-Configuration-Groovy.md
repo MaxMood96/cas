@@ -14,11 +14,7 @@ Send text messages using an external Groovy script.
 import java.util.*
 
 def run(Object[] args) {
-    def from = args[0]
-    def to = args[1]
-    def message = args[2]
-    def logger = args[3]
-
+    def (from,to,message,logger) = args
     logger.debug("Sending message ${message} to ${to} from ${from}")
     true
 }
@@ -26,3 +22,4 @@ def run(Object[] args) {
 
 {% include_cached casproperties.html properties="cas.sms-provider.groovy" %}
 
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).

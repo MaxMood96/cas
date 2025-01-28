@@ -1,13 +1,13 @@
 package org.apereo.cas.support.saml.authentication;
 
+import org.apereo.cas.multitenancy.TenantExtractor;
 import org.apereo.cas.support.saml.SamlIdPConstants;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
-
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * This is {@link SamlIdPServiceFactoryTests}.
@@ -16,12 +16,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @Tag("SAML")
-public class SamlIdPServiceFactoryTests {
+class SamlIdPServiceFactoryTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val request = new MockHttpServletRequest();
         request.setParameter(SamlIdPConstants.PROVIDER_ID, "example-sp-entityid");
-        val input = new SamlIdPServiceFactory();
+        val input = new SamlIdPServiceFactory(mock(TenantExtractor.class));
         val service = input.createService(request);
         assertNotNull(service);
         assertEquals("example-sp-entityid", service.getId());

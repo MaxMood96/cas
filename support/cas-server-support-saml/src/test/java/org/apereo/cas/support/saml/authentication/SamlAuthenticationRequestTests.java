@@ -3,16 +3,13 @@ package org.apereo.cas.support.saml.authentication;
 import org.apereo.cas.support.saml.AbstractOpenSamlTests;
 import org.apereo.cas.util.CompressionUtils;
 import org.apereo.cas.util.EncodingUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.DeflaterOutputStream;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -22,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 4.1
  */
 @Tag("SAML")
-public class SamlAuthenticationRequestTests extends AbstractOpenSamlTests {
+class SamlAuthenticationRequestTests extends AbstractOpenSamlTests {
 
     private static String deflateViaStream(final String samlRequest) throws IOException {
         val xmlBytes = samlRequest.getBytes(StandardCharsets.UTF_8);
@@ -35,7 +32,7 @@ public class SamlAuthenticationRequestTests extends AbstractOpenSamlTests {
     }
 
     @Test
-    public void ensureDeflation() throws Exception {
+    void ensureDeflation() throws Exception {
         val deflator = CompressionUtils.deflate(SAML_REQUEST);
         val deflatorStream = deflateViaStream(SAML_REQUEST);
         assertEquals(deflatorStream, deflator);

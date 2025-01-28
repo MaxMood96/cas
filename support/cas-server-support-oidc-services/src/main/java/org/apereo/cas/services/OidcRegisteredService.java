@@ -1,20 +1,21 @@
 package org.apereo.cas.services;
 
+import org.apereo.cas.configuration.support.DurationCapable;
+import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
+import org.apereo.cas.services.RegisteredServiceProperty.RegisteredServiceProperties;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
-
+import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.experimental.Accessors;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.data.annotation.Transient;
-
+import java.io.Serial;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * This is {@link OidcRegisteredService}.
@@ -27,28 +28,40 @@ import java.util.Set;
 @Setter
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
+@Accessors(chain = true)
 public class OidcRegisteredService extends OAuthRegisteredService {
 
+    @Serial
     private static final long serialVersionUID = 1310899699465091444L;
 
+    @ExpressionLanguageCapable
     private String jwks;
 
+    @JacksonInject("jwksKeyId")
     private String jwksKeyId;
-    
-    private long jwksCacheDuration;
 
-    private String jwksCacheTimeUnit;
+    @DurationCapable
+    private String jwksCacheDuration;
 
-    private String tokenEndpointAuthenticationMethod = "client_secret_basic";
-
+    @JacksonInject("signIdToken")
     private boolean signIdToken = true;
 
+    @JacksonInject("encryptIdToken")
     private boolean encryptIdToken;
 
+    @JacksonInject("includeIdTokenClaims")
+    private boolean includeIdTokenClaims;
+
+    @JacksonInject("idTokenEncryptionOptional")
+    private boolean idTokenEncryptionOptional;
+
+    @JacksonInject("idTokenEncryptionAlg")
     private String idTokenEncryptionAlg;
 
+    @JacksonInject("idTokenSigningAlg")
     private String idTokenSigningAlg;
 
+    @JacksonInject("userInfoSigningAlg")
     private String userInfoSigningAlg;
 
     private String userInfoEncryptedResponseAlg;
@@ -60,75 +73,32 @@ public class OidcRegisteredService extends OAuthRegisteredService {
     private String idTokenIssuer;
 
     private String sectorIdentifierUri;
-    
+
     private String applicationType = "web";
 
     private String subjectType = OidcSubjectTypes.PUBLIC.getType();
 
-    private boolean dynamicallyRegistered;
+    private long clientSecretExpiration;
 
-    @JsonIgnore
-    @Deprecated(since = "6.2.0")
-    @Transient
-    private transient boolean implicit;
+    private RegisteredServiceOidcIdTokenExpirationPolicy idTokenExpirationPolicy;
 
-    private ZonedDateTime dynamicRegistrationDateTime;
+    @JacksonInject("backchannelTokenDeliveryMode")
+    private String backchannelTokenDeliveryMode = OidcBackchannelTokenDeliveryModes.POLL.getMode();
+    
+    private String backchannelClientNotificationEndpoint;
 
-    private Set<String> scopes = new HashSet<>(0);
+    @JacksonInject("backchannelAuthenticationRequestSigningAlg")
+    private String backchannelAuthenticationRequestSigningAlg;
 
+    private boolean backchannelUserCodeParameterSupported;
+    
     /**
      * Gets subject type.
      *
      * @return the subject type
      */
     public String getSubjectType() {
-        if (StringUtils.isBlank(this.subjectType)) {
-            return OidcSubjectTypes.PUBLIC.getType();
-        }
-        return subjectType;
-    }
-
-    /**
-     * Indicates the service was dynamically registered.
-     * Records the registration time automatically.
-     *
-     * @param dynamicallyRegistered dynamically registered.
-     */
-    public void setDynamicallyRegistered(final boolean dynamicallyRegistered) {
-        if (dynamicallyRegistered && !this.dynamicallyRegistered && dynamicRegistrationDateTime == null) {
-            setDynamicRegistrationDateTime(ZonedDateTime.now(ZoneOffset.UTC));
-        }
-        this.dynamicallyRegistered = dynamicallyRegistered;
-    }
-
-    /**
-     * Gets scopes.
-     *
-     * @return the scopes
-     */
-    public Set<String> getScopes() {
-        if (this.scopes == null) {
-            this.scopes = new HashSet<>(0);
-        }
-        return scopes;
-    }
-
-    /**
-     * Sets scopes.
-     *
-     * @param scopes the scopes
-     */
-    public void setScopes(final Set<String> scopes) {
-        getScopes().clear();
-        getScopes().addAll(scopes);
-    }
-
-    @Override
-    public void initialize() {
-        super.initialize();
-        if (this.scopes == null) {
-            this.scopes = new HashSet<>(0);
-        }
+        return StringUtils.defaultIfBlank(subjectType, OidcSubjectTypes.PUBLIC.getType());
     }
 
     @JsonIgnore
@@ -143,8 +113,17 @@ public class OidcRegisteredService extends OAuthRegisteredService {
         return "OpenID Connect Relying Party";
     }
 
-    @Override
-    protected AbstractRegisteredService newInstance() {
-        return new OidcRegisteredService();
+    /**
+     * Mark the service as one that is as dynamically registered
+     * via the OIDC dynamic registration flow.
+     * This operation will assign specific properties
+     * to the service definition to carry the registration signal/data.
+     */
+    @JsonIgnore
+    public void markAsDynamicallyRegistered() {
+        getProperties().put(RegisteredServiceProperties.OIDC_DYNAMIC_CLIENT_REGISTRATION.getPropertyName(),
+            new DefaultRegisteredServiceProperty(Boolean.TRUE.toString()));
+        getProperties().put(RegisteredServiceProperties.OIDC_DYNAMIC_CLIENT_REGISTRATION_DATE.getPropertyName(),
+            new DefaultRegisteredServiceProperty(LocalDateTime.now(ZoneOffset.UTC).toString()));
     }
 }

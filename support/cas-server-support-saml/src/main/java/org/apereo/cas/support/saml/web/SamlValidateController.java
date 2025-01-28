@@ -3,12 +3,10 @@ package org.apereo.cas.support.saml.web;
 import org.apereo.cas.support.saml.SamlProtocolConstants;
 import org.apereo.cas.web.AbstractServiceValidateController;
 import org.apereo.cas.web.ServiceValidateConfigurationContext;
-
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.ModelAndView;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * The {@link SamlValidateController} is responsible for
@@ -31,7 +29,7 @@ public class SamlValidateController extends AbstractServiceValidateController {
      * @return the model and view
      * @throws Exception the exception
      */
-    @PostMapping(path = SamlProtocolConstants.ENDPOINT_SAML_VALIDATE)
+    @PostMapping(path = {SamlProtocolConstants.ENDPOINT_SAML_VALIDATE, "/tenants/{tenant}/" + SamlProtocolConstants.ENDPOINT_SAML_VALIDATE})
     @Override
     public ModelAndView handleRequestInternal(final HttpServletRequest request,
                                               final HttpServletResponse response) throws Exception {

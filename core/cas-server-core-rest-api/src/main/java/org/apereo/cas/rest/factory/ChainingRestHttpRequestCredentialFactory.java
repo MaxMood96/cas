@@ -3,13 +3,16 @@ package org.apereo.cas.rest.factory;
 import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
+import org.apereo.cas.util.spring.beans.BeanSupplier;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.jooq.lambda.Unchecked;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.util.MultiValueMap;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,8 +41,10 @@ public class ChainingRestHttpRequestCredentialFactory implements RestHttpRequest
      * @param factory the factory
      */
     public void registerCredentialFactory(final RestHttpRequestCredentialFactory factory) {
-        this.chain.add(factory);
-        AnnotationAwareOrderComparator.sort(this.chain);
+        if (BeanSupplier.isNotProxy(factory)) {
+            this.chain.add(factory);
+            AnnotationAwareOrderComparator.sort(this.chain);
+        }
     }
 
     @Override
@@ -48,7 +53,7 @@ public class ChainingRestHttpRequestCredentialFactory implements RestHttpRequest
         return this.chain
             .stream()
             .sorted(Comparator.comparing(RestHttpRequestCredentialFactory::getOrder))
-            .map(f -> f.fromRequest(request, requestBody))
+            .map(Unchecked.function(f -> f.fromRequest(request, requestBody)))
             .flatMap(List::stream)
             .collect(Collectors.toList());
     }

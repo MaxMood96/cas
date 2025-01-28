@@ -1,24 +1,21 @@
 package org.apereo.cas.support.saml.authentication.principal;
 
 import org.apereo.cas.authentication.principal.ServiceFactory;
-import org.apereo.cas.config.SamlConfiguration;
-import org.apereo.cas.config.authentication.support.SamlAuthenticationEventExecutionPlanConfiguration;
-import org.apereo.cas.config.authentication.support.SamlServiceFactoryConfiguration;
+import org.apereo.cas.config.CasSamlAutoConfiguration;
 import org.apereo.cas.support.saml.AbstractOpenSamlTests;
 import org.apereo.cas.support.saml.SamlProtocolConstants;
-
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
 import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
-
 import java.nio.charset.StandardCharsets;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -28,13 +25,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 4.2
  */
 @SpringBootTest(classes = {
-    SamlAuthenticationEventExecutionPlanConfiguration.class,
-    SamlServiceFactoryConfiguration.class,
-    SamlConfiguration.class,
+    CasSamlAutoConfiguration.class,
     AbstractOpenSamlTests.SharedTestConfiguration.class
-}, properties = "spring.main.allow-bean-definition-overriding=true")
+})
 @Tag("SAML")
-public class SamlServiceFactoryTests extends AbstractOpenSamlTests {
+@ExtendWith(CasTestExtension.class)
+class SamlServiceFactoryTests extends AbstractOpenSamlTests {
 
     private static final String BODY = "<!--    Licensed to Jasig under one or more contributor license    agreements. See the NOTICE file distributed with this work"
         + "for additional information regarding copyright ownership.    Jasig licenses this file to you under the Apache License,    "
@@ -51,7 +47,7 @@ public class SamlServiceFactoryTests extends AbstractOpenSamlTests {
     private ServiceFactory<SamlService> samlServiceFactory;
 
     @Test
-    public void verifyObtainService() {
+    void verifyObtainService() {
         val request = new MockHttpServletRequest();
         request.setMethod(HttpMethod.POST.name());
         request.setParameter(SamlProtocolConstants.CONST_PARAM_TARGET, "test");
@@ -61,14 +57,14 @@ public class SamlServiceFactoryTests extends AbstractOpenSamlTests {
     }
 
     @Test
-    public void verifyServiceDoesNotExist() {
+    void verifyServiceDoesNotExist() {
         val request = new MockHttpServletRequest();
         request.setMethod(HttpMethod.POST.name());
         assertNull(samlServiceFactory.createService(request));
     }
 
     @Test
-    public void verifyPayloadCanBeParsedProperly() {
+    void verifyPayloadCanBeParsedProperly() {
         val request = new MockHttpServletRequest();
         request.setMethod(HttpMethod.POST.name());
         request.setParameter(SamlProtocolConstants.CONST_PARAM_TARGET, "test");
@@ -78,7 +74,7 @@ public class SamlServiceFactoryTests extends AbstractOpenSamlTests {
     }
 
     @Test
-    public void verifyPayloadAsAttr() {
+    void verifyPayloadAsAttr() {
         val request = new MockHttpServletRequest();
         request.setMethod(HttpMethod.POST.name());
         request.setParameter(SamlProtocolConstants.CONST_PARAM_TARGET, "test");
@@ -89,7 +85,7 @@ public class SamlServiceFactoryTests extends AbstractOpenSamlTests {
     }
 
     @Test
-    public void verifyEmptyBody() {
+    void verifyEmptyBody() {
         val body = "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" "
             + "xmlns=\"urn:oasis:names:tc:SAML:1.0:protocol\"><soap:Header/></soap:Envelope>";
         val request = new MockHttpServletRequest();
@@ -103,7 +99,7 @@ public class SamlServiceFactoryTests extends AbstractOpenSamlTests {
     }
 
     @Test
-    public void verifyNoReqIdBody() {
+    void verifyNoReqIdBody() {
         val body = "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" "
             + "xmlns=\"urn:oasis:names:tc:SAML:1.0:protocol\"><soap:Header/><soap:Body>"
             + "<Request MajorVersion=\"1\" MinorVersion=\"1\" IssueInstant=\"2018-05-10T16:39:46Z\">"
@@ -120,7 +116,7 @@ public class SamlServiceFactoryTests extends AbstractOpenSamlTests {
     }
 
     @Test
-    public void verifyArtifactInBody() {
+    void verifyArtifactInBody() {
         val body = "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" "
             + "xmlns=\"urn:oasis:names:tc:SAML:1.0:protocol\"><soap:Header/><soap:Body>"
             + "<Request MajorVersion=\"1\" MinorVersion=\"1\" IssueInstant=\"2018-05-10T16:39:46Z\">"
@@ -135,7 +131,7 @@ public class SamlServiceFactoryTests extends AbstractOpenSamlTests {
     }
 
     @Test
-    public void verifyBadBody() {
+    void verifyBadBody() {
         val body = "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" "
             + "xmlns=\"urn:oasis:names:tc:SAML:1.0:protocol\"><soap:Header/><soap:Body>"
             + "</Request></soap:Envelope>";

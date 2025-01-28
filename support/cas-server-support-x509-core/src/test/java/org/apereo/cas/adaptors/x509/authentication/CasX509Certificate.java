@@ -4,7 +4,6 @@ import org.apereo.cas.util.crypto.CertUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import lombok.SneakyThrows;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.val;
@@ -12,6 +11,7 @@ import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
+import java.io.Serial;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
@@ -35,6 +35,7 @@ import static org.mockito.Mockito.*;
 @Setter
 @Accessors(chain = true)
 public class CasX509Certificate extends X509Certificate {
+    @Serial
     private static final long serialVersionUID = -4449243195531417769L;
 
     private final Resource certificateResource = new ClassPathResource("ldap-crl.crt");
@@ -49,8 +50,13 @@ public class CasX509Certificate extends X509Certificate {
 
     private Boolean keyUsage;
 
-    @SneakyThrows
-    public String getContent() {
+    /**
+     * Gets content.
+     *
+     * @return the content
+     * @throws Exception the exception
+     */
+    public String getContent() throws Exception {
         return IOUtils.toString(this.certificateResource.getInputStream(), StandardCharsets.UTF_8);
     }
 

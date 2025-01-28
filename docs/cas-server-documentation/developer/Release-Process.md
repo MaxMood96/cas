@@ -54,7 +54,7 @@ org.gradle.parallel=false
 ```
 
 - Checkout the CAS project: `git clone git@github.com:apereo/cas.git cas-server`
-- Make sure you have the [latest version of JDK 11](https://openjdk.java.net/projects/jdk/11/) installed via `java -version`. 
+- Make sure you have the [latest version of JDK 21](https://openjdk.java.net/projects/jdk/21/) installed via `java -version`. 
 
 ## Preparing the Release
 
@@ -64,27 +64,61 @@ a new release branch should be created.
 ### Create Branch
 
 ```bash
-# Replace $BRANCH with CAS version (i.e. 5.3.x)
+# Replace $BRANCH with CAS version (i.e. 6.5.x)
 git checkout -b $BRANCH
 ```
 
-<div class="alert alert-warning"><strong>Remember</strong><p>You should do this only for major or minor 
+<div class="alert alert-warning">:warning: <strong>Remember</strong><p>You should do this only for major or minor 
 releases (i.e. <code>4.2.x</code>, <code>5.0.x</code>).
 If there already exists a remote tracking branch for the version you are about to release, you should <code>git checkout</code> that branch, 
 skip this step and move on to next section to build and release.</p></div>
 
 ### GitHub Actions
 
-<div class="alert alert-warning"><strong>Remember</strong><p>You should do this only for major or minor 
+<div class="alert alert-warning">:warning: <strong>Remember</strong><p>You should do this only for major or minor 
 releases, when new branches are created.</p></div>
  
 Change GitHub Actions workflows to trigger and *only* build the newly-created release branch:
-* 
-* Modify the `analysis.yml` workflow to run on the newly-created branch. Disable `spotBugsMain`, `spotBugsTest` and `checkLicense` tasks.
-* Modify the `validation.yml` workflow to run on the newly-created branch.
-* Modify the `build.yml` workflow to run on the newly-created branch, and only on Ubuntu. Disable the job to skip building on the latest JDK.
-* Modify the `publish.yml` workflow to run on the newly-created branch, and change the "Publish Documentation" parameter to point to the newly-created branch.
- 
+
+* `analysis.yml`
+* `validation.yml`
+* `publish.yml`
+* `publish-docs.yml`
+* `functional-tests.yml`
+* `tests.yml`
+      
+```yaml
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - $NEW_BRANCH
+      - '!**.**.**'
+      - '!heroku-*'
+  pull_request:
+    types: [ labeled ]
+    branches: [ $NEW_BRANCH, pr-* ]
+```
+
+<div class="alert alert-warning">:information_source: <strong>Remember</strong><p>Make sure nothing else in these workflows
+points to the <code>master</code> branch</p>.</div>
+
+Then disable the following workflows:
+
+- `build.yml`
+- `dependencies.yml`
+- `native-tests.yml`
+
+These can be disabled in the YAML configuration via:
+
+```yaml
+on:
+  workflow_dispatch:  
+  push:
+    branches-ignore:
+      - '**'
+```
+
 Do not forget to commit all changes and push changes upstream, creating a new remote branch to track the release.
 
 ## Performing the Release 
@@ -93,12 +127,25 @@ Do not forget to commit all changes and push changes upstream, creating a new re
 - Build and release the project using the following command:
 
 ```bash
-./release.sh
+./ci/release.sh
 ```
+
+The script will prompt for the appropriate Sonatype username and password (or user token). You can also run the script in non-interactive
+mode by specifying the credentials beforehand as environment variables:
+
+```json
+export REPOSITORY_USER="..."
+export REPOSITORY_PWD="..."
+```
+
+Do not use your actual password and instead create a a user token. This is a form of credential for the user 
+it belongs to and is  completely different and separate from the original password. User tokens can be easily 
+created and deleted, which is useful should security policies require credential updates, or 
+if credentials are lost accidentally or otherwise.
 
 ## Finalizing the Release
 
-- Create a tag for the released version, commit the change and push the tag to the upstream repository. (i.e. `v5.0.0-RC1`).
+- The script will automatically create a tag for the released version, commit the change and push the tag to the upstream repository. (i.e. `v5.0.0-RC1`).
 
 You should also switch back to the main development branch (i.e. `master`) and follow these steps:
 
@@ -107,36 +154,31 @@ You should also switch back to the main development branch (i.e. `master`) and f
 
 ## Housekeeping
 
-<div class="alert alert-info"><strong>Remember</strong><p>When updating the release description, try to be keep 
+<div class="alert alert-info">:information_source: <strong>Remember</strong><p>When updating the release description, try to be keep 
 consistent and follow the same layout as previous releases.</p></div>
 
 Remember to mark the release tag as pre-release, when releasing RC versions of the project on GitHub. 
 
 ## Update CAS Initializr
 
-Make sure to update the [CAS Initializr](../installation/WAR-Overlay-Initializr.html) to allow for generation of projects
+Make sure to update the CAS Initializr to allow for generation of projects
 based on the newly-released version.
 
 ## Update Documentation
 
-<div class="alert alert-warning"><strong>Remember</strong><p>You should do this only for major or minor releases, when new branches are created.</p></div>
+<div class="alert alert-warning">:warning: <strong>Remember</strong><p>You should do this only for major or minor releases, when new branches are created.</p></div>
 
 - Configure docs to point `current` to the latest available version [here](https://github.com/apereo/cas/blob/gh-pages/current/index.html).
-- Modify the `cas-server-documentation/cas-config.yml` file to exclude relevant branches and directories from the build. 
-- Configure docs to include the new release in the list of [available versions](https://github.com/apereo/cas/blob/gh-pages/_layouts/default.html).
+- Modify [the configuration file](https://github.com/apereo/cas/blob/master/docs/cas-server-documentation/_config.yml) to exclude relevant branches and directories from the build. 
+- Configure docs to include the new release in the list of [available versions](https://github.com/apereo/cas/blob/master/docs/cas-server-documentation/_layouts/default.html).
 - Update the project's [`README.md` page](https://github.com/apereo/cas/blob/master/README.md) to list the new version, if necessary.
 - Update [the build process](Build-Process.html) to include any needed information on how to build the new release.
-- Update [the release notes](../release_notes/Overview.html) and remove all previous entries.
-- Send a pull request to [Algolia](https://github.com/algolia/docsearch-configs/blob/master/configs/apereo.json) for the new documentation version to index the new space for search requests.
+- Update [Algolia](https://crawler.algolia.com/) for the new documentation version to index the new space for search requests.
+- Update the release notes overview and remove all previous entries.
 
 ## Update Maintenance Policy
 
-<div class="alert alert-warning"><strong>Remember</strong><p>You should do this only for major or minor releases, when new branches are created.</p></div>
+<div class="alert alert-warning">:warning: <strong>Remember</strong><p>You should do this only for major or minor releases, when new branches are created.</p></div>
 
 Update the [Maintenance Policy](https://github.com/apereo/cas/edit/gh-pages/developer/Maintenance-Policy.md/) to note 
 the release schedule and EOL timeline.
-
-## Update Demos
-
-(Optional) A number of CAS demos today run on Heroku and are tracked in dedicated 
-branches inside the codebase. Take a pass and update each, when relevant.

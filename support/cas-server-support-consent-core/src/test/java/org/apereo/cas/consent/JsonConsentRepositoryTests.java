@@ -1,15 +1,18 @@
 package org.apereo.cas.consent;
 
+import org.apereo.cas.test.CasTestExtension;
 import lombok.Getter;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-
+import org.springframework.core.io.FileSystemResource;
+import java.io.File;
 import java.util.UUID;
-
+import static org.awaitility.Awaitility.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -22,19 +25,28 @@ import static org.junit.jupiter.api.Assertions.*;
     properties = "cas.consent.json.location=file://${java.io.tmpdir}/ConsentRepository.json")
 @Getter
 @Tag("FileSystem")
-public class JsonConsentRepositoryTests extends BaseConsentRepositoryTests {
+@ExtendWith(CasTestExtension.class)
+class JsonConsentRepositoryTests extends BaseConsentRepositoryTests {
 
     @Autowired
-    @Qualifier("consentRepository")
+    @Qualifier(ConsentRepository.BEAN_NAME)
     protected ConsentRepository repository;
 
     @Test
-    public void verifyConsentDecisionId() {
+    void verifyConsentDecisionId() throws Throwable {
         val user = UUID.randomUUID().toString();
-        val repo = getRepository("verifyConsentDecisionId");
+        val repo = getRepository();
         val decision = repo.storeConsentDecision(BUILDER.build(SVC, REG_SVC, user, ATTR));
         assertNotNull(decision);
         assertTrue(decision.getId() > 0);
-        assertTrue(repo.findConsentDecisions(user).stream().anyMatch(c -> c.getId() == decision.getId()));
+        await().untilAsserted(() -> assertTrue(repo.findConsentDecisions(user)
+            .stream().anyMatch(desc -> desc.getId() == decision.getId())));
+    }
+
+    @Test
+    void verifyDisposedRepository() throws Throwable {
+        val repo = new JsonConsentRepository(new FileSystemResource(File.createTempFile("records", ".json")));
+        assertNotNull(repo.getWatcherService());
+        assertDoesNotThrow(repo::destroy);
     }
 }

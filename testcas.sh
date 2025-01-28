@@ -5,23 +5,23 @@ GREEN="\e[32m"
 CYAN="\e[36m"
 ENDCOLOR="\e[0m"
 
-clear
+#clear
 find ./ci/tests -type f -name "*.sh" -exec chmod +x {} \;
 
 dockerPlatform="unknown"
-type docker &> /dev/null
+docker ps &> /dev/null
 if [[ $? -ne 0 ]] ; then
-  echo "Docker server is not available."
+  echo "Docker engine is not available."
 else
   dockerPlatform=$(docker version --format '{{json .Server.Os}}')
-  printf "Docker server platform is ${GREEN}%s${ENDCOLOR}\n" "$dockerPlatform."
+  printf "Docker engine platform is ${GREEN}%s${ENDCOLOR}\n" "$dockerPlatform."
 fi
 
 function isDockerOnLinux() {
   if [[ $dockerPlatform =~ "linux" ]]; then
     return 0
   fi
-  printf "${RED}Docker server is not available for the linux platform.${ENDCOLOR}"
+  printf "${RED}Docker engine is not available for the linux platform.%n${ENDCOLOR}"
   return 1
 }
 
@@ -29,7 +29,7 @@ function isDockerOnWindows() {
   if [[ $dockerPlatform =~ "windows" ]]; then
     return 0
   fi
-  printf "${RED}Docker server is not available for the windows platform.${ENDCOLOR}"
+  printf "${RED}Docker engine is not available for the windows platform.%n${ENDCOLOR}"
   return 1
 }
 
@@ -45,23 +45,40 @@ parallel="--parallel "
 dryRun=""
 info=""
 gradleCmd="./gradlew"
-flags="--no-daemon --configure-on-demand --build-cache -x javadoc -x check -DskipNestedConfigMetadataGen=true -Dverbose=true "
+flags="--no-daemon --configure-on-demand --build-cache -x javadoc -x check -Dverbose=true "
 coverageTask=""
 
 while (( "$#" )); do
     case "$1" in
+    --max-workers)
+        parallel="${parallel} --max-workers=8"
+        shift
+        ;;
+    --no-cache)
+        parallel="--no-configuration-cache "
+        shift
+        ;;
     --no-parallel)
         parallel="--no-parallel "
+        shift
+        ;;
+    --pts)
+        printf "Running tests with predictive test selection mode: ${GREEN}$2${ENDCOLOR}\n"
+        flags+=" -Dpts.mode=$2 "
+        shift 2
+        ;;
+    --no-pts)
+        flags+=" -DPTS_ENABLED=false "
         shift
         ;;
     --with-coverage)
         currentDir=`pwd`
         case "${currentDir}" in
             *api*|*core*|*support*|*webapp*)
-                coverageTask="jacocoTestReport "
+                coverageTask="jacocoTestReport"
                 ;;
             *)
-                coverageTask="jacocoRootReport "
+                coverageTask="jacocoRootReport"
                 ;;
         esac
         shift
@@ -87,11 +104,19 @@ while (( "$#" )); do
         parallel=""
         shift
         ;;
+    --events)
+        flags+=" -DtestLoggingEvents=$2 "
+        shift 2
+        ;;
+    --offline)
+        flags+=" --offline "
+        shift
+        ;;
     --no-watch)
         flags+=" --no-watch-fs "
         shift
         ;;
-    --test)
+    --test|--tests)
         tests="--tests \"$2\" "
         shift 2
         ;;
@@ -117,6 +142,9 @@ while (( "$#" )); do
             test|simple|run|basic|unit|unittests)
                 task+="testSimple "
                 ;;
+            grouper)
+                task+="testGrouper "
+                ;;
             webapp)
                 task+="testWebApp "
                 ;;
@@ -129,8 +157,11 @@ while (( "$#" )); do
             authnmetadata|authenticationmetadata)
                 task+="testAuthenticationMetadata "
                 ;;
-            authnpolicy|authenticationpolicy)
+            authnpolicy|authpolicy|authenticationpolicy)
                 task+="testAuthenticationPolicy "
+                ;;
+            authz|heimdall|authorization)
+                task+="testAuthorization "
                 ;;
             auth|authn|authentication)
                 task+="testAuthentication "
@@ -138,11 +169,25 @@ while (( "$#" )); do
             tickets|ticketing)
                 task+="testTickets "
                 ;;
+            syncope)
+                isDockerOnLinux && ./ci/tests/syncope/run-syncope-server.sh
+                task+="testSyncope "
+                ;;
+            native|graal|graalvm)
+                task+="testNative "
+                ;;
             delegation)
                 task+="testDelegation "
                 ;;
             cookie)
                 task+="testCookie "
+                ;;
+            consent)
+                task+="testConsent "
+                task+="testConsent "
+                ;;
+            duo|duosecurity)
+                task+="testDuoSecurity "
                 ;;
             event|events)
                 task+="testEvents "
@@ -156,7 +201,19 @@ while (( "$#" )); do
             shell)
                 task+="testSHELL "
                 ;;
+            cipher)
+                task+="testCipher "
+                ;;
+            elastic)
+                isDockerOnLinux && ./ci/tests/elastic/run-elastic-apm.sh
+                task+="testElastic "
+                ;;
+            gcp|googlecloud|gcloud)
+                isDockerOnLinux && ./ci/tests/gcp/run-gcp-server.sh
+                task+="testGCP "
+                ;;
             web)
+                isDockerOnLinux && ./ci/tests/httpbin/run-httpbin-server.sh
                 task+="testWeb "
                 ;;
             scim)
@@ -190,7 +247,7 @@ while (( "$#" )); do
             expiration-policy|exppolicy|expp|expirationpolicy)
                 task+="testExpirationPolicy "
                 ;;
-            password-ops|pswd|pswd-ops|psw|passwordops)
+            password-ops|pswd|pswd-ops|psw|passwordops|ppolicy)
                 task+="testPasswordOps "
                 ;;
             sms)
@@ -208,25 +265,69 @@ while (( "$#" )); do
             config|casconfig|ccfg|cfg|cas-config|casconfiguration)
                 task+="testCasConfiguration "
                 ;;
+            geolocation|geo)
+                task+="testGeoLocation "
+                ;;
+            git|scm)
+                task+="testGit "
+                ;;
             groovy|script)
                 task+="testGroovy "
                 ;;
-            jdbc|jpa|database|db|hibernate|rdbms|hsql)
+            groovyauthentication)
+                task+="testGroovyAuthentication "
+                ;;
+            groovymfa)
+                task+="testGroovyMfa "
+                ;;
+            groovyservices)
+                task+="testGroovyServices "
+                ;;
+            hibernate)
+                task+="testHibernate "
+                ;;
+            jdbcmfa)
+                task+="testJDBCMFA "
+                ;;
+            jdbc|jpa|database|db|rdbms|hsql)
                 task+="testJDBC "
                 ;;
             jdbcauthentication|jdbcauthn)
                 task+="testJDBCAuthentication "
                 ;;
+            oauthtoken)
+                task+="testOAuthToken "
+                ;;
+            oauthweb)
+                task+="testOAuthWeb "
+                ;;
             oauth)
                 task+="testOAuth "
                 ;;
+            oidcservices)
+                isDockerOnLinux && ./ci/tests/mail/run-mail-server.sh
+                task+="testOIDCServices "
+                ;;
+            oidcauthentication|oidcauthn)
+                isDockerOnLinux && ./ci/tests/mail/run-mail-server.sh
+                task+="testOIDCAuthentication "
+                ;;
+            oidcattributes|oidcclaims|oidcattrs)
+                isDockerOnLinux && ./ci/tests/mail/run-mail-server.sh
+                task+="testOIDCAttributes "
+                ;;
+            oidcweb)
+                isDockerOnLinux && ./ci/tests/mail/run-mail-server.sh
+                task+="testOIDCWeb "
+                ;;
             oidc)
+                isDockerOnLinux && ./ci/tests/mail/run-mail-server.sh
                 task+="testOIDC "
                 ;;
             mfa)
                 task+="testMFA "
                 ;;
-            mfaprovider|duo|gauth|webauthn|authy|fido|u2f|swivel|acceptto)
+            mfaprovider|gauth|webauthn|fido)
                 task+="testMFAProvider "
                 ;;
             mfatrigger)
@@ -241,10 +342,28 @@ while (( "$#" )); do
             metadata|md|samlmetadata)
                 task+="testSAMLMetadata "
                 ;;
-            saml|saml2)
+            saml1)
+                task+="testSAML1 "
+                ;;
+            saml2web|samlweb)
+                task+="testSAML2Web "
+                ;;
+            saml2)
+                task+="testSAML2 "
+                ;;
+            samlresponse)
+                task+="testSAMLResponse "
+                ;;
+            samlattributes|samlattrs)
+                task+="testSAMLAttributes "
+                ;;
+            saml)
                 task+="testSAML "
                 ;;
-            jmx|jmx)
+            samllogout)
+                task+="testSAMLLogout "
+                ;;
+            jmx)
                 task+="testJMX "
                 ;;
             restfulapiauthentication|restfulauthn|restauthn)
@@ -268,6 +387,12 @@ while (( "$#" )); do
             webflowconfig|swfcfg|webflowcfg|webflow-config)
                 task+="testWebflowConfig "
                 ;;
+            webflowaccountactions)
+                task+="testWebflowAccountActions "
+                ;;
+            webflowserviceactions)
+                task+="testWebflowServiceActions "
+                ;;
             webflowmfaconfig)
                 task+="testWebflowMfaConfig "
                 ;;
@@ -280,15 +405,12 @@ while (( "$#" )); do
             ignite)
                 task+="testIgnite "
                 ;;
-            infinispan)
-                task+="testInfinispan"
-                ;;
             spnego)
-                task+="testSpnego"
+                task+="testSpnego "
                 ;;
-            cosmosdb|cosmos)
+            azure|cosmosdb)
                 isDockerOnLinux && ./ci/tests/cosmosdb/run-cosmosdb-server.sh
-                task+="testCosmosDb "
+                task+="testAzure "
                 ;;
             simple|unit)
                 task+="testSimple "
@@ -305,26 +427,37 @@ while (( "$#" )); do
                 isDockerOnLinux && ./ci/tests/memcached/run-memcached-server.sh
                 task+="testMemcached "
                 ;;
-            ehcache)
-                isDockerOnLinux && ./ci/tests/ehcache/run-terracotta-server.sh
-                task+="testEhcache "
-                ;;
-            ldap|ad|activedirectory)
-                isDockerOnLinux && ./ci/tests/ldap/run-ldap-server.sh
+            activedirectory|ad)
                 isDockerOnLinux && ./ci/tests/ldap/run-ad-server.sh true
+                task+="testActiveDirectory "
+                ;;
+            ldapservices)
+                isDockerOnLinux && ./ci/tests/ldap/run-ldap-server.sh
+                task+="testLdapServices "
+                ;;
+            ldaprepository|ldaprepo)
+                isDockerOnLinux && ./ci/tests/ldap/run-ldap-server.sh
+                task+="testLdapRepository "
+                ;;
+            ldapauthentication|ldapauthn)
+                isDockerOnLinux && ./ci/tests/ldap/run-ldap-server.sh
+                task+="testLdapAuthentication "
+                ;;
+            ldapattributes|ldapattrs)
+                isDockerOnLinux && ./ci/tests/ldap/run-ldap-server.sh
+                task+="testLdapAttributes "
+                ;;
+            ldap)
+                isDockerOnLinux && ./ci/tests/ldap/run-ldap-server.sh
                 task+="testLdap "
                 ;;
-            couchbase)
-                isDockerOnLinux && ./ci/tests/couchbase/run-couchbase-server.sh
-                task+="testCouchbase "
+            mongodbmfa)
+                isDockerOnLinux && ./ci/tests/mongodb/run-mongodb-server.sh
+                task+="testMongoDbMFA "
                 ;;
             mongo|mongodb)
                 isDockerOnLinux && ./ci/tests/mongodb/run-mongodb-server.sh
                 task+="testMongoDb "
-                ;;
-            couchdb)
-                isDockerOnLinux && ./ci/tests/couchdb/run-couchdb-server.sh
-                task+="testCouchDb "
                 ;;
             mysql)
                 isDockerOnLinux && ./ci/tests/mysql/run-mysql-server.sh
@@ -374,9 +507,9 @@ while (( "$#" )); do
                 isDockerOnLinux && ./ci/tests/redis/run-redis-server.sh
                 task+="testRedis "
                 ;;
-            activemq|amq|jms)
-                isDockerOnLinux && ./ci/tests/activemq/run-activemq-server.sh
-                task+="testJMS "
+            activemq|amq|jms|rabbitmq|artemis|amqp)
+                isDockerOnLinux && ./ci/tests/rabbitmq/run-rabbitmq-server.sh
+                task+="testAMQP "
                 ;;
             *)
                 printf "${RED}Unable to recognize test category: ${item}${ENDCOLOR}\n"
@@ -395,25 +528,30 @@ while (( "$#" )); do
     esac
 done
 
-if [[ -z "$task" ]]
-then
+if [[ -n "$coverageTask" ]]; then
+  task=""
+  printf "${GREEN}Running code coverage task [${coverageTask}] will disable all other task executions. Make sure all test tasks that generate code coverage data have already executed.${ENDCOLOR}\n"
+fi
+
+if [[ -z "$task" ]] && [[ -z "$coverageTask" ]]; then
   printHelp
   exit 1
 fi
 
 cmd="$gradleCmd ${GREEN}$task $tests${ENDCOLOR}${flags}${debug}${dryRun}${info}${parallel}${GREEN}$coverageTask${ENDCOLOR}"
-printf "${cmd}\n"
-
+printf "${cmd} %n"
+echo
 cmd="$gradleCmd $task $tests $flags ${debug} ${parallel} ${dryRun} ${info} ${coverageTask}"
 eval "$cmd"
 retVal=$?
 echo -e "***************************************************************************************"
-printf "${CYAN}Gradle build finished at `date` with exit code $retVal ${ENDCOLOR}\n"
+printf "${CYAN}Gradle build finished at `date` with exit code $retVal ${ENDCOLOR}%n"
 echo -e "***************************************************************************************"
 
 if [ $retVal == 0 ]; then
-    printf "${GREEN}Gradle build finished successfully.${ENDCOLOR}\n"
+    printf "${GREEN}Gradle build finished successfully.${ENDCOLOR}%n"
+    exit 0
 else
-    printf "${RED}Gradle build did NOT finish successfully.${ENDCOLOR}"
+    printf "${RED}Gradle build did NOT finish successfully.${ENDCOLOR}%n"
     exit $retVal
 fi

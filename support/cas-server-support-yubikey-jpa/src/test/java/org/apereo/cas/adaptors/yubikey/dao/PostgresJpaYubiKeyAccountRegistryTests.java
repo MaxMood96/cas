@@ -1,6 +1,6 @@
 package org.apereo.cas.adaptors.yubikey.dao;
 
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 
 import org.junit.jupiter.api.Tag;
 import org.springframework.test.context.TestPropertySource;
@@ -11,7 +11,7 @@ import org.springframework.test.context.TestPropertySource;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@EnabledIfPortOpen(port = 5432)
+@EnabledIfListeningOnPort(port = 5432)
 @Tag("Postgres")
 @TestPropertySource(properties = {
     "cas.jdbc.show-sql=false",
@@ -19,7 +19,7 @@ import org.springframework.test.context.TestPropertySource;
     "cas.authn.mfa.yubikey.jpa.password=password",
     "cas.authn.mfa.yubikey.jpa.driver-class=org.postgresql.Driver",
     "cas.authn.mfa.yubikey.jpa.url=jdbc:postgresql://localhost:5432/yubikey",
-    "cas.authn.mfa.yubikey.jpa.dialect=org.hibernate.dialect.PostgreSQL10Dialect"
+    "cas.authn.mfa.yubikey.jpa.dialect=org.hibernate.dialect.PostgreSQLDialect"
 })
-public class PostgresJpaYubiKeyAccountRegistryTests extends JpaYubiKeyAccountRegistryTests {
+class PostgresJpaYubiKeyAccountRegistryTests extends JpaYubiKeyAccountRegistryTests {
 }

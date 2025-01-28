@@ -1,9 +1,12 @@
 {
   "dependencies": "consul-client",
+  "conditions": {
+    "docker": "true"
+  },
+
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
-    "--cas.audit.engine.enabled=false",
 
     "--spring.cloud.consul.enabled=true",
     "--spring.cloud.consul.port=8500",
@@ -13,5 +16,5 @@
     "--spring.cloud.consul.discovery.heartbeat.ttlUnit=s"
 
   ],
-  "initScript": "${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/init.sh"
+  "initScript": "${PWD}/ci/tests/consul/run-consul-server.sh"
 }

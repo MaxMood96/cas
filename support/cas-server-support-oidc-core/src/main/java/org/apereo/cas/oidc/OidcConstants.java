@@ -12,9 +12,39 @@ import org.apache.commons.text.WordUtils;
 public interface OidcConstants {
 
     /**
-     * The token.
+     * User code parameter in CIBA requests.
      */
-    String TOKEN = "token";
+    String USER_CODE = "user_code";
+
+    /**
+     * ACR values specified in CIBA requests.
+     */
+    String ACR_VALUES = "acr_values";
+    /**
+     * Binding message specified in CIBA requests.
+     */
+    String BINDING_MESSAGE = "binding_message";
+    /**
+     * Client notification token specified in CIBA requests.
+     */
+    String CLIENT_NOTIFICATION_TOKEN = "client_notification_token";
+    /**
+     * Id token hint specified in CIBA requests.
+     */
+    String ID_TOKEN_HINT = "id_token_hint";
+    /**
+     * Login hint specified in CIBA requests.
+     */
+    String LOGIN_HINT = "login_hint";
+    /**
+     * Login hint token specified in CIBA requests.
+     */
+    String LOGIN_HINT_TOKEN = "login_hint_token";
+    /**
+     * Requested expiry specified in CIBA requests.
+     */
+    String REQUESTED_EXPIRY = "requested_expiry";
+    
     /**
      * ACR passed in the id token.
      */
@@ -23,6 +53,11 @@ public interface OidcConstants {
      * Authentication method reference passed in the id token.
      */
     String AMR = "amr";
+    /**
+     * Audience claim.
+     */
+    String AUD = "aud";
+
     /**
      * The Authorization Server MUST NOT display any authentication or consent user interface pages.
      */
@@ -37,15 +72,10 @@ public interface OidcConstants {
     String PROMPT_CONSENT = "consent";
 
     /**
-     * Hint to the Authorization Server about the login identifier
-     * the End-User might use to log in (if necessary).
+     * Request URI parameter used in PAR requests.
      */
-    String LOGIN_HINT = "login_hint";
+    String REQUEST_URI = "request_uri";
 
-    /**
-     * The sub claim.
-     */
-    String CLAIM_SUB = "sub";
     /**
      * The preferred username claim.
      */
@@ -59,6 +89,14 @@ public interface OidcConstants {
      */
     String CLAIM_AT_HASH = "at_hash";
     /**
+     * The refresh token hash.
+     */
+    String CLAIM_RT_HASH = "urn:openid:params:jwt:claim:rt_hash";
+    /**
+     * The authentication request id hash for CIBA.
+     */
+    String CLAIM_AUTH_REQ_ID = "urn:openid:params:jwt:claim:auth_req_id";
+    /**
      * The session identifier claim.
      */
     String CLAIM_SESSION_ID = "sid";
@@ -70,14 +108,23 @@ public interface OidcConstants {
      * The issuer parameter.
      */
     String ISS = "iss";
+
+    /**
+     * The txn claim.
+     * The txn Claim is used to build audit trails across the
+     * parties involved in an OpenID Connect transaction.
+     */
+    String TXN = "txn";
+
     /**
      * The max age.
      */
     String MAX_AGE = "max_age";
+
     /**
-     * The prompt parameter.
+     * The authentication request id in CIBA.
      */
-    String PROMPT = "prompt";
+    String AUTH_REQ_ID = "auth_req_id";
 
     /**
      * The {@code ui_locales} parameter.
@@ -100,6 +147,10 @@ public interface OidcConstants {
      * Oidc authorize url path segment url.
      */
     String AUTHORIZE_URL = "oidcAuthorize";
+    /**
+     * CIBA backchannel authn endpoint.
+     */
+    String CIBA_URL = "oidcCiba";
 
     /**
      * Oidc access token url path segment url.
@@ -117,6 +168,11 @@ public interface OidcConstants {
     String PROFILE_URL = "oidcProfile";
 
     /**
+     * Oidc pushed authorization request url path segment url.
+     */
+    String PUSHED_AUTHORIZE_URL = "oidcPushAuthorize";
+
+    /**
      * JWKS Endpoint url.
      */
     String JWKS_URL = "jwks";
@@ -128,6 +184,18 @@ public interface OidcConstants {
      * Registration endpoint URL.
      */
     String REGISTRATION_URL = "register";
+
+    /**
+     * Registration endpoint URL to issue initial access tokens.
+     */
+    String REGISTRATION_INITIAL_TOKEN_URL = "initToken";
+
+    /**
+     * The registration scope assigned to the initial access token,
+     * required to register clients.
+     */
+    String CLIENT_REGISTRATION_SCOPE = "client_registration_scope";
+
     /**
      * Client configuration endpoint URL.
      */
@@ -144,6 +212,12 @@ public interface OidcConstants {
      * The confirm/consent view.
      */
     String CONFIRM_VIEW = "oidcConfirmView";
+
+    /**
+     * The CIBA verification view.
+     */
+    String CIBA_VERIFICATION_VIEW = "oidcCibaVerificationView";
+    
     /**
      * Rel value for webfinger protocol.
      */
@@ -160,15 +234,15 @@ public interface OidcConstants {
     String WELL_KNOWN_OPENID_CONFIGURATION_URL = WELL_KNOWN_URL + "/openid-configuration";
 
     /**
+     * .well-known/oauth-authorization-server path url.
+     */
+    String WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER_URL = WELL_KNOWN_URL + "/oauth-authorization-server";
+
+    /**
      * Scope assigned to access token internally
      * to access client config urls and look up relying parties.
      */
-    String CLIENT_REGISTRATION_SCOPE = "ClientRegistrationScope";
-
-    /**
-     * Parameter used to look up clients by their id.
-     */
-    String CLIENT_REGISTRATION_CLIENT_ID = "clientId";
+    String CLIENT_CONFIGURATION_SCOPE = "client_configuration_scope";
 
     /**
      * Authenticator used to verify access to client configuration endpoint.
@@ -178,10 +252,7 @@ public interface OidcConstants {
      * Authenticator used to verify access using private key jwts.
      */
     String CAS_OAUTH_CLIENT_PRIVATE_KEY_JWT_AUTHN = "ClientPrivateKeyJwtClient";
-    /**
-     * Authenticator used to verify access using client secret jwts.
-     */
-    String CAS_OAUTH_CLIENT_CLIENT_SECRET_JWT_AUTHN = "ClientSecretJwtClient";
+
     /**
      * This is a standard label for a custom scope which will have a scope name.
      * This should not be added to StandardScopes enumeration because it isn't standard.
@@ -191,21 +262,6 @@ public interface OidcConstants {
      * JWT content type.
      */
     String CONTENT_TYPE_JWT = "application/jwt";
-
-    /**
-     * Dynamic client registration mode.
-     */
-    enum DynamicClientRegistrationMode {
-
-        /**
-         * Registration is open to all.
-         */
-        OPEN,
-        /**
-         * registration is protected for all.
-         */
-        PROTECTED
-    }
 
     /**
      * Standard openid connect scopes.
@@ -229,6 +285,11 @@ public interface OidcConstants {
          * profile scope.
          */
         PROFILE("profile"),
+        /**
+         * assurance scope.
+         * An extension of OpenID Connect for providing Relying Parties with Verified Claims about End-Users.
+         */
+        ASSURANCE("assurance"),
         /**
          * phone scope.
          */

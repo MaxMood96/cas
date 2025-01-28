@@ -1,7 +1,7 @@
 package org.apereo.cas.influxdb;
 
 import org.apereo.cas.configuration.model.core.events.InfluxDbEventsProperties;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 
 import com.influxdb.annotations.Column;
 import com.influxdb.annotations.Measurement;
@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Map;
@@ -27,12 +28,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.2.0
  */
 @Tag("InfluxDb")
-@EnabledIfPortOpen(port = 8086)
-public class InfluxDbConnectionFactoryTests {
+@EnabledIfListeningOnPort(port = 8086)
+class InfluxDbConnectionFactoryTests {
     private InfluxDbConnectionFactory factory;
 
     @BeforeEach
-    public void init() {
+    void init() {
         val props = new InfluxDbEventsProperties()
             .setDatabase("casEventsDatabase")
             .setOrganization("CAS")
@@ -50,14 +51,14 @@ public class InfluxDbConnectionFactoryTests {
     }
 
     @Test
-    public void verifyWritePoint() {
+    void verifyWritePoint() {
         factory.deleteAll();
         factory.write("events", Map.of("value", 1234.5678), Map.of("hostname", "cas.example.org"));
         val result = factory.query(InfluxEvent.class);
         assertFalse(result.isEmpty());
         assertEquals(1, result.size());
-        assertEquals("cas.example.org", result.get(0).getHostname());
-        assertEquals(1234.5678, result.get(0).getValue());
+        assertEquals("cas.example.org", result.getFirst().getHostname());
+        assertEquals(1234.5678, result.getFirst().getValue());
     }
 
     @Measurement(name = "events")
@@ -65,6 +66,9 @@ public class InfluxDbConnectionFactoryTests {
     @Setter
     @ToString
     public static class InfluxEvent implements Serializable {
+        @Serial
+        private static final long serialVersionUID = -7065491678170232623L;
+
         @Column(name = "time", timestamp = true)
         private Instant time;
 

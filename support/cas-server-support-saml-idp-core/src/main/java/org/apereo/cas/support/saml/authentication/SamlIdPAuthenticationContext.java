@@ -10,6 +10,7 @@ import org.opensaml.saml.common.messaging.context.SAMLBindingContext;
 import org.opensaml.saml.common.messaging.context.SAMLPeerEntityContext;
 import org.opensaml.saml.common.messaging.context.SAMLProtocolContext;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,6 +23,7 @@ import java.util.Objects;
  * @since 6.4.0
  */
 public class SamlIdPAuthenticationContext implements Serializable {
+    @Serial
     private static final long serialVersionUID = 696048495600124624L;
 
     private final Map<String, SamlIdPAuthenticationContext> contexts = new LinkedHashMap<>();
@@ -37,7 +39,7 @@ public class SamlIdPAuthenticationContext implements Serializable {
     public static SamlIdPAuthenticationContext from(final MessageContext context) {
         val result = new SamlIdPAuthenticationContext();
         if (context.containsSubcontext(SAMLBindingContext.class)) {
-            val binding = Objects.requireNonNull(context.getSubcontext(SAMLBindingContext.class));
+            val binding = Objects.requireNonNull(context.ensureSubcontext(SAMLBindingContext.class));
             result.getSubcontext(SAMLBindingContext.class).put("relayState", binding.getRelayState());
             result.getSubcontext(SAMLBindingContext.class).put("hasBindingSignature", binding.hasBindingSignature());
         }
@@ -84,18 +86,18 @@ public class SamlIdPAuthenticationContext implements Serializable {
         messageContext.setMessage(message);
         if (contexts.containsKey(SAMLBindingContext.class.getName())) {
             val binding = contexts.get(SAMLBindingContext.class.getName());
-            val subcontext = messageContext.getSubcontext(SAMLBindingContext.class, true);
+            val subcontext = messageContext.ensureSubcontext(SAMLBindingContext.class);
             subcontext.setHasBindingSignature((boolean) binding.properties.get("hasBindingSignature"));
             subcontext.setRelayState((String) binding.properties.get("relayState"));
         }
         if (contexts.containsKey(SAMLProtocolContext.class.getName())) {
             val binding = contexts.get(SAMLProtocolContext.class.getName());
-            val subcontext = messageContext.getSubcontext(SAMLProtocolContext.class, true);
+            val subcontext = messageContext.ensureSubcontext(SAMLProtocolContext.class);
             subcontext.setProtocol((String) binding.properties.get("protocol"));
         }
         if (contexts.containsKey(SAMLPeerEntityContext.class.getName())) {
             val binding = contexts.get(SAMLPeerEntityContext.class.getName());
-            val subcontext = messageContext.getSubcontext(SAMLPeerEntityContext.class, true);
+            val subcontext = messageContext.ensureSubcontext(SAMLPeerEntityContext.class);
             subcontext.setEntityId((String) binding.properties.get("entityId"));
         }
         return messageContext;

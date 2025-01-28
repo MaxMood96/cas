@@ -4,7 +4,7 @@ import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.services.RegisteredService;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * This is {@link ConsentActivationStrategy}.
@@ -26,10 +26,11 @@ public interface ConsentActivationStrategy {
      * @param registeredService the registered service
      * @param authentication    the authentication
      * @param request           the request
-     * @return true/false
+     * @return true /false
+     * @throws Throwable the throwable
      */
     boolean isConsentRequired(Service service,
                               RegisteredService registeredService,
                               Authentication authentication,
-                              HttpServletRequest request);
+                              HttpServletRequest request) throws Throwable;
 }

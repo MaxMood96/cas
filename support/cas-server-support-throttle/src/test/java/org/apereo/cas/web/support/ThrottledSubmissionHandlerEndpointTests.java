@@ -1,7 +1,7 @@
 package org.apereo.cas.web.support;
 
+import org.apereo.cas.throttle.ThrottledSubmissionHandlerEndpoint;
 import org.apereo.cas.web.report.AbstractCasEndpointTests;
-
 import lombok.val;
 import org.apereo.inspektr.common.web.ClientInfo;
 import org.apereo.inspektr.common.web.ClientInfoHolder;
@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.TestPropertySource;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -23,31 +23,35 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestPropertySource(properties = {
     "cas.authn.throttle.failure.range-seconds=5",
-    "management.endpoint.throttles.enabled=true"
+    "management.endpoint.throttles.access=UNRESTRICTED"
 })
 @Import(BaseThrottledSubmissionHandlerInterceptorAdapterTests.SharedTestConfiguration.class)
 @Tag("ActuatorEndpoint")
-public class ThrottledSubmissionHandlerEndpointTests extends AbstractCasEndpointTests {
+class ThrottledSubmissionHandlerEndpointTests extends AbstractCasEndpointTests {
     @Autowired
     @Qualifier("throttledSubmissionHandlerEndpoint")
     private ThrottledSubmissionHandlerEndpoint throttledSubmissionHandlerEndpoint;
 
     @Autowired
-    @Qualifier("authenticationThrottle")
+    @Qualifier(ThrottledSubmissionHandlerInterceptor.BEAN_NAME)
     private ThrottledSubmissionHandlerInterceptor throttle;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertTrue(throttledSubmissionHandlerEndpoint.getRecords().isEmpty());
 
         val request = new MockHttpServletRequest();
         request.setRemoteAddr("1.2.3.4");
         request.setLocalAddr("4.5.6.7");
         request.setRemoteUser("cas");
-        request.addHeader("User-Agent", "Firefox");
-        ClientInfoHolder.setClientInfo(new ClientInfo(request));
+        request.addHeader(HttpHeaders.USER_AGENT, "Firefox");
+        ClientInfoHolder.setClientInfo(ClientInfo.from(request));
 
         throttle.recordSubmissionFailure(request);
-        assertFalse(throttledSubmissionHandlerEndpoint.getRecords().isEmpty());
+        val records = throttledSubmissionHandlerEndpoint.getRecords();
+        assertFalse(records.isEmpty());
+        throttledSubmissionHandlerEndpoint.deleteByKey(records.getFirst().getKey());
+        assertDoesNotThrow(() -> throttledSubmissionHandlerEndpoint.release(false));
+        assertDoesNotThrow(() -> throttledSubmissionHandlerEndpoint.release(true));
     }
 }

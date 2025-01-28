@@ -1,21 +1,21 @@
 package org.apereo.cas.tomcat;
 
-import org.apereo.cas.config.CasEmbeddedContainerTomcatConfiguration;
-import org.apereo.cas.config.CasEmbeddedContainerTomcatFiltersConfiguration;
+import org.apereo.cas.config.CasEmbeddedContainerTomcatAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
 import org.apache.catalina.Container;
 import org.apache.catalina.Context;
 import org.apache.catalina.Engine;
 import org.apache.catalina.Host;
 import org.apache.catalina.LifecycleState;
+import org.apache.catalina.Server;
 import org.apache.catalina.Service;
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.startup.Tomcat;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
@@ -23,7 +23,6 @@ import org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactor
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -33,18 +32,14 @@ import static org.mockito.Mockito.*;
  * @author Hal Deadman
  * @since 6.2.0
  */
-@SpringBootTest(classes = {
-    CasEmbeddedContainerTomcatConfiguration.class,
-    CasEmbeddedContainerTomcatFiltersConfiguration.class
-},
-    properties = {
-        "server.port=8183",
-        "server.ssl.enabled=false"
-    },
-    webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@SpringBootTest(classes = CasEmbeddedContainerTomcatAutoConfiguration.class, properties = {
+    "server.port=8183",
+    "server.ssl.enabled=false"
+}, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @EnableConfigurationProperties({CasConfigurationProperties.class, ServerProperties.class})
 @Tag("WebApp")
-public class CasTomcatServletWebServerFactoryCloudClusterTests {
+@ExtendWith(CasTestExtension.class)
+class CasTomcatServletWebServerFactoryCloudClusterTests {
     @Autowired
     protected CasConfigurationProperties casProperties;
 
@@ -60,7 +55,7 @@ public class CasTomcatServletWebServerFactoryCloudClusterTests {
     private ServletWebServerFactoryCustomizer casTomcatEmbeddedServletContainerCustomizer;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         casTomcatEmbeddedServletContainerCustomizer.customize(casServletWebServerFactory);
         val server = casServletWebServerFactory.getWebServer();
         assertNotNull(server);
@@ -68,16 +63,20 @@ public class CasTomcatServletWebServerFactoryCloudClusterTests {
 
 
     @Test
-    public void verifyDynamicCloud() {
+    void verifyDynamicCloud() {
         val props = new CasConfigurationProperties();
         props.getServer().getTomcat().getClustering()
             .setEnabled(true).setClusteringType("CLOUD");
 
         val factory = new CasTomcatServletWebServerFactory(props, serverProperties);
+
         val tomcat = mock(Tomcat.class);
         when(tomcat.getEngine()).thenReturn(mock(Engine.class));
         val service = mock(Service.class);
         when(service.findConnectors()).thenReturn(new Connector[]{});
+
+        val server = mock(Server.class);
+        when(server.findServices()).thenReturn(new Service[]{service});
 
         val host = mock(Host.class);
         val context = mock(Context.class);
@@ -87,16 +86,15 @@ public class CasTomcatServletWebServerFactoryCloudClusterTests {
 
         when(tomcat.getHost()).thenReturn(host);
         when(tomcat.getService()).thenReturn(service);
-        assertDoesNotThrow(new Executable() {
-            @Override
-            public void execute() throws Throwable {
-                factory.getTomcatWebServer(tomcat);
-            }
+        when(tomcat.getServer()).thenReturn(server);
+
+        assertDoesNotThrow(() -> {
+            factory.getTomcatWebServer(tomcat);
         });
     }
 
     @Test
-    public void verifyStaticCloud() {
+    void verifyStaticCloud() {
         val props = new CasConfigurationProperties();
         props.getServer().getTomcat().getClustering()
             .setEnabled(true)
@@ -109,6 +107,9 @@ public class CasTomcatServletWebServerFactoryCloudClusterTests {
         val service = mock(Service.class);
         when(service.findConnectors()).thenReturn(new Connector[]{});
 
+        val server = mock(Server.class);
+        when(server.findServices()).thenReturn(new Service[]{service});
+
         val host = mock(Host.class);
         val context = mock(Context.class);
         when(context.getBaseName()).thenReturn("cas");
@@ -117,12 +118,10 @@ public class CasTomcatServletWebServerFactoryCloudClusterTests {
 
         when(tc.getHost()).thenReturn(host);
         when(tc.getService()).thenReturn(service);
-        assertDoesNotThrow(new Executable() {
-            @Override
-            public void execute() throws Throwable {
-                factory.getTomcatWebServer(tc);
-            }
+        when(tc.getServer()).thenReturn(server);
+
+        assertDoesNotThrow(() -> {
+            factory.getTomcatWebServer(tc);
         });
     }
 }
-

@@ -13,7 +13,7 @@ the [WS-Federation Passive Requestor Profile](http://docs.oasis-open.org/wsfed/f
 The core functionality is built on top of [Apache Fediz](http://cxf.apache.org/fediz.html) 
 whose architecture is described [here](http://cxf.apache.org/fediz-architecture.html).
 
-<div class="alert alert-info"><strong>Remember</strong><p>The functionality described 
+<div class="alert alert-info">:information_source: <strong>Remember</strong><p>The functionality described 
 here allows CAS to act as an identity provider to support the WS-Federation protocol. If you wish to do the 
 opposite and hand off authentication to an external identity provider that supports WS-Federation, you may take advantage of 
 <a href="../integration/ADFS-Integration.html">Delegation</a> as one integration option.</p></div>
@@ -37,9 +37,9 @@ attaches the returned security token to the outgoing SOAP message to the service
 
 Support is enabled by including the following dependency in the WAR overlay:
 
-{% include_cached casmodule.html group="org.apereo.cas" module="cas-server-support-ws-sts" %}
+{% include_cached casmodule.html group="org.apereo.cas" module="cas-server-support-ws-sts" bundled="true" %}
 
-<div class="alert alert-info"><strong>YAGNI</strong><p>You do not need to explicitly include this component
+<div class="alert alert-info">:information_source: <strong>YAGNI</strong><p>You do not need to explicitly include this component
 in your configuration and overlays. This is just to teach you that it exists. The security token service will be pulled 
 in automatically once you declare the identity provider. Only include this module in your overlay if you 
 need compile-time access to the components within.</p></div>
@@ -123,7 +123,7 @@ Token type may be configured on a per-service basis:
 
 ## Configuration
 
-{% include_cached casproperties.html modules="cas-server-support-ws-idp,cas-server-support-ws-sts" %}
+{% include_cached casproperties.html properties="cas.authn.wsfed-idp" %}
 
 You may also need to declare the following repository in
 your CAS Overlay to be able to resolve dependencies:
@@ -132,11 +132,7 @@ your CAS Overlay to be able to resolve dependencies:
 repositories {
     maven { 
         mavenContent { releasesOnly() }
-        url "https://build.shibboleth.net/nexus/content/repositories/releases" 
-    }
-    maven {
-        mavenContent { releasesOnly() }
-        url "https://jitpack.io"
+        url "https://build.shibboleth.net/maven/releases/" 
     }
 }
 ```
@@ -147,7 +143,7 @@ To enable additional logging, modify the logging configuration file to add the f
 
 ```xml
 <Logger name="org.apache.cxf" level="debug" additivity="false">
-    <AppenderRef ref="console"/>
-    <AppenderRef ref="file"/>
+    <AppenderRef ref="casConsole"/>
+    <AppenderRef ref="casFile"/>
 </Logger>
 ```

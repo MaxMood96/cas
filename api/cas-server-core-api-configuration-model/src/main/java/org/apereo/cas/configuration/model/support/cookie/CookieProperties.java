@@ -1,13 +1,15 @@
 package org.apereo.cas.configuration.model.support.cookie;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -20,9 +22,10 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("CookieProperties")
-public class CookieProperties implements Serializable {
 
+public class CookieProperties implements CasFeatureModule, Serializable {
+
+    @Serial
     private static final long serialVersionUID = 6804770601645126835L;
 
     /**
@@ -56,11 +59,6 @@ public class CookieProperties implements Serializable {
     private String domain = StringUtils.EMPTY;
 
     /**
-     * CAS Cookie comment, describes the cookie's usage and purpose.
-     */
-    private String comment = "CAS Cookie";
-
-    /**
      * True if sending this cookie should be restricted to a secure protocol, or
      * false if the it can be sent using any protocol.
      */
@@ -80,7 +78,8 @@ public class CookieProperties implements Serializable {
      * A negative value means that the cookie is not stored persistently and will be deleted when the Web browser exits.
      * A zero value causes the cookie to be deleted.
      */
-    private int maxAge = -1;
+    @DurationCapable
+    private String maxAge = "-1";
 
     /**
      * If a cookie is only intended to be accessed in a first party context, the
@@ -94,7 +93,15 @@ public class CookieProperties implements Serializable {
      * {@code Secure} attribute is used so cross-site cookies can only be accessed over HTTPS
      * connections.
      * </p>
-     * <p>Accepted values are: {@code Lax}, {@code Strict},  {@code None}.</p>
+     * Accepted values are:
+     * <ul>
+     *     <li>{@code Lax}</li>
+     *     <li>{@code Strict}</li>
+     *     <li>{@code None}</li>
+     *     <li>{@code Off}: Disable the generation of the SameSite cookie attribute altogether.</li>
+     *     <li>Path to a Groovy script that is able to generate the SameSite cookie attribute dynamically.</li>
+     *     <li>Fully qualified name of a class that implements {@code org.apereo.cas.web.cookie.CookieSameSitePolicy}</li>
+     * </ul>
      */
     private String sameSitePolicy = StringUtils.EMPTY;
 }

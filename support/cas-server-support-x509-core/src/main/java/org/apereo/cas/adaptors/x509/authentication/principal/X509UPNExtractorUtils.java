@@ -53,21 +53,21 @@ public class X509UPNExtractorUtils {
      * @return UPN string or null
      */
     private String getUPNStringFromSequence(final ASN1Sequence seq) {
-        val id = seq != null ? ASN1ObjectIdentifier.getInstance(seq.getObjectAt(0)) : null;
+        val id = Optional.ofNullable(seq).map(asn1Encodables -> ASN1ObjectIdentifier.getInstance(asn1Encodables.getObjectAt(0))).orElse(null);
         if (id != null && UPN_OBJECTID.equals(id.getId())) {
             val obj = (ASN1TaggedObject) seq.getObjectAt(1);
-            val primitiveObj = obj.getObject();
+            val primitiveObj = obj.getBaseObject();
 
             val func = FunctionUtils.doIf(Predicates.instanceOf(ASN1TaggedObject.class),
-                () -> ASN1TaggedObject.getInstance(primitiveObj).getObject(),
+                () -> ASN1TaggedObject.getInstance(primitiveObj).getBaseObject(),
                 () -> primitiveObj);
             val prim = func.apply(primitiveObj);
 
-            if (prim instanceof ASN1OctetString) {
-                return new String(((ASN1OctetString) prim).getOctets(), StandardCharsets.UTF_8);
+            if (prim instanceof final ASN1OctetString instance) {
+                return new String(instance.getOctets(), StandardCharsets.UTF_8);
             }
-            if (prim instanceof ASN1String) {
-                return ((ASN1String) prim).getString();
+            if (prim instanceof final ASN1String instance) {
+                return instance.getString();
             }
         }
         return null;
@@ -86,10 +86,10 @@ public class X509UPNExtractorUtils {
      */
     private ASN1Sequence getOtherNameTypeSAN(final List<?> sanItem) {
         if (sanItem.size() < 2) {
-            LOGGER.error("Subject Alternative Name List does not contain at least two required elements. Returning null principal id...");
+            LOGGER.error("Subject Alternative Name List does not contain at least two required elements");
             return null;
         }
-        val itemType = (Integer) sanItem.get(0);
+        val itemType = (Integer) sanItem.getFirst();
         if (itemType == SAN_TYPE_OTHER) {
             val altName = (byte[]) sanItem.get(1);
             return getAltnameSequence(altName);
@@ -127,7 +127,7 @@ public class X509UPNExtractorUtils {
                 if (sanItem.size() == 2) {
                     val name = sanItem.get(1);
                     val value = name instanceof String ? name : name instanceof byte[] ? getAltnameSequence((byte[]) name) : name;
-                    LOGGER.trace("Found subject alt name of type [{}] with value [{}]", sanItem.get(0), value);
+                    LOGGER.trace("Found subject alt name of type [{}] with value [{}]", sanItem.getFirst(), value);
                 } else {
                     LOGGER.trace("SAN item of unexpected size found: [{}]", sanItem);
                 }

@@ -6,11 +6,13 @@ import org.apereo.cas.adaptors.x509.authentication.principal.X509CertificateCred
 import org.apereo.cas.adaptors.x509.authentication.revocation.RevokedCertificateException;
 import org.apereo.cas.adaptors.x509.authentication.revocation.checker.ResourceCRLRevocationChecker;
 import org.apereo.cas.adaptors.x509.authentication.revocation.policy.ThresholdExpiredCRLRevocationPolicy;
+import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.AuthenticationHandlerExecutionResult;
 import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.DefaultAuthenticationHandlerExecutionResult;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.util.RegexUtils;
 
 import lombok.val;
@@ -33,6 +35,7 @@ import java.util.stream.Stream;
 import static org.apereo.cas.util.junit.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.params.provider.Arguments.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit test for {@link X509CredentialsAuthenticationHandler} class.
@@ -42,17 +45,12 @@ import static org.junit.jupiter.params.provider.Arguments.*;
  * @since 3.0.0
  */
 @Tag("X509")
-public class X509CredentialsAuthenticationHandlerTests {
+class X509CredentialsAuthenticationHandlerTests {
 
     private static final String USER_VALID_CRT = "user-valid.crt";
 
-    /**
-     * Gets the unit test parameters.
-     *
-     * @return Test parameter data.
-     */
     @SuppressWarnings("PMD.ExcessiveMethodLength")
-    public static Stream<Arguments> getTestParameters() {
+    public static Stream<Arguments> getTestParameters() throws Throwable {
         val params = new ArrayList<Arguments>();
 
         /* Test case #1: Unsupported credential type */
@@ -253,17 +251,17 @@ public class X509CredentialsAuthenticationHandlerTests {
     }
 
     /**
-     * Tests the {@link X509CredentialsAuthenticationHandler#authenticate(Credential)} method.
+     * Tests the {@link AuthenticationHandler#authenticate(Credential, Service)} method.
      */
     @ParameterizedTest
     @MethodSource("getTestParameters")
-    public void verifyAuthenticate(final X509CredentialsAuthenticationHandler handler, final Credential credential,
+    void verifyAuthenticate(final X509CredentialsAuthenticationHandler handler, final Credential credential,
                                    final boolean expectedSupports, final AuthenticationHandlerExecutionResult expectedResult,
                                    final GeneralSecurityException expectedException) {
         assertThrowsOrNot(expectedException, () -> {
             if (expectedSupports) {
                 assertTrue(handler.supports(credential));
-                val result = handler.authenticate(credential);
+                val result = handler.authenticate(credential, mock(Service.class));
                 assertEquals(expectedResult, result);
             }
         });

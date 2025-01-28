@@ -14,21 +14,26 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 3.0.0
  */
 @Tag("Authentication")
-public class SimplePrincipalFactoryTests {
+class SimplePrincipalFactoryTests {
     @Test
-    public void checkPrincipalCreation() {
+    void checkPrincipalCreation() throws Throwable {
         val fact = PrincipalFactoryUtils.newPrincipalFactory();
         val map = new HashMap<String, List<Object>>();
         map.put("a1", List.of("v1"));
         map.put("a2", List.of("v3"));
 
-        val p = fact.createPrincipal("user", map);
-        assertTrue(p instanceof SimplePrincipal);
-        assertEquals(p.getAttributes(), map);
+        val principal = fact.createPrincipal("user", map);
+        assertInstanceOf(SimplePrincipal.class, principal);
+        assertEquals(principal.getAttributes(), map);
+        assertTrue(principal.containsAttribute("a1"));
+        assertTrue(principal.containsAttribute("a2"));
+        assertEquals("v3", principal.getSingleValuedAttribute("a2"));
+        assertThrows(ClassCastException.class, () -> principal.getSingleValuedAttribute("a2", Long.class));
+        assertNull(principal.getSingleValuedAttribute("unknown"));
     }
 
     @Test
-    public void checkPrincipalEquality() {
+    void checkPrincipalEquality() throws Throwable {
         val fact = PrincipalFactoryUtils.newPrincipalFactory();
         val map = new HashMap<String, List<Object>>();
         map.put("a1", List.of("v1"));
@@ -36,8 +41,8 @@ public class SimplePrincipalFactoryTests {
 
         val p = fact.createPrincipal("user", map);
         val p2 = fact.createPrincipal("USER", map);
-        assertTrue(p instanceof SimplePrincipal);
-        assertTrue(p2 instanceof SimplePrincipal);
+        assertInstanceOf(SimplePrincipal.class, p);
+        assertInstanceOf(SimplePrincipal.class, p2);
         assertEquals(p.getAttributes(), map);
         assertEquals(p2.getAttributes(), map);
         assertEquals(p2.getAttributes(), p.getAttributes());

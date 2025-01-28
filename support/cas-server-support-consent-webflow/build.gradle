@@ -1,4 +1,12 @@
 description = "Apereo CAS Consent Webflow"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            title: "Attribute Consent",
+            category: "Attribute Consent",
+            aliases: ["consent"]
+    ]
+}
 dependencies {
     api project(":api:cas-server-core-api-webflow")
     
@@ -6,6 +14,7 @@ dependencies {
     
     implementation project(":core:cas-server-core-util-api")
     implementation project(":core:cas-server-core-webflow")
+    implementation project(":core:cas-server-core-multitenancy")
     implementation project(":core:cas-server-core-webflow-api")
     implementation project(":core:cas-server-core-web-api")
     implementation project(":core:cas-server-core-services-api")
@@ -13,6 +22,7 @@ dependencies {
     implementation project(":core:cas-server-core-authentication-api")
     implementation project(":core:cas-server-core-authentication-attributes")
     implementation project(":core:cas-server-core-audit")
+    implementation project(":core:cas-server-core-services-authentication")
     implementation project(":core:cas-server-core-services-registry")
 
     implementation project(":support:cas-server-support-pac4j-core")
@@ -29,6 +39,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-authentication")
     testImplementation project(":core:cas-server-core-authentication-mfa")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-logout")
 
     testImplementation project(":support:cas-server-support-person-directory")

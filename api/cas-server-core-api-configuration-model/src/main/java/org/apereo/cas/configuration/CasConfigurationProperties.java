@@ -1,5 +1,6 @@
 package org.apereo.cas.configuration;
 
+import org.apereo.cas.configuration.model.core.CasServerCoreProperties;
 import org.apereo.cas.configuration.model.core.CasServerHostProperties;
 import org.apereo.cas.configuration.model.core.CasServerProperties;
 import org.apereo.cas.configuration.model.core.audit.AuditProperties;
@@ -15,7 +16,7 @@ import org.apereo.cas.configuration.model.core.logout.LogoutProperties;
 import org.apereo.cas.configuration.model.core.monitor.MonitorProperties;
 import org.apereo.cas.configuration.model.core.rest.RestProperties;
 import org.apereo.cas.configuration.model.core.services.ServiceRegistryProperties;
-import org.apereo.cas.configuration.model.core.slo.SingleLogOutProperties;
+import org.apereo.cas.configuration.model.core.slo.SingleLogoutProperties;
 import org.apereo.cas.configuration.model.core.sso.SingleSignOnProperties;
 import org.apereo.cas.configuration.model.core.util.TicketProperties;
 import org.apereo.cas.configuration.model.core.web.LocaleProperties;
@@ -34,31 +35,38 @@ import org.apereo.cas.configuration.model.support.consent.ConsentProperties;
 import org.apereo.cas.configuration.model.support.cookie.TicketGrantingCookieProperties;
 import org.apereo.cas.configuration.model.support.cookie.WarningCookieProperties;
 import org.apereo.cas.configuration.model.support.custom.CasCustomProperties;
+import org.apereo.cas.configuration.model.support.email.EmailProvidersProperties;
 import org.apereo.cas.configuration.model.support.firebase.GoogleFirebaseCloudMessagingProperties;
-import org.apereo.cas.configuration.model.support.geo.googlemaps.GoogleMapsProperties;
-import org.apereo.cas.configuration.model.support.geo.maxmind.MaxmindProperties;
+import org.apereo.cas.configuration.model.support.geo.GeoLocationProperties;
+import org.apereo.cas.configuration.model.support.heimdall.HeimdallAuthorizationProperties;
 import org.apereo.cas.configuration.model.support.interrupt.InterruptProperties;
+import org.apereo.cas.configuration.model.support.javers.JaversProperties;
 import org.apereo.cas.configuration.model.support.jpa.DatabaseProperties;
-import org.apereo.cas.configuration.model.support.replication.SessionReplicationProperties;
+import org.apereo.cas.configuration.model.support.multitenancy.MultitenancyProperties;
 import org.apereo.cas.configuration.model.support.saml.SamlCoreProperties;
-import org.apereo.cas.configuration.model.support.saml.googleapps.GoogleAppsProperties;
 import org.apereo.cas.configuration.model.support.saml.mdui.SamlMetadataUIProperties;
 import org.apereo.cas.configuration.model.support.saml.sps.SamlServiceProviderProperties;
 import org.apereo.cas.configuration.model.support.scim.ScimProperties;
+import org.apereo.cas.configuration.model.support.slack.SlackMessagingProperties;
 import org.apereo.cas.configuration.model.support.sms.SmsProvidersProperties;
 import org.apereo.cas.configuration.model.support.themes.ThemeProperties;
-
-import com.fasterxml.jackson.annotation.JsonFilter;
+import org.apereo.cas.configuration.support.RequiresModule;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import lombok.val;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
-
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
+import org.springframework.core.env.MapPropertySource;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * This is {@link CasConfigurationProperties}.
@@ -66,17 +74,18 @@ import java.time.Instant;
  * @author Misagh Moayyed
  * @since 5.0.0
  */
-@ConfigurationProperties(value = "cas")
+@ConfigurationProperties(prefix = "cas")
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("CasConfigurationProperties")
+@RequiresModule(name = "cas-server-core-api", automated = true)
 public class CasConfigurationProperties implements Serializable {
     /**
      * Prefix used for all CAS-specific settings.
      */
     public static final String PREFIX = "cas";
 
+    @Serial
     private static final long serialVersionUID = -8620267783496071683L;
 
     /**
@@ -103,11 +112,17 @@ public class CasConfigurationProperties implements Serializable {
     private ConsentProperties consent = new ConsentProperties();
 
     /**
-     * Access Strategy and authorization-related functionality.
+     * Service access Strategy and authorization-related functionality.
      */
     @NestedConfigurationProperty
     private AccessStrategyProperties accessStrategy = new AccessStrategyProperties();
 
+    /**
+     * Heimdall authorization-related functionality.
+     */
+    @NestedConfigurationProperty
+    private HeimdallAuthorizationProperties heimdall = new HeimdallAuthorizationProperties();
+   
     /**
      * ACME functionality.
      */
@@ -190,7 +205,7 @@ public class CasConfigurationProperties implements Serializable {
      * SLO functionality.
      */
     @NestedConfigurationProperty
-    private SingleLogOutProperties slo = new SingleLogOutProperties();
+    private SingleLogoutProperties slo = new SingleLogoutProperties();
 
     /**
      * SSO functionality.
@@ -235,6 +250,12 @@ public class CasConfigurationProperties implements Serializable {
     private GoogleFirebaseCloudMessagingProperties googleFirebaseMessaging = new GoogleFirebaseCloudMessagingProperties();
 
     /**
+     * Slack Messaging functionality.
+     */
+    @NestedConfigurationProperty
+    private SlackMessagingProperties slackMessaging = new SlackMessagingProperties();
+
+    /**
      * Google reCAPTCHA settings.
      */
     @NestedConfigurationProperty
@@ -245,6 +266,12 @@ public class CasConfigurationProperties implements Serializable {
      */
     @NestedConfigurationProperty
     private SmsProvidersProperties smsProvider = new SmsProvidersProperties();
+
+    /**
+     * Email settings.
+     */
+    @NestedConfigurationProperty
+    private EmailProvidersProperties emailProvider = new EmailProvidersProperties();
 
     /**
      * AUP settings.
@@ -271,35 +298,23 @@ public class CasConfigurationProperties implements Serializable {
     private WarningCookieProperties warningCookie = new WarningCookieProperties();
 
     /**
+     * GeoLocation settings.
+     */
+    @NestedConfigurationProperty
+    private GeoLocationProperties geoLocation = new GeoLocationProperties();
+
+    /**
      * SAML SP integration settings.
      */
     @NestedConfigurationProperty
     private SamlServiceProviderProperties samlSp = new SamlServiceProviderProperties();
 
     /**
-     * MaxMind settings.
-     */
-    @NestedConfigurationProperty
-    private MaxmindProperties maxmind = new MaxmindProperties();
-
-    /**
-     * Google Maps settings.
-     */
-    @NestedConfigurationProperty
-    private GoogleMapsProperties googleMaps = new GoogleMapsProperties();
-
-    /**
      * General database and hibernate settings.
      */
     @NestedConfigurationProperty
     private DatabaseProperties jdbc = new DatabaseProperties();
-
-    /**
-     * Google Apps integration settings.
-     */
-    @NestedConfigurationProperty
-    private GoogleAppsProperties googleApps = new GoogleAppsProperties();
-
+    
     /**
      * Integration settings for amazon sts.
      */
@@ -355,35 +370,39 @@ public class CasConfigurationProperties implements Serializable {
     private SpringCloudConfigurationProperties spring = new SpringCloudConfigurationProperties();
 
     /**
-     * Session replication properties.
-     */
-    @NestedConfigurationProperty
-    private SessionReplicationProperties sessionReplication = new SessionReplicationProperties();
-
-    /**
      * Account registration settings.
      */
     @NestedConfigurationProperty
     private AccountManagementRegistrationProperties accountRegistration = new AccountManagementRegistrationProperties();
 
     /**
-     * Hold configuration settings in a parent
-     * field mainly used for serialization.
-     *
-     * @return the serializable
+     * Core internal settings.
      */
-    public Serializable withHolder() {
-        return new Holder(this);
-    }
+    @NestedConfigurationProperty
+    private CasServerCoreProperties core = new CasServerCoreProperties();
 
-    @RequiredArgsConstructor
-    @Getter
-    private static class Holder implements Serializable {
-        private static final long serialVersionUID = -3129941286238115568L;
+    /**
+     * Javers settings.
+     */
+    @NestedConfigurationProperty
+    private JaversProperties javers = new JaversProperties();
 
-        /**
-         * Reference to configuration settings.
-         */
-        private final CasConfigurationProperties cas;
+    /**
+     * Multitenancy settings.
+     */
+    @NestedConfigurationProperty
+    private MultitenancyProperties multitenancy = new MultitenancyProperties();
+
+    /**
+     * Bind from map.
+     *
+     * @param source  the source
+     * @param payload the payload
+     * @return the optional
+     */
+    public static Optional<CasConfigurationProperties> bindFrom(final String source, final Map<String, Object> payload) {
+        val binder = new Binder(ConfigurationPropertySources.from(new MapPropertySource(source, payload)));
+        val bound = binder.bind(CasConfigurationProperties.PREFIX, Bindable.of(CasConfigurationProperties.class));
+        return bound.isBound() ? Optional.of(bound.get()) : Optional.empty();
     }
 }

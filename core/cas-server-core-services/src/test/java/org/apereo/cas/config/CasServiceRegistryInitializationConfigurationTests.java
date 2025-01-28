@@ -2,21 +2,19 @@ package org.apereo.cas.config;
 
 import org.apereo.cas.authentication.principal.ServiceFactory;
 import org.apereo.cas.authentication.principal.WebApplicationService;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.services.ServiceRegistry;
 import org.apereo.cas.services.ServiceRegistryInitializer;
 import org.apereo.cas.services.ServicesManager;
-
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -26,18 +24,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @Tag("RegisteredService")
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasServiceRegistryInitializationConfiguration.class
-},
-    properties = "cas.service-registry.core.init-from-json=true"
-)
-public class CasServiceRegistryInitializationConfigurationTests {
+@ExtendWith(CasTestExtension.class)
+@SpringBootTest(classes = BaseAutoConfigurationTests.SharedTestConfiguration.class, properties = "cas.service-registry.core.init-from-json=true")
+class CasServiceRegistryInitializationConfigurationTests {
     @Autowired
     @Qualifier("serviceRegistryInitializer")
     private ServiceRegistryInitializer serviceRegistryInitializer;
@@ -51,13 +40,13 @@ public class CasServiceRegistryInitializationConfigurationTests {
     private ServicesManager servicesManager;
 
     @Autowired
-    @Qualifier("webApplicationServiceFactory")
+    @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
     private ServiceFactory<WebApplicationService> webApplicationServiceFactory;
 
     @Nested
     public class WithoutServiceRegistryLocation {
         @Test
-        public void verifyOperation() {
+        void verifyOperation() {
             assertNotNull(serviceRegistryInitializer);
             assertNotNull(embeddedJsonServiceRegistry);
             assertEquals(1, servicesManager.count());
@@ -71,7 +60,7 @@ public class CasServiceRegistryInitializationConfigurationTests {
     @TestPropertySource(properties = "cas.service-registry.json.location=unknown-bad-location")
     public class WithUnknownServiceRegistryLocation {
         @Test
-        public void verifyOperation() {
+        void verifyOperation() {
             assertNotNull(serviceRegistryInitializer);
             assertNotNull(embeddedJsonServiceRegistry);
             assertEquals(1, servicesManager.count());

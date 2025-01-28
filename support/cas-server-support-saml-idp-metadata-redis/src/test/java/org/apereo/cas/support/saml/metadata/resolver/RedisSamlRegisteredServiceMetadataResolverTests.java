@@ -1,10 +1,10 @@
 package org.apereo.cas.support.saml.metadata.resolver;
 
-import org.apereo.cas.redis.core.util.RedisUtils;
+
 import org.apereo.cas.support.saml.BaseRedisSamlMetadataTests;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.SamlMetadataDocument;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 
 import lombok.val;
 import org.apache.commons.io.IOUtils;
@@ -15,7 +15,6 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.context.TestPropertySource;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
@@ -33,17 +32,18 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.saml-idp.metadata.file-system.location=file:/tmp"
 })
 @Tag("Redis")
-@EnabledIfPortOpen(port = 6379)
-public class RedisSamlRegisteredServiceMetadataResolverTests extends BaseRedisSamlMetadataTests {
+@EnabledIfListeningOnPort(port = 6379)
+class RedisSamlRegisteredServiceMetadataResolverTests extends BaseRedisSamlMetadataTests {
     @BeforeEach
-    public void setup() {
+    void setup() {
         val key = RedisSamlRegisteredServiceMetadataResolver.CAS_PREFIX + '*';
-        val keys = RedisUtils.keys(redisSamlRegisteredServiceMetadataResolverTemplate, key, 0).collect(Collectors.toSet());
-        redisSamlRegisteredServiceMetadataResolverTemplate.delete(keys);
+        try (val keys = redisSamlRegisteredServiceMetadataResolverTemplate.scan(key, 0L)) {
+            redisSamlRegisteredServiceMetadataResolverTemplate.delete(keys.collect(Collectors.toSet()));
+        }
     }
 
     @Test
-    public void verifyResolver() throws IOException {
+    void verifyResolver() throws Throwable {
         val res = new ClassPathResource("sp-metadata.xml");
         val md = new SamlMetadataDocument();
         md.setName("SP");
@@ -62,7 +62,7 @@ public class RedisSamlRegisteredServiceMetadataResolverTests extends BaseRedisSa
     }
 
     @Test
-    public void verifyFailsResolver() throws IOException {
+    void verifyFailsResolver() throws Throwable {
         val res = new ByteArrayResource("bad-data".getBytes(StandardCharsets.UTF_8));
         val md = new SamlMetadataDocument();
         md.setName("SP");
@@ -77,7 +77,7 @@ public class RedisSamlRegisteredServiceMetadataResolverTests extends BaseRedisSa
     }
 
     @Test
-    public void verifyResolverDoesNotSupport() {
+    void verifyResolverDoesNotSupport() {
         assertFalse(resolver.supports(null));
     }
 }

@@ -1,9 +1,9 @@
 description = "Apereo CAS Core Tickets"
 dependencies {
     api project(":api:cas-server-core-api-ticket")
-    api project(":core:cas-server-core-tickets-api")
+    api project(":api:cas-server-core-api-monitor")
 
-    implementation libraries.casclient
+    api project(":core:cas-server-core-tickets-api")
 
     implementation project(":core:cas-server-core-services-api")
     implementation project(":core:cas-server-core-cookie-api")
@@ -13,11 +13,18 @@ dependencies {
     implementation project(":core:cas-server-core-services-authentication")
     implementation project(":core:cas-server-core-configuration-api")
     implementation project(":core:cas-server-core-util")
+    implementation project(":core:cas-server-core-events-api")
+    implementation project(":core:cas-server-core-events")
 
     compileOnly project(":core:cas-server-core-services")
 
+    testImplementation libraries.metrics
+    
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-services")
     testImplementation project(":core:cas-server-core-web")
+    testImplementation project(":core:cas-server-core-webflow")
+    testImplementation project(":core:cas-server-core-webflow-mfa")
     testImplementation project(":core:cas-server-core-cookie")
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core-authentication")
@@ -26,9 +33,10 @@ dependencies {
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-notifications")
     testImplementation project(":core:cas-server-core-logout-api")
+    testImplementation project(":core:cas-server-core-monitor")
 
     testImplementation project(":support:cas-server-support-person-directory")
-    
+
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-notifications", configuration: "tests")

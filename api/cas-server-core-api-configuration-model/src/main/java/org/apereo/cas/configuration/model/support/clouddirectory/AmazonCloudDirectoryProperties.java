@@ -6,11 +6,12 @@ import org.apereo.cas.configuration.model.support.aws.BaseAmazonWebServicesPrope
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+
+import java.io.Serial;
 
 /**
  * This is {@link AmazonCloudDirectoryProperties}.
@@ -22,9 +23,10 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("AmazonCloudDirectoryProperties")
+
 public class AmazonCloudDirectoryProperties extends BaseAmazonWebServicesProperties {
 
+    @Serial
     private static final long serialVersionUID = 6725526133973304269L;
 
     /**

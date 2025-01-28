@@ -6,17 +6,26 @@
 def dependencyUpdates = gradle.startParameter.taskNames.any {task -> task.equalsIgnoreCase('dependencyUpdates') }
 if (!dependencyUpdates) {
     ["runtimeClasspath", "testRuntimeClasspath"].forEach(name -> {
-        def cfg = configurations.findByName(name)
-        cfg.resolutionStrategy.force "org.bouncycastle:bcprov-jdk15on:1.63"
+        configurations.named(name).configure {it.resolutionStrategy.force("org.bouncycastle:bcprov-jdk15on:1.63") }
     })
 }
 
 description = "Apereo CAS RADIUS RSA MFA Support"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "Multifactor Authentication",
+            title: "RADIUS",
+            aliases: ["radiusmfa"]
+    ]
+}
+
 dependencies {
     api project(":api:cas-server-core-api-webflow")
     api project(":api:cas-server-core-api")
     
     implementation project(":core:cas-server-core-webflow")
+    implementation project(":core:cas-server-core-multitenancy")
     implementation project(":core:cas-server-core-webflow-api")
     implementation project(":core:cas-server-core-webflow-mfa")
     implementation project(":core:cas-server-core-webflow-mfa-api")
@@ -38,6 +47,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-tickets")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-web")
     testImplementation project(":core:cas-server-core-notifications")
     testImplementation project(":core:cas-server-core-rest")
@@ -58,4 +68,6 @@ dependencies {
     testImplementation project(path: ":core:cas-server-core-webflow-mfa-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication", configuration: "tests")
+
+    testImplementation project(path: ":support:cas-server-support-person-directory-core", configuration: "tests")
 }

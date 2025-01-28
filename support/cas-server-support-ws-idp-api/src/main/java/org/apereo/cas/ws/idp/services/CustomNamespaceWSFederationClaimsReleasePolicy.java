@@ -4,13 +4,13 @@ import org.apereo.cas.services.AbstractRegisteredServiceAttributeReleasePolicy;
 import org.apereo.cas.services.RegisteredServiceAttributeReleasePolicyContext;
 import org.apereo.cas.ws.idp.WSFederationConstants;
 
-import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +28,7 @@ import java.util.TreeMap;
 @Setter
 public class CustomNamespaceWSFederationClaimsReleasePolicy extends AbstractRegisteredServiceAttributeReleasePolicy {
 
+    @Serial
     private static final long serialVersionUID = -1723928645221579489L;
 
     private String namespace = WSFederationConstants.HTTP_SCHEMAS_APEREO_CAS;
@@ -47,7 +48,7 @@ public class CustomNamespaceWSFederationClaimsReleasePolicy extends AbstractRegi
                                                            final Map<String, List<Object>> attributes) {
         val resolvedAttributes = new TreeMap<String, List<Object>>(String.CASE_INSENSITIVE_ORDER);
         resolvedAttributes.putAll(attributes);
-        val attributesToRelease = Maps.<String, List<Object>>newHashMapWithExpectedSize(resolvedAttributes.size());
+        val attributesToRelease = new HashMap<String, List<Object>>(resolvedAttributes.size());
         getAllowedAttributes().forEach((key, value) -> {
             if (resolvedAttributes.containsKey(value)) {
                 val attributeValue = resolvedAttributes.get(value);

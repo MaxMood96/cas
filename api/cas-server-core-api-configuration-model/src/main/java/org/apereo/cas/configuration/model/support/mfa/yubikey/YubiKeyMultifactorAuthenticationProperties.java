@@ -1,20 +1,19 @@
 package org.apereo.cas.configuration.model.support.mfa.yubikey;
 
+import org.apereo.cas.configuration.model.core.util.EncryptionJwtCryptoProperties;
 import org.apereo.cas.configuration.model.core.util.EncryptionJwtSigningJwtCryptographyProperties;
+import org.apereo.cas.configuration.model.core.util.SigningJwtCryptoProperties;
 import org.apereo.cas.configuration.model.support.mfa.BaseMultifactorAuthenticationProviderProperties;
+import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
-import org.apereo.cas.util.crypto.CipherExecutor;
-
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
-import org.springframework.core.io.Resource;
-
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,7 +29,7 @@ import java.util.Map;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("YubiKeyMultifactorProperties")
+
 public class YubiKeyMultifactorAuthenticationProperties extends BaseMultifactorAuthenticationProviderProperties {
 
     /**
@@ -38,6 +37,7 @@ public class YubiKeyMultifactorAuthenticationProperties extends BaseMultifactorA
      */
     public static final String DEFAULT_IDENTIFIER = "mfa-yubikey";
 
+    @Serial
     private static final long serialVersionUID = 9138057706201201089L;
 
     /**
@@ -59,11 +59,12 @@ public class YubiKeyMultifactorAuthenticationProperties extends BaseMultifactorA
      * or register new devices/accounts automatically.
      */
     private boolean multipleDeviceRegistrationEnabled;
-    
+
     /**
      * Keep device registration records inside a static JSON resource.
      */
-    private transient Resource jsonFile;
+    @ExpressionLanguageCapable
+    private YubiKeyJsonMultifactorProperties json = new YubiKeyJsonMultifactorProperties();
 
     /**
      * Collection of allowed devices allowed per user.
@@ -83,10 +84,9 @@ public class YubiKeyMultifactorAuthenticationProperties extends BaseMultifactorA
     private boolean trustedDeviceEnabled;
 
     /**
-     * Keep device registration records inside a CouchDb resource.
+     * Define the strategy that controls how devices should be validated.
      */
-    @NestedConfigurationProperty
-    private YubiKeyCouchDbMultifactorProperties couchDb = new YubiKeyCouchDbMultifactorProperties();
+    private YubiKeyDeviceValidationOptions validator = YubiKeyDeviceValidationOptions.VERIFY;
 
     /**
      * Keep device registration records inside a JDBC resource.
@@ -127,8 +127,25 @@ public class YubiKeyMultifactorAuthenticationProperties extends BaseMultifactorA
 
     public YubiKeyMultifactorAuthenticationProperties() {
         setId(DEFAULT_IDENTIFIER);
-        crypto.getEncryption().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
-        crypto.getSigning().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
+        crypto.getEncryption().setKeySize(EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
+        crypto.getSigning().setKeySize(SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
     }
 
+    /**
+     * Device validation options.
+     */
+    public enum YubiKeyDeviceValidationOptions {
+        /**
+         * Verify yubikey devices via YubiKey APIs.
+         */
+        VERIFY,
+        /**
+         * Skip all validations checks and accept all devices.
+         */
+        SKIP,
+        /**
+         * Reject all devices.
+         */
+        REJECT
+    }
 }

@@ -3,10 +3,11 @@ package org.apereo.cas.configuration.model.core.authentication;
 import org.apereo.cas.configuration.model.RestEndpointProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * This is {@link RestPrincipalAttributesProperties}.
@@ -18,9 +19,10 @@ import lombok.experimental.Accessors;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("RestPrincipalAttributesProperties")
+
 public class RestPrincipalAttributesProperties extends RestEndpointProperties {
 
+    @Serial
     private static final long serialVersionUID = -30055974448426360L;
 
     /**
@@ -29,13 +31,7 @@ public class RestPrincipalAttributesProperties extends RestEndpointProperties {
      * merging strategies.
      */
     private int order;
-
-    /**
-     * Whether attribute repository should consider the underlying
-     * attribute names in a case-insensitive manner.
-     */
-    private boolean caseInsensitive;
-
+    
     /**
      * A value can be assigned to this field to uniquely identify this resolver.
      */

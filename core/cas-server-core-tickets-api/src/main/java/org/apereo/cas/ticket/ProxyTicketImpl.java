@@ -7,6 +7,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * The {@link ProxyTicketImpl} is a concrete implementation of the {@link ProxyTicket}.
@@ -16,19 +19,12 @@ import lombok.NoArgsConstructor;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 @NoArgsConstructor
+@Accessors(chain = true)
 public class ProxyTicketImpl extends ServiceTicketImpl implements ProxyTicket {
 
+    @Serial
     private static final long serialVersionUID = -4469960563289285371L;
 
-    /**
-     * Instantiates a new Proxy ticket.
-     *
-     * @param id                 the id
-     * @param ticket             the ticket
-     * @param service            the service
-     * @param credentialProvided the credential that prompted this ticket. Could be false.
-     * @param policy             the expiration policy
-     */
     @JsonCreator
     public ProxyTicketImpl(@JsonProperty("id") final String id, @JsonProperty("ticketGrantingTicket") final TicketGrantingTicket ticket,
                            @JsonProperty("service") final Service service, @JsonProperty("credentialProvided") final boolean credentialProvided,

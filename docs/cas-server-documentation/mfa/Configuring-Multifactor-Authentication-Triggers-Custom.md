@@ -59,23 +59,19 @@ The below example demonstrates a reasonable outline of a custom event resolver:
 ```java
 package org.apereo.cas.custom.config;
 
-@Configuration(value = "SomethingConfiguration", proxyBeanMethods = false)
+@AutoConfiguration
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 public class SomethingConfiguration {
-
-    @Autowired
-    @Qualifier("initialAuthenticationAttemptWebflowEventResolver")
-    private CasDelegatingWebflowEventResolver initialEventResolver;
-    
     @Bean
     public MultifactorAuthenticationTrigger exampleMultifactorAuthenticationTrigger() {
         return new ExampleMultifactorAuthenticationTrigger();
     }
     
     @Bean
-    @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-    public CasWebflowEventResolver exampleMultifactorAuthenticationWebflowEventResolver() {
-        val r = new DefaultMultifactorAuthenticationProviderEventResolver(
+    public CasWebflowEventResolver exampleMultifactorAuthenticationWebflowEventResolver(
+        @Qualifier(CasDelegatingWebflowEventResolver.BEAN_NAME_INITIAL_AUTHENTICATION_EVENT_RESOLVER)
+        final CasDelegatingWebflowEventResolver initialEventResolver) {
+        val resolver = new DefaultMultifactorAuthenticationProviderEventResolver(
             authenticationSystemSupport.getObject(),
             centralAuthenticationService.getObject(),
             servicesManager.getObject(),
@@ -84,8 +80,8 @@ public class SomethingConfiguration {
             authenticationRequestServiceSelectionStrategies.getObject(),
             multifactorAuthenticationProviderSelector.getObject(),
             exampleMultifactorAuthenticationTrigger());
-        this.initialAuthenticationAttemptWebflowEventResolver.addDelegate(r);
-        return r;
+        initialEventResolver.addDelegate(resolver);
+        return resolver;
     }
 }
 ```

@@ -4,12 +4,14 @@ import org.apereo.cas.adaptors.duo.authn.DuoSecurityMultifactorAuthenticationPro
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
+import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.web.BaseCasActuatorEndpoint;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.boot.actuate.endpoint.Access;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 import org.springframework.context.ApplicationContext;
@@ -26,7 +28,7 @@ import java.util.Objects;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@Endpoint(id = "duoPing", enableByDefault = false)
+@Endpoint(id = "duoPing", defaultAccess = Access.NONE)
 public class DuoSecurityPingEndpoint extends BaseCasActuatorEndpoint {
     private final ApplicationContext applicationContext;
 
@@ -43,7 +45,8 @@ public class DuoSecurityPingEndpoint extends BaseCasActuatorEndpoint {
      * @return the map
      */
     @ReadOperation(produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Ping Duo Security given the provider id", parameters = {@Parameter(name = "providerId")})
+    @Operation(summary = "Ping Duo Security given the provider id",
+        parameters = @Parameter(name = "providerId", description = "The multifactor authentication provider id defined in CAS settings"))
     public Map<?, ?> pingDuo(@Nullable final String providerId) {
         val resolver = SpringExpressionLanguageValueResolver.getInstance();
         val results = new LinkedHashMap<>();
@@ -51,7 +54,8 @@ public class DuoSecurityPingEndpoint extends BaseCasActuatorEndpoint {
         providers
             .stream()
             .filter(Objects::nonNull)
-            .map(DuoSecurityMultifactorAuthenticationProvider.class::cast)
+            .filter(BeanSupplier::isNotProxy)
+            .map(duoSecurityMultifactorAuthenticationProvider -> duoSecurityMultifactorAuthenticationProvider)
             .filter(provider -> StringUtils.isBlank(providerId) || provider.matches(providerId))
             .forEach(p -> {
                 val duoService = p.getDuoAuthenticationService();

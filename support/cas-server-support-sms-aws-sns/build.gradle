@@ -1,4 +1,12 @@
 description = "Apereo CAS AWS Simple Notification SMS Support"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "SMS & Text Messaging",
+            title: "AWS SNS"
+    ]
+}
+
 dependencies {
 
     implementation project(":core:cas-server-core-web-api")
@@ -6,11 +14,12 @@ dependencies {
     implementation project(":core:cas-server-core-services-api")
     implementation project(":core:cas-server-core-services-authentication")
     implementation project(":core:cas-server-core-webflow")
+    implementation project(":core:cas-server-core-multitenancy")
     implementation project(":core:cas-server-core-webflow-api")
     implementation project(":core:cas-server-core-configuration-api")
     implementation project(":core:cas-server-core-authentication-api")
     implementation project(":core:cas-server-core-authentication-mfa")
-    implementation project(":core:cas-server-core-notifications")
+    implementation project(":core:cas-server-core-notifications-api")
     implementation project(":support:cas-server-support-aws")
 
     implementation libraries.awssns

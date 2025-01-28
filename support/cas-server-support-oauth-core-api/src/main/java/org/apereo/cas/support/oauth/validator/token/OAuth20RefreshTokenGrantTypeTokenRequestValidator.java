@@ -11,6 +11,7 @@ import org.apereo.cas.ticket.refreshtoken.OAuth20RefreshToken;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.pac4j.core.context.CallContext;
 import org.pac4j.core.context.WebContext;
 import org.pac4j.core.profile.ProfileManager;
 import org.pac4j.core.profile.UserProfile;
@@ -31,10 +32,12 @@ public class OAuth20RefreshTokenGrantTypeTokenRequestValidator extends BaseOAuth
 
     @Override
     protected boolean validateInternal(final WebContext context, final String grantType,
-                                       final ProfileManager manager, final UserProfile uProfile) {
-
-        val clientId = OAuth20Utils.getClientIdAndClientSecret(context, getConfigurationContext().getSessionStore()).getLeft();
-        val refreshTokenResult = OAuth20Utils.getRequestParameter(context, OAuth20Constants.REFRESH_TOKEN);
+                                       final ProfileManager manager, final UserProfile uProfile) throws Throwable {
+        val callContext = new CallContext(context, getConfigurationContext().getSessionStore());
+        val clientId = getConfigurationContext().getRequestParameterResolver()
+            .resolveClientIdAndClientSecret(callContext).getLeft();
+        val refreshTokenResult = getConfigurationContext().getRequestParameterResolver()
+            .resolveRequestParameter(context, OAuth20Constants.REFRESH_TOKEN);
         if (refreshTokenResult.isEmpty() || clientId.isEmpty()) {
             return false;
         }
@@ -42,7 +45,7 @@ public class OAuth20RefreshTokenGrantTypeTokenRequestValidator extends BaseOAuth
         var refreshToken = (OAuth20RefreshToken) null;
         val token = refreshTokenResult.get();
         try {
-            refreshToken = getConfigurationContext().getCentralAuthenticationService().getTicket(token, OAuth20RefreshToken.class);
+            refreshToken = getConfigurationContext().getTicketRegistry().getTicket(token, OAuth20RefreshToken.class);
             LOGGER.trace("Found valid refresh token [{}] in the registry", refreshToken);
         } catch (final InvalidTicketException e) {
             LOGGER.warn("Provided refresh token [{}] cannot be found in the registry or has expired", token);
@@ -60,7 +63,7 @@ public class OAuth20RefreshTokenGrantTypeTokenRequestValidator extends BaseOAuth
 
         if (!isGrantTypeSupportedBy(registeredService, grantType)) {
             LOGGER.warn("Requested grant type [{}] is not authorized by service definition [{}]",
-                getGrantType(), Objects.requireNonNull(registeredService).getServiceId());
+                grantType, Objects.requireNonNull(registeredService).getServiceId());
             return false;
         }
 

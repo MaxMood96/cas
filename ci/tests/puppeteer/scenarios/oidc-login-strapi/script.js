@@ -1,28 +1,16 @@
-const puppeteer = require('puppeteer');
-const assert = require('assert');
-const cas = require('../../cas.js');
+
+const cas = require("../../cas.js");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
-    await page.goto("https://localhost:8443/cas/login");
-
-    await cas.loginWith(page, "casuser", "Mellon");
-    await cas.assertTicketGrantingCookie(page);
-
+    await cas.gotoLogin(page);
+    await cas.loginWith(page);
+    await cas.assertCookie(page);
     await cas.assertPageTitle(page, "CAS - Central Authentication Service Log In Successful");
-
-    await cas.assertInnerText(page, '#content div h2', "Log In Successful");
-    // hit strapi endpoint that triggers CAS login to get JWT
-    await page.goto("http://localhost:1337/connect/cas", {waitUntil: 'networkidle2'});
-    let element = await page.$('body pre');
-    if (element == null) {
-        let errorpage = await cas.textContent(page, 'body div main');
-        console.log(errorpage)
-        throw "failed";
-    }
-    let jwt = await page.evaluate(element => element.textContent.trim(), element);
-    console.log(jwt);
-    assert(jwt.includes("jwt"));
+    await cas.goto(page, "http://localhost:1337/api/connect/cas");
+    await cas.sleep(2000);
+    const id_token = await cas.assertParameter(page, "id_token");
+    await cas.log(id_token);
     await browser.close();
 })();

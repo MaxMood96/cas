@@ -2,11 +2,11 @@ package org.apereo.cas.configuration.model.support.x509;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -20,9 +20,10 @@ import java.io.Serializable;
 @Getter
 @Accessors(chain = true)
 @Setter
-@JsonFilter("SubjectDnPrincipalResolverProperties")
+
 public class SubjectDnPrincipalResolverProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -1833042842488884318L;
 
     /**

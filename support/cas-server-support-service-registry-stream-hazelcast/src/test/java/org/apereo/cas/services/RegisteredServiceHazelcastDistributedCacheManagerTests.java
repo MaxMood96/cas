@@ -6,16 +6,19 @@ import org.apereo.cas.services.publisher.DefaultCasRegisteredServiceStreamPublis
 import org.apereo.cas.support.events.service.CasRegisteredServiceDeletedEvent;
 import org.apereo.cas.support.events.service.CasRegisteredServiceLoadedEvent;
 import org.apereo.cas.support.events.service.CasRegisteredServiceSavedEvent;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.PublisherIdentifier;
 import org.apereo.cas.util.cache.DistributedCacheObject;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.impl.HazelcastInstanceFactory;
 import lombok.val;
+import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,13 +29,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.3.0
  */
 @Tag("Hazelcast")
-public class RegisteredServiceHazelcastDistributedCacheManagerTests {
+@ExtendWith(CasTestExtension.class)
+class RegisteredServiceHazelcastDistributedCacheManagerTests {
     private HazelcastInstance hz;
 
     private RegisteredServiceHazelcastDistributedCacheManager mgr;
 
     @BeforeEach
-    public void initialize() {
+    void initialize() {
         val properties = new BaseHazelcastProperties();
         properties.getCluster().getCore().setInstanceName(getClass().getSimpleName());
         val config = HazelcastConfigurationFactory.build(properties,
@@ -47,7 +51,7 @@ public class RegisteredServiceHazelcastDistributedCacheManagerTests {
     }
 
     @Test
-    public void verifyAction() {
+    void verifyAction() {
         val registeredService = RegisteredServiceTestUtils.getRegisteredService();
         var obj = mgr.get(registeredService);
         assertNull(obj);
@@ -63,26 +67,27 @@ public class RegisteredServiceHazelcastDistributedCacheManagerTests {
         assertFalse(mgr.getAll().isEmpty());
         obj = mgr.get(registeredService);
         assertNotNull(obj);
-        val c = mgr.findAll(obj1 -> obj1.getValue().equals(registeredService));
-        assertFalse(c.isEmpty());
+        val result = mgr.findAll(obj1 -> obj1.getValue().equals(registeredService));
+        assertFalse(result.isEmpty());
         mgr.remove(registeredService, cache, true);
         assertTrue(mgr.getAll().isEmpty());
     }
 
     @Test
-    public void verifyPublisher() {
+    void verifyPublisher() {
         val registeredService = RegisteredServiceTestUtils.getRegisteredService();
         val casRegisteredServiceStreamPublisherIdentifier = new PublisherIdentifier("123456");
         
         val publisher = new DefaultCasRegisteredServiceStreamPublisher(mgr);
+        val clientInfo = ClientInfoHolder.getClientInfo();
         publisher.publish(registeredService,
-            new CasRegisteredServiceDeletedEvent(this, registeredService),
+            new CasRegisteredServiceDeletedEvent(this, registeredService, clientInfo),
             casRegisteredServiceStreamPublisherIdentifier);
         publisher.publish(registeredService,
-            new CasRegisteredServiceSavedEvent(this, registeredService),
+            new CasRegisteredServiceSavedEvent(this, registeredService, clientInfo),
             casRegisteredServiceStreamPublisherIdentifier);
         publisher.publish(registeredService,
-            new CasRegisteredServiceLoadedEvent(this, registeredService),
+            new CasRegisteredServiceLoadedEvent(this, registeredService, clientInfo),
             casRegisteredServiceStreamPublisherIdentifier);
         assertFalse(mgr.getAll().isEmpty());
     }

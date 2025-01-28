@@ -10,12 +10,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.webflow.action.EventFactorySupport;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
-
-import java.util.stream.Collectors;
 
 /**
  * This is {@link DefaultCasWebflowAuthenticationExceptionHandler}.
@@ -32,17 +29,13 @@ public class DefaultCasWebflowAuthenticationExceptionHandler implements CasWebfl
      * Ordered list of error classes that this class knows how to handle.
      */
     private final CasWebflowExceptionCatalog errors;
-
-    /**
-     * String appended to exception class name to create a message bundle key for that particular error.
-     */
-    private final String messageBundlePrefix;
-
+    
     private int order = Integer.MAX_VALUE - 1;
 
     @Override
     public Event handle(final AuthenticationException exception, final RequestContext requestContext) {
         val id = handleAuthenticationException(exception, requestContext);
+        WebUtils.trackFailedAuthenticationAttempt(requestContext);
         return new EventFactorySupport().event(this, id);
     }
 
@@ -56,33 +49,20 @@ public class DefaultCasWebflowAuthenticationExceptionHandler implements CasWebfl
      * with highest precedence. Also sets an ERROR severity message in the
      * message context of the form {@code [messageBundlePrefix][exceptionClassSimpleName]}
      * for for the first handler
-     * error that is configured. If no match is found, {@value #UNKNOWN} is returned.
+     * error that is configured. If no match is found, {@value CasWebflowExceptionCatalog#UNKNOWN} is returned.
      *
-     * @param e              Authentication error to handle.
+     * @param exception              Authentication error to handle.
      * @param requestContext the spring context
-     * @return Name of next flow state to transition to or {@value #UNKNOWN}
+     * @return Name of next flow state to transition to or {@value CasWebflowExceptionCatalog#UNKNOWN}
      */
-    protected String handleAuthenticationException(final AuthenticationException e, final RequestContext requestContext) {
-        if (e.getHandlerErrors().containsKey(UnauthorizedServiceForPrincipalException.class.getSimpleName())) {
+    protected String handleAuthenticationException(final AuthenticationException exception, final RequestContext requestContext) {
+        if (exception.getHandlerErrors().containsKey(UnauthorizedServiceForPrincipalException.class.getSimpleName())) {
             val url = WebUtils.getUnauthorizedRedirectUrlFromFlowScope(requestContext);
             if (url != null) {
                 LOGGER.warn("Unauthorized service access for principal; CAS will be redirecting to [{}]", url);
                 return CasWebflowConstants.STATE_ID_SERVICE_UNAUTHZ_CHECK;
             }
         }
-        val values = e.getHandlerErrors().values().stream().map(Throwable::getClass).collect(Collectors.toList());
-        val handlerErrorName = errors.getRegisteredExceptions()
-            .stream()
-            .filter(values::contains)
-            .map(Class::getSimpleName)
-            .findFirst()
-            .orElseGet(() -> {
-                LOGGER.debug("Unable to translate handler errors of the authentication exception [{}]. Returning [{}]", e, UNKNOWN);
-                return UNKNOWN;
-            });
-
-        val messageCode = this.messageBundlePrefix + handlerErrorName;
-        WebUtils.addErrorMessageToContext(requestContext, messageCode, StringUtils.EMPTY, e.getArgs().toArray());
-        return handlerErrorName;
+        return errors.translateException(requestContext, exception);
     }
 }

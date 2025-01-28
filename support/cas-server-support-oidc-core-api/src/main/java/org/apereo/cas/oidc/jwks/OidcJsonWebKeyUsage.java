@@ -1,12 +1,5 @@
 package org.apereo.cas.oidc.jwks;
 
-/**
- * This is {@link JsonWebKeyUsage}.
- *
- * @author Misagh Moayyed
- * @since 6.5.0
- */
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +16,7 @@ import org.jose4j.jwk.Use;
  * @author Misagh Moayyed
  * @since 6.5.0
  */
+@Getter
 @RequiredArgsConstructor
 public enum OidcJsonWebKeyUsage {
     /**
@@ -34,7 +28,6 @@ public enum OidcJsonWebKeyUsage {
      */
     SIGNING(Use.SIGNATURE);
 
-    @Getter
     private final String value;
 
     /**

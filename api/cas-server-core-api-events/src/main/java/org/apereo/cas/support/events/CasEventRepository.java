@@ -12,6 +12,15 @@ import java.util.stream.Stream;
  * @since 5.0.0
  */
 public interface CasEventRepository {
+    /**
+     * Name of the events transaction manager.
+     */
+    String TRANSACTION_MANAGER_EVENTS = "transactionManagerEvents";
+    
+    /**
+     * Bean name.
+     */
+    String BEAN_NAME = "casEventRepository";
 
     /**
      * Gets event repository filter.
@@ -23,11 +32,18 @@ public interface CasEventRepository {
     }
 
     /**
+     * Remove all.
+     */
+    void removeAll();
+
+    /**
      * Save.
      *
      * @param event the event
+     * @return the cas event
+     * @throws Throwable the throwable
      */
-    void save(CasEvent event);
+    CasEvent save(CasEvent event) throws Throwable;
 
     /**
      * Load collection.

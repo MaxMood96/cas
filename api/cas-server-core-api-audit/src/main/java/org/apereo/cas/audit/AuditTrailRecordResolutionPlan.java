@@ -4,6 +4,7 @@ import org.apereo.inspektr.audit.spi.AuditActionResolver;
 import org.apereo.inspektr.audit.spi.AuditResourceResolver;
 import org.apereo.inspektr.common.spi.PrincipalResolver;
 
+import java.util.Arrays;
 import java.util.Map;
 
 /**
@@ -13,6 +14,15 @@ import java.util.Map;
  * @since 5.3.0
  */
 public interface AuditTrailRecordResolutionPlan {
+    /**
+     * Register audit resource resolver.
+     *
+     * @param resolver the resolver
+     * @param keys     the key
+     */
+    default void registerAuditResourceResolver(final AuditResourceResolver resolver, final String... keys) {
+        Arrays.stream(keys).forEach(k -> registerAuditResourceResolver(k, resolver));
+    }
 
     /**
      * Register audit resource resolver.
@@ -42,16 +52,23 @@ public interface AuditTrailRecordResolutionPlan {
     /**
      * Register audit action resolvers.
      *
-     * @param resolvers the resolvers
+     * @param resolver the resolver
+     * @param keys     the keys
      */
-    void registerAuditActionResolvers(Map<String, AuditActionResolver> resolvers);
-
+    default void registerAuditActionResolvers(final AuditActionResolver resolver, final String... keys) {
+        Arrays.stream(keys).forEach(k -> registerAuditActionResolver(k, resolver));
+    }
+    
     /**
      * Register audit resource resolvers.
      *
-     * @param resolvers the resolvers
+     * @param resolver the resolver
+     * @param keys     the keys
      */
-    void registerAuditResourceResolvers(Map<String, AuditResourceResolver> resolvers);
+    default void registerAuditResourceResolvers(final AuditResourceResolver resolver,
+                                                final String... keys) {
+        Arrays.stream(keys).forEach(k -> registerAuditResourceResolver(k, resolver));
+    }
 
     /**
      * Gets audit resource resolvers.

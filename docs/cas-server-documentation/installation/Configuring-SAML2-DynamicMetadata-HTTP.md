@@ -9,6 +9,7 @@ category: Protocols
 # HTTP/HTTPS - SAML2 Metadata Management
 
 A metadata location for a SAML service definition may download SAML2 metadata from http or https URLs.
+Multiple locations may be comma-separated.
 
 ```json
 {
@@ -22,3 +23,5 @@ A metadata location for a SAML service definition may download SAML2 metadata fr
 ```
 
 {% include_cached casproperties.html properties="cas.authn.saml-idp.metadata.http" %}
+
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).

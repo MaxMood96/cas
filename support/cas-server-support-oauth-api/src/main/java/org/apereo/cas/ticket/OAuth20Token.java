@@ -2,7 +2,12 @@ package org.apereo.cas.ticket;
 
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
+import org.apereo.cas.ticket.code.OAuth20Code;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -12,7 +17,8 @@ import java.util.Set;
  * @author Jerome Leleu
  * @since 5.0.0
  */
-public interface OAuth20Token extends ServiceTicket, AuthenticationAwareTicket {
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
+public interface OAuth20Token extends TicketGrantingTicketAwareTicket {
 
     /**
      * Get requested scopes requested at the time of issuing this code.
@@ -26,10 +32,13 @@ public interface OAuth20Token extends ServiceTicket, AuthenticationAwareTicket {
      *
      * @return map of requested claims.
      */
-    Map<String, Map<String, Object>> getClaims();
+    default Map<String, Map<String, Object>> getClaims() {
+        return new HashMap<>();
+    }
 
     /**
      * Client id for whom this token was issued.
+     *
      * @return client id.
      */
     String getClientId();
@@ -39,13 +48,26 @@ public interface OAuth20Token extends ServiceTicket, AuthenticationAwareTicket {
      *
      * @return the response type
      */
-    OAuth20ResponseTypes getResponseType();
+    default OAuth20ResponseTypes getResponseType() {
+        return OAuth20ResponseTypes.NONE;
+    }
 
     /**
      * Gets grant type.
      *
      * @return the grant type
      */
-    OAuth20GrantTypes getGrantType();
+    default OAuth20GrantTypes getGrantType() {
+        return OAuth20GrantTypes.NONE;
+    }
 
+    /**
+     * Is this an oauth code?
+     *
+     * @return true/false
+     */
+    @JsonIgnore
+    default boolean isCode() {
+        return this instanceof OAuth20Code;
+    }
 }

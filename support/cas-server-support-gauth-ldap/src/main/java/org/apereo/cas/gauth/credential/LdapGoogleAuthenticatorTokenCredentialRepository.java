@@ -3,16 +3,17 @@ package org.apereo.cas.gauth.credential;
 import org.apereo.cas.authentication.OneTimeTokenAccount;
 import org.apereo.cas.configuration.model.support.mfa.gauth.LdapGoogleAuthenticatorMultifactorProperties;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.LdapConnectionFactory;
 import org.apereo.cas.util.LdapUtils;
 import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.warrenstrange.googleauth.IGoogleAuthenticator;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -45,35 +46,38 @@ public class LdapGoogleAuthenticatorTokenCredentialRepository
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
-    private final ConnectionFactory connectionFactory;
+    private final LdapConnectionFactory connectionFactory;
 
     private final LdapGoogleAuthenticatorMultifactorProperties ldapProperties;
 
     public LdapGoogleAuthenticatorTokenCredentialRepository(final CipherExecutor<String, String> tokenCredentialCipher,
+                                                            final CipherExecutor<Number, Number> scratchCodesCipher,
                                                             final IGoogleAuthenticator googleAuthenticator,
                                                             final ConnectionFactory connectionFactory,
                                                             final LdapGoogleAuthenticatorMultifactorProperties ldapProperties) {
-        super(tokenCredentialCipher, googleAuthenticator);
-        this.connectionFactory = connectionFactory;
+        super(tokenCredentialCipher, scratchCodesCipher, googleAuthenticator);
+        this.connectionFactory = new LdapConnectionFactory(connectionFactory);
         this.ldapProperties = ldapProperties;
     }
 
-    @SneakyThrows
     private static String mapToJson(final Collection<OneTimeTokenAccount> acct) {
-        val json = MAPPER.writeValueAsString(acct);
-        LOGGER.trace("Transformed object [{}] as JSON value [{}]", acct, json);
-        return json;
+        return FunctionUtils.doUnchecked(() -> {
+            val json = MAPPER.writeValueAsString(acct);
+            LOGGER.trace("Transformed object [{}] as JSON value [{}]", acct, json);
+            return json;
+        });
     }
 
-    @SneakyThrows
     private static List<OneTimeTokenAccount> mapFromJson(final String payload) {
-        LOGGER.trace("Mapping JSON value [{}]", payload);
-        val json = payload.trim();
-        if (StringUtils.isNotBlank(json)) {
-            return MAPPER.readValue(json, new TypeReference<>() {
-            });
-        }
-        return new ArrayList<>(0);
+        return FunctionUtils.doUnchecked(() -> {
+            LOGGER.trace("Mapping JSON value [{}]", payload);
+            val json = payload.trim();
+            if (StringUtils.isNotBlank(json)) {
+                return MAPPER.readValue(json, new TypeReference<>() {
+                });
+            }
+            return new ArrayList<>(0);
+        });
     }
 
     @Override
@@ -118,7 +122,7 @@ public class LdapGoogleAuthenticatorTokenCredentialRepository
 
     @Override
     public OneTimeTokenAccount save(final OneTimeTokenAccount account) {
-        return update(account);
+        return update(account.assignIdIfNecessary());
     }
 
     @Override
@@ -129,7 +133,7 @@ public class LdapGoogleAuthenticatorTokenCredentialRepository
         LOGGER.debug("Storing account [{}]", account);
         val entry = locateLdapEntryFor(account.getUsername());
         val ldapAttribute = Objects.requireNonNull(entry,
-            () -> String.format("Unable to locate LDAP entry for %s", account.getUsername()))
+                () -> String.format("Unable to locate LDAP entry for %s", account.getUsername()))
             .getAttribute(ldapProperties.getAccountAttributeName());
 
         if (ldapAttribute == null || ldapAttribute.getStringValues().isEmpty()) {
@@ -234,54 +238,57 @@ public class LdapGoogleAuthenticatorTokenCredentialRepository
         val attrMap = new HashMap<String, Set<String>>();
         attrMap.put(ldapProperties.getAccountAttributeName(), accounts);
         LOGGER.debug("Storing records [{}] at LDAP attribute [{}] for [{}]", accounts, attrMap.keySet(), entry.getDn());
-        return LdapUtils.executeModifyOperation(entry.getDn(), connectionFactory, CollectionUtils.wrap(attrMap));
+        return connectionFactory.executeModifyOperation(entry.getDn(), CollectionUtils.wrap(attrMap));
     }
 
-    @SneakyThrows
     private Collection<LdapEntry> locateLdapEntriesForAll() {
-        val att = ldapProperties.getAccountAttributeName();
-        val filter = LdapUtils.newLdaptiveSearchFilter('(' + att + "=*)");
-        LOGGER.debug("Locating LDAP entries via filter [{}] based on attribute [{}]", filter, att);
-        val response = LdapUtils.executeSearchOperation(connectionFactory,
-            ldapProperties.getBaseDn(), filter, ldapProperties.getPageSize(), att);
-        if (LdapUtils.containsResultEntry(response)) {
-            val results = response.getEntries();
-            LOGGER.debug("Locating [{}] LDAP entries based on response [{}]", results.size(), response);
-            return results;
-        }
-        LOGGER.debug("Unable to read entries from LDAP via filter [{}]", filter);
-        return new HashSet<>(0);
+        return FunctionUtils.doUnchecked(() -> {
+            val att = ldapProperties.getAccountAttributeName();
+            val filter = LdapUtils.newLdaptiveSearchFilter('(' + att + "=*)");
+            LOGGER.debug("Locating LDAP entries via filter [{}] based on attribute [{}]", filter, att);
+            val response = connectionFactory.executeSearchOperation(
+                ldapProperties.getBaseDn(), filter, ldapProperties.getPageSize(), att);
+            if (LdapUtils.containsResultEntry(response)) {
+                val results = response.getEntries();
+                LOGGER.debug("Locating [{}] LDAP entries based on response [{}]", results.size(), response);
+                return results;
+            }
+            LOGGER.debug("Unable to read entries from LDAP via filter [{}]", filter);
+            return new HashSet<>(0);
+        });
     }
 
-    @SneakyThrows
     private LdapEntry locateLdapEntryFor(final String principal) {
-        val searchFilter = '(' + ldapProperties.getSearchFilter() + ')';
-        val filter = LdapUtils.newLdaptiveSearchFilter(searchFilter, CollectionUtils.wrapList(principal));
-        LOGGER.debug("Locating LDAP entry via filter [{}] based on attribute [{}]", filter,
-            ldapProperties.getAccountAttributeName());
-        val response = LdapUtils.executeSearchOperation(this.connectionFactory, ldapProperties.getBaseDn(),
-            filter, ldapProperties.getPageSize(), ldapProperties.getAccountAttributeName());
-        if (LdapUtils.containsResultEntry(response)) {
-            val entry = response.getEntry();
-            LOGGER.debug("Located LDAP entry [{}]", entry);
-            return entry;
-        }
-        return null;
+        return FunctionUtils.doUnchecked(() -> {
+            val searchFilter = '(' + ldapProperties.getSearchFilter() + ')';
+            val filter = LdapUtils.newLdaptiveSearchFilter(searchFilter, CollectionUtils.wrapList(principal));
+            LOGGER.debug("Locating LDAP entry via filter [{}] based on attribute [{}]", filter,
+                ldapProperties.getAccountAttributeName());
+            val response = connectionFactory.executeSearchOperation(ldapProperties.getBaseDn(),
+                filter, ldapProperties.getPageSize(), ldapProperties.getAccountAttributeName());
+            if (LdapUtils.containsResultEntry(response)) {
+                val entry = response.getEntry();
+                LOGGER.debug("Located LDAP entry [{}]", entry);
+                return entry;
+            }
+            return null;
+        });
     }
 
-    @SneakyThrows
     private LdapEntry searchLdapAccountsBy(final long id) {
-        val searchFilter = String.format("(%s=*\"id\":%s*)", ldapProperties.getAccountAttributeName(), id);
-        val filter = LdapUtils.newLdaptiveSearchFilter(searchFilter);
-        LOGGER.debug("Locating LDAP entry via filter [{}] based on attribute [{}]", filter,
-            ldapProperties.getAccountAttributeName());
-        val response = LdapUtils.executeSearchOperation(this.connectionFactory, ldapProperties.getBaseDn(),
-            filter, ldapProperties.getPageSize(), ldapProperties.getAccountAttributeName());
-        if (LdapUtils.containsResultEntry(response)) {
-            val entry = response.getEntry();
-            LOGGER.debug("Located LDAP entry [{}]", entry);
-            return entry;
-        }
-        return null;
+        return FunctionUtils.doUnchecked(() -> {
+            val searchFilter = String.format("(%s=*\"id\":%s*)", ldapProperties.getAccountAttributeName(), id);
+            val filter = LdapUtils.newLdaptiveSearchFilter(searchFilter);
+            LOGGER.debug("Locating LDAP entry via filter [{}] based on attribute [{}]", filter,
+                ldapProperties.getAccountAttributeName());
+            val response = connectionFactory.executeSearchOperation(ldapProperties.getBaseDn(),
+                filter, ldapProperties.getPageSize(), ldapProperties.getAccountAttributeName());
+            if (LdapUtils.containsResultEntry(response)) {
+                val entry = response.getEntry();
+                LOGGER.debug("Located LDAP entry [{}]", entry);
+                return entry;
+            }
+            return null;
+        });
     }
 }

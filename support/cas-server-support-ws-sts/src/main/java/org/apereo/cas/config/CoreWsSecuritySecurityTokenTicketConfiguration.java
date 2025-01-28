@@ -1,12 +1,14 @@
 package org.apereo.cas.config;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.ticket.DefaultSecurityTokenTicketFactory;
 import org.apereo.cas.ticket.ExpirationPolicyBuilder;
 import org.apereo.cas.ticket.SecurityTokenTicketFactory;
 import org.apereo.cas.ticket.TicketFactoryExecutionPlanConfigurer;
 import org.apereo.cas.ticket.UniqueTicketIdGenerator;
-import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
+import org.apereo.cas.util.HostNameBasedUniqueTicketIdGenerator;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -22,13 +24,14 @@ import org.springframework.context.annotation.ScopedProxyMode;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Configuration(value = "CoreWsSecuritySecurityTokenTicketConfiguration", proxyBeanMethods = false)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-public class CoreWsSecuritySecurityTokenTicketConfiguration {
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.WsFederationIdentityProvider)
+@Configuration(value = "CoreWsSecuritySecurityTokenTicketConfiguration", proxyBeanMethods = false)
+class CoreWsSecuritySecurityTokenTicketConfiguration {
 
     @Configuration(value = "CoreWsSecuritySecurityTokenTicketFactoryConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CoreWsSecuritySecurityTokenTicketFactoryConfiguration {
+    static class CoreWsSecuritySecurityTokenTicketFactoryConfiguration {
         @ConditionalOnMissingBean(name = "securityTokenTicketFactory")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -44,14 +47,14 @@ public class CoreWsSecuritySecurityTokenTicketConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public UniqueTicketIdGenerator securityTokenTicketIdGenerator() {
-            return new DefaultUniqueTicketIdGenerator();
+            return new HostNameBasedUniqueTicketIdGenerator();
         }
 
     }
 
     @Configuration(value = "CoreWsSecuritySecurityTokenTicketPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CoreWsSecuritySecurityTokenTicketPlanConfiguration {
+    static class CoreWsSecuritySecurityTokenTicketPlanConfiguration {
         @ConditionalOnMissingBean(name = "securityTokenTicketFactoryConfigurer")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)

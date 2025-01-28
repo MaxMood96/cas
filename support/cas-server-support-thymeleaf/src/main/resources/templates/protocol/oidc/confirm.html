@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout}">
+<html xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" xmlns="http://www.w3.org/1999/html"
+      layout:decorate="~{layout}">
 
 <head>
     <title th:text="#{cas.oauth.confirm.pagetitle}"></title>
 </head>
 
 <body id="cas">
-<div layout:fragment="content" class="banner banner-success mdc-card card p-4 m-auto w-lg-66">
+<div layout:fragment="content" class="banner mdc-card card p-4 m-auto w-lg-66">
     <h1 th:text="#{screen.oauth.confirm.header}"/>
 
     <div class="d-flex flex-column align-items-center mb-2">
@@ -15,33 +16,35 @@
     </div>
 
     <div id="dynamic" th:if="${dynamic}" class="my-2 banner banner-warning alert alert-warning d-flex align-items-center">
-        <i class="mdi mdi-alert fas fa-exclamation-triangle mr-2"></i>
+        <i class="mdi mdi-alert fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
         <strong th:utext="#{screen.oidc.confirm.dynamic(${dynamicTime})}"/>
     </div>
     <div id="scopes" th:unless="${#sets.isEmpty(scopes)}">
         <h3 class="border-bottom bg-primary p-2" th:text="#{screen.oidc.confirm.scopes}"/>
         <p th:text="#{screen.oidc.confirm.asksinfo}"/>
 
-        <div th:each="scope : ${scopes}">
-            <span th:id="${scope}">
-                <i class="mdi mdi-cog fas fa-cog" aria-hidden="true"></i>
-                <strong><code th:text="${scope}"/></strong>
-                <p th:utext="#{screen.oidc.confirm.scope.__${scope}__}"/>
-            </span>
-        </div>
+        <dl class="dl-class0 dl-class1">
+            <div th:each="scope : ${scopes}">
+                <span th:id="${scope}">
+                    <dt class="dt-class0 dt-class1 mdi mdi-cog"> <strong><code th:text="${scope}"/></strong></dt>
+                    <dd class="dd-class0 dd-class1" th:utext="#{screen.oidc.confirm.scope.__${scope}__}"/>
+                </span>
+            </div>
+        </dl>
     </div>
 
     <div id="userInfoClaims" th:unless="${#sets.isEmpty(userInfoClaims)}" class="my-2">
         <h3 class="border-bottom bg-primary p-2" th:text="#{screen.oidc.confirm.claims}"/>
         <p th:utext="#{screen.oidc.confirm.asksinfo}"/>
 
-        <div th:each="claim : ${userInfoClaims}">
-            <span th:id="${claim}">
-                <i class="mdi mdi-cog fas fa-cog" aria-hidden="true"></i>
-                <strong><code th:text="${claim}"/></strong>
-                <p th:utext="#{screen.oidc.confirm.claim.__${claim}__}"/>
-            </span>
-        </div>
+        <dl class="dl-class0 dl-class1">
+            <div th:each="claim : ${userInfoClaims}">
+                <span th:id="${claim}">
+                    <dt class="dt-class0 dt-class1 mdi mdi-cog"> <strong><code th:text="${claim}"/></strong></dt>
+                    <dd class="dd-class0 dd-class1" th:utext="#{screen.oidc.confirm.claim.__${claim}__}"/>
+                </span>
+            </div>
+        </dl>
     </div>
 
 
@@ -59,14 +62,14 @@
     <h3 class="strong border-bottom pb-2 mt-4"
         th:text="#{screen.oauth.confirm.message(${serviceName})}"/>
     <div class="d-flex">
-        <a class="mdc-button mdc-button--raised btn btn-primary mr-2"
+        <a class="mdc-button mdc-button--raised btn btn-primary me-2"
            id="allow"
            name="allow"
            th:href="@{${callbackUrl}}">
             <span class="mdc-button__label" th:utext="#{screen.oauth.confirm.allow}"></span>
         </a>
 
-        <a class="mdc-button mdc-button--outline btn btn-outline-secondary" id="cancel" name="cancel"
+        <a class="mdc-button mdc-button--outline btn btn-outline-secondary button-cancel" id="cancel" name="cancel"
            th:href="@{/login}">
             <span class="mdc-button__label" th:text="#{screen.oauth.confirm.deny}">Cancel</span>
         </a>

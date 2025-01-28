@@ -2,7 +2,7 @@ package org.apereo.cas.oidc.slo;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.logout.DefaultSingleLogoutRequestContext;
-import org.apereo.cas.logout.SingleLogoutExecutionRequest;
+import org.apereo.cas.logout.slo.SingleLogoutExecutionRequest;
 import org.apereo.cas.logout.slo.SingleLogoutMessageCreator;
 import org.apereo.cas.oidc.AbstractOidcTests;
 import org.apereo.cas.oidc.OidcConstants;
@@ -19,7 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
-import java.text.ParseException;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,14 +31,14 @@ import static org.mockito.Mockito.*;
  * @since 6.2.0
  */
 @Tag("OIDC")
-public class OidcSingleLogoutMessageCreatorTests extends AbstractOidcTests {
+class OidcSingleLogoutMessageCreatorTests extends AbstractOidcTests {
 
     @Autowired
     @Qualifier("oidcSingleLogoutMessageCreator")
     private SingleLogoutMessageCreator oidcSingleLogoutMessageCreator;
 
     @Test
-    public void verifyBackChannelLogout() throws ParseException {
+    void verifyBackChannelLogout() throws Throwable {
         val service = getOidcRegisteredService(true, false);
         val principal = RegisteredServiceTestUtils.getPrincipal("casuser");
         var authentication = CoreAuthenticationTestUtils.getAuthentication(principal);
@@ -59,16 +58,17 @@ public class OidcSingleLogoutMessageCreatorTests extends AbstractOidcTests {
         val claims = JWTParser.parse(token).getJWTClaimsSet();
         assertEquals("https://sso.example.org/cas/oidc", claims.getIssuer());
         assertEquals("casuser", claims.getSubject());
-        assertEquals(service.getClientId(), claims.getAudience().get(0));
+        assertEquals(service.getClientId(), claims.getAudience().getFirst());
         assertNotNull(claims.getClaim("iat"));
         assertNotNull(claims.getClaim("jti"));
+        assertNotNull(claims.getClaim("exp"));
         val events = (Map<String, Object>) claims.getClaim("events");
         assertNotNull(events.get("http://schemas.openid.net/event/backchannel-logout"));
-        assertEquals(DigestUtils.sha(TGT_ID), claims.getClaim(OidcConstants.CLAIM_SESSION_ID));
+        assertEquals(DigestUtils.sha(DigestUtils.sha512(TGT_ID)), claims.getClaim(OidcConstants.CLAIM_SESSION_ID));
     }
 
     @Test
-    public void verifyFrontChannelLogout() {
+    void verifyFrontChannelLogout() throws Throwable {
         val logoutRequest = DefaultSingleLogoutRequestContext.builder()
             .logoutType(RegisteredServiceLogoutType.FRONT_CHANNEL)
             .build();

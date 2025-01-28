@@ -1,6 +1,11 @@
 {
   "dependencies": "aws,duo",
+  "conditions": {
+    "docker": "true",
+    "env": "DUO_SECURITY_UNIVERSAL_PROMPT_SKEY,DUO_SECURITY_UNIVERSAL_PROMPT_IKEY,DUO_SECURITY_API_HOST"
+  },
   "properties": [
+
     "--cas.service-registry.core.init-from-json=true",
     
     "--cas.authn.attribute-repository.stub.attributes.first-name=Apereo",
@@ -13,16 +18,18 @@
 
     "--server.servlet.encoding.charset=UTF-8",
 
-    "--cas.authn.mfa.duo[0].duo-secret-key=0K4VewoOPTar37vFwdUfg9SvAm8GF6yyyaBWCk70",
-    "--cas.authn.mfa.duo[0].duo-application-key=u1IHBaREMB7Cb9S4QMISAgHycpj8lPBkDGfWt55I",
-    "--cas.authn.mfa.duo[0].duo-integration-key=DICLHRWL1KQK5EUAQP45",
-    "--cas.authn.mfa.duo[0].duo-api-host=api-d2e616a0.duosecurity.com",
+    "--cas.authn.mfa.duo[0].duo-admin-secret-key=${#environmentVars['DUO_SECURITY_ADMIN_SKEY']}",
+    "--cas.authn.mfa.duo[0].duo-admin-integration-key=${#environmentVars['DUO_SECURITY_ADMIN_IKEY']}",
+    
+    "--cas.authn.mfa.duo[0].duo-secret-key=${#environmentVars['DUO_SECURITY_UNIVERSAL_PROMPT_SKEY']}",
+    "--cas.authn.mfa.duo[0].duo-integration-key=${#environmentVars['DUO_SECURITY_UNIVERSAL_PROMPT_IKEY']}",
+    "--cas.authn.mfa.duo[0].duo-api-host=${#environmentVars['DUO_SECURITY_API_HOST']}",
 
     "--cas.authn.mfa.triggers.global.global-provider-id=mfa-duo",
 
     "--cas.monitor.endpoints.endpoint.defaults.access=ANONYMOUS",
-    "--management.endpoints.web.exposure.include=awsSts",
-    "--management.endpoints.enabled-by-default=true"
+    "--management.endpoints.web.exposure.include=awsSts,duoAdmin",
+    "--management.endpoints.access.default=UNRESTRICTED"
   ],
   "initScript": "${PWD}/ci/tests/aws/run-aws-server.sh"
 }

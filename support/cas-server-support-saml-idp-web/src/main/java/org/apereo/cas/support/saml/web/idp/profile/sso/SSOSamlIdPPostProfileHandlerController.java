@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * The {@link SSOSamlIdPPostProfileHandlerController} is responsible for
@@ -36,11 +36,10 @@ public class SSOSamlIdPPostProfileHandlerController extends AbstractSamlIdPProfi
      * @param response the response
      * @param request  the request
      * @return the model and view
-     * @throws Exception the exception
      */
     @GetMapping(path = SamlIdPConstants.ENDPOINT_SAML2_SSO_PROFILE_REDIRECT)
     public ModelAndView handleSaml2ProfileSsoRedirectRequest(final HttpServletResponse response,
-                                                             final HttpServletRequest request) throws Exception {
+                                                             final HttpServletRequest request) {
         val decoder = getConfigurationContext().getSamlMessageDecoders().getInstance(HttpMethod.GET);
         return handleSsoPostProfileRequest(response, request, decoder);
     }
@@ -65,11 +64,10 @@ public class SSOSamlIdPPostProfileHandlerController extends AbstractSamlIdPProfi
      * @param response the response
      * @param request  the request
      * @return the model and view
-     * @throws Exception the exception
      */
     @PostMapping(path = SamlIdPConstants.ENDPOINT_SAML2_SSO_PROFILE_POST)
     public ModelAndView handleSaml2ProfileSsoPostRequest(final HttpServletResponse response,
-                                                         final HttpServletRequest request) throws Exception {
+                                                         final HttpServletRequest request) {
         val decoder = getConfigurationContext().getSamlMessageDecoders().getInstance(HttpMethod.POST);
         return handleSsoPostProfileRequest(response, request, decoder);
     }

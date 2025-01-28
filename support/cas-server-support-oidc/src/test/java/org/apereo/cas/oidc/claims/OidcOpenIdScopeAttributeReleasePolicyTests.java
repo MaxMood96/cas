@@ -19,10 +19,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@Tag("OIDC")
-public class OidcOpenIdScopeAttributeReleasePolicyTests extends AbstractOidcTests {
+@Tag("OIDCAttributes")
+class OidcOpenIdScopeAttributeReleasePolicyTests extends AbstractOidcTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val policy = new OidcOpenIdScopeAttributeReleasePolicy();
         assertEquals(OidcConstants.StandardScopes.OPENID.getScope(), policy.getScopeType());
         assertTrue(policy.getAllowedAttributes().isEmpty());
@@ -31,18 +31,19 @@ public class OidcOpenIdScopeAttributeReleasePolicyTests extends AbstractOidcTest
             .registeredService(CoreAuthenticationTestUtils.getRegisteredService())
             .service(CoreAuthenticationTestUtils.getService())
             .principal(CoreAuthenticationTestUtils.getPrincipal())
+            .applicationContext(applicationContext)
             .build();
         assertTrue(policy.determineRequestedAttributeDefinitions(context).isEmpty());
     }
 
     @Test
-    public void verifySerialization() {
+    void verifySerialization() {
         val policy = new OidcOpenIdScopeAttributeReleasePolicy();
         val chain = new ChainingAttributeReleasePolicy();
-        chain.addPolicy(policy);
+        chain.addPolicies(policy);
         val service = getOidcRegisteredService();
         service.setAttributeReleasePolicy(chain);
-        val serializer = new RegisteredServiceJsonSerializer();
+        val serializer = new RegisteredServiceJsonSerializer(applicationContext);
         val json = serializer.toString(service);
         assertNotNull(json);
         assertNotNull(serializer.from(json));

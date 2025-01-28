@@ -2,10 +2,12 @@ package org.apereo.cas.gauth.web.flow;
 
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
+import org.apereo.cas.web.flow.actions.AbstractMultifactorAuthenticationAction;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.RequiredArgsConstructor;
-import org.springframework.webflow.action.AbstractAction;
+import lombok.val;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -16,13 +18,19 @@ import org.springframework.webflow.execution.RequestContext;
  * @since 6.3.0
  */
 @RequiredArgsConstructor
-public class GoogleAuthenticatorPrepareLoginAction extends AbstractAction {
-    private final CasConfigurationProperties casProperties;
+public class GoogleAuthenticatorPrepareLoginAction extends AbstractMultifactorAuthenticationAction {
+    protected final CasConfigurationProperties casProperties;
+    protected final OneTimeTokenCredentialRepository repository;
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
-        WebUtils.putGoogleAuthenticatorMultipleDeviceRegistrationEnabled(requestContext,
-            casProperties.getAuthn().getMfa().getGauth().getCore().isMultipleDeviceRegistrationEnabled());
+    protected Event doExecuteInternal(final RequestContext requestContext) {
+        val principal = resolvePrincipal(WebUtils.getAuthentication(requestContext).getPrincipal(), requestContext);
+        val enabled = casProperties.getAuthn().getMfa().getGauth().getCore().isMultipleDeviceRegistrationEnabled()
+            && repository.count(principal.getId()) >= 1
+            && MultifactorAuthenticationWebflowUtils.isMultifactorDeviceRegistrationEnabled(requestContext);
+        
+        MultifactorAuthenticationWebflowUtils.putGoogleAuthenticatorMultipleDeviceRegistrationEnabled(requestContext, enabled);
+        MultifactorAuthenticationWebflowUtils.putOneTimeTokenAccounts(requestContext, repository.get(principal.getId()));
         return null;
     }
 }

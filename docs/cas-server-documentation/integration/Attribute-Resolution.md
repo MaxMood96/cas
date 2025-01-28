@@ -8,14 +8,10 @@ category: Attributes
 
 # Attribute Resolution
 
-Attribute resolution strategies are controlled by
-the [Person Directory project](https://github.com/apereo/person-directory).
-The Person Directory dependency is automatically bundled with the CAS server. Therefore,
-declaring an additional dependency will not be required.
-This Person Directory project supports both LDAP and JDBC attribute resolution,
-caching, attribute aggregation from multiple attribute sources, etc.
+Attribute resolution strategies are controlled by the *Person Directory* family of components.
+The framework supports both LDAP and JDBC attribute resolution, caching, attribute aggregation from multiple attribute sources, etc.
 
-<div class="alert alert-info"><strong>Default Caching Policy</strong><p>By default,
+<div class="alert alert-info">:information_source: <strong>Default Caching Policy</strong><p>By default,
 attributes are cached to the length of the SSO session.
 This means that while the underlying component provided by Person Directory may have
 a different caching model, attributes by default and from
@@ -26,7 +22,7 @@ as long as the SSO session exists.</p></div>
 
 The following endpoints are provided by CAS:
 
-{% include_cached actuators.html endpoints="resolveAttributes" casModule="cas-server-support-reports" %}
+{% include_cached actuators.html endpoints="resolveAttributes,personDirectory" casModule="cas-server-support-reports" %}
 
 ## Person Directory
 
@@ -47,7 +43,7 @@ all but a selection of attribute repository sources, *deferring* the task
 of attribute retrieval for later phases in the authentication process, 
 such as [releasing attributes](Attribute-Release-Caching.html).
 
-<div class="alert alert-info"><strong>Principal Resolution</strong><p>Note that in most if not all cases,
+<div class="alert alert-info">:information_source: <strong>Principal Resolution</strong><p>Note that in most if not all cases,
 CAS authentication is able to retrieve and resolve attributes from the authentication source, which would
 eliminate the need for configuring a separate resolver specially if 
 both the authentication and the attribute source are the same.
@@ -69,10 +65,7 @@ will then remove that attribute from the final collection.
 Note that by default, CAS auto-creates attribute repository sources that are appropriate for LDAP, JDBC, etc.
 If you need something more, you will need to resort to more elaborate measures of defining the bean configuration.
 
-More about the Person Directory and its configurable 
-sources [can be found here](https://github.com/apereo/person-directory).
-
-### Overview
+### Attribute Repositories
 
 Control the set of authentication attributes that are retrieved by the principal resolution process,
 from attribute sources unless noted otherwise by the specific authentication scheme.
@@ -80,9 +73,25 @@ from attribute sources unless noted otherwise by the specific authentication sch
 If multiple attribute repository sources are defined, they are added into a list
 and their results are cached and merged.
 
+The following options may be used to fetch attributes in CAS.
+
+| Source                           | Reference                                              |
+|----------------------------------|--------------------------------------------------------|
+| Stub                             | [See this guide](Attribute-Resolution-Stub.html).      |
+| LDAP                             | [See this guide](Attribute-Resolution-LDAP.html).      |
+| Groovy                           | [See this guide](Attribute-Resolution-Groovy.html).    |
+| REST                             | [See this guide](Attribute-Resolution-REST.html).      |
+| Grouper                          | [See this guide](Attribute-Resolution-Grouper.html).   |
+| Redis                            | [See this guide](Attribute-Resolution-Redis.html).     |
+| JDBC                             | [See this guide](Attribute-Resolution-JDBC.html).      |
+| OKTA                             | [See this guide](Attribute-Resolution-Okta.html).      |
+| Custom                           | [See this guide](Attribute-Resolution-Custom.html).    |
+| Microsoft Azure Active Directory | [See this guide](Attribute-Resolution-AzureAD.html).   |
+
+
 {% include_cached casproperties.html properties="cas.authn.attribute-repository.core" %}
 
-<div class="alert alert-info"><strong>Remember This</strong><p>Note that in certain cases,
+<div class="alert alert-info">:information_source: <strong>Remember This</strong><p>Note that in certain cases,
 CAS authentication is able to retrieve and resolve attributes from the authentication 
 source in the same authentication request, which would
 eliminate the need for configuring a separate attribute repository specially 
@@ -103,7 +112,6 @@ Note that if no *explicit* attribute mappings are defined, all permitted attribu
 may be retrieved by CAS from the attribute repository source and made available to the principal. On the other hand,
 if explicit attribute mappings are defined, then *only mapped attributes* are retrieved.
 
-
 The following merging strategies can be used to resolve conflicts when the same attribute are found from multiple sources:
 
 | Type          | Description                                                                                                   |
@@ -120,22 +128,3 @@ when multiple attribute repository sources are defined to fetch data:
 |-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `MERGE`   | Default. Query multiple repositories in order and merge the results into a single result set.                                                                                                      |
 | `CASCADE` | Same as above; results from each query are passed down to the next attribute repository source. If the first repository queried has no results, no further attribute repositories will be queried. |
-
-### Sources
-
-The following options may be used to fetch attributes in CAS.
-
-| Source         | Reference                                           
-|---------------------------------------------------------------------------------
-| Stub           | [See this guide](Attribute-Resolution-Stub.html).   
-| LDAP           | [See this guide](Attribute-Resolution-LDAP.html).   
-| Groovy         | [See this guide](Attribute-Resolution-Groovy.html).   
-| REST           | [See this guide](Attribute-Resolution-REST.html).   
-| Grouper        | [See this guide](Attribute-Resolution-Grouper.html).   
-| Couchbase      | [See this guide](Attribute-Resolution-Couchbase.html).   
-| Redis          | [See this guide](Attribute-Resolution-Redis.html).   
-| JDBC           | [See this guide](Attribute-Resolution-JDBC.html).
-| OKTA           | [See this guide](Attribute-Resolution-Okta.html).
-| Custom         | [See this guide](Attribute-Resolution-Custom.html).
-| Python/Javascript/Groovy          | [See this guide](Attribute-Resolution-Scripted.html).   
-| Microsoft Azure Active Directory  | [See this guide](Attribute-Resolution-AzureAD.html).   

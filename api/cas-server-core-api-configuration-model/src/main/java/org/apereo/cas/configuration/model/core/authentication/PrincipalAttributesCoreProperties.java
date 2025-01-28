@@ -2,11 +2,11 @@ package org.apereo.cas.configuration.model.core.authentication;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
@@ -22,8 +22,9 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("PrincipalAttributesCoreProperties")
+
 public class PrincipalAttributesCoreProperties implements Serializable {
+    @Serial
     private static final long serialVersionUID = -4525569588579072890L;
 
     /**
@@ -53,7 +54,18 @@ public class PrincipalAttributesCoreProperties implements Serializable {
     private boolean recoverExceptions = true;
 
     /**
-     * Merging strategies can be used to resolve conflicts when the same attribute are found from multiple sources.
+     * When {@link #aggregation} is set to {@link AggregationStrategyTypes#CASCADE},
+     * this setting controls whether subsequent attribute repositories need to be contacted
+     * for person attributes, if the first attribute repository's query does not produce any results.
+     */
+    private boolean stopCascadingWhenNoInitialResults = true;
+
+    /**
+     * Merging strategies can be used to resolve conflicts when the same attributes are found from multiple sources.
+     * A merging strategy is used to handle conflicts for both principal attributes as well as those that are captured
+     * by the authentication attempt. Conflicts arise when the multiple attribute sources or repositories produce the same
+     * attribute with the same name, or when there are multiple legs in an authentication flow that produce the same attribute
+     * as authentication metadata for each leg of the attempt (i.e. when going through MFA flows).
      */
     private MergingStrategyTypes merger = MergingStrategyTypes.REPLACE;
 
@@ -92,10 +104,10 @@ public class PrincipalAttributesCoreProperties implements Serializable {
          */
         MERGE,
         /**
-         *  Query multiple repositories in order and merge the results into
-         *  a single result set. As each repository is queried
-         *  the attributes from the first query in the result set are
-         *  used as the query for the next repository.
+         * Query multiple repositories in order and merge the results into
+         * a single result set. As each repository is queried
+         * the attributes from the first query in the result set are
+         * used as the query for the next repository.
          */
         CASCADE
     }
@@ -115,13 +127,18 @@ public class PrincipalAttributesCoreProperties implements Serializable {
         ADD,
         /**
          * No merging.
-         * Doesn't merge attributes, ignores attributes from non-authentication attribute repositories.
+         * Doesn't merge attributes, and returns the original collection of attributes as passed.
          */
-        NONE,
+        SOURCE,
+        /**
+         * No merging. Ignore the collection of original attributes that are passed
+         * and always favor what is supplied as a subsequent source and an override.
+         */
+        DESTINATION,
         /**
          * Multivalued attributes.
          * Combines all values into a single attribute, essentially creating a multi-valued attribute.
          */
-        MULTIVALUED;
+        MULTIVALUED
     }
 }

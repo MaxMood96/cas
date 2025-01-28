@@ -15,9 +15,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @Tag("Simple")
-public class DistributedCacheManagerTests {
+class DistributedCacheManagerTests {
     @Test
-    public void verifyDefaults() {
+    void verifyDefaults() {
         val mgr = DistributedCacheManager.noOp();
 
         assertNull(mgr.get("key"));
@@ -32,7 +32,7 @@ public class DistributedCacheManagerTests {
             .value("value")
             .publisherIdentifier(id)
             .build();
-        
+
         assertDoesNotThrow(() -> mgr.set("key", object, true));
         assertDoesNotThrow(mgr::clear);
         assertDoesNotThrow(() -> mgr.set("key", object, true));

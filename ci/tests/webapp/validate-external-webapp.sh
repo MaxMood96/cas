@@ -1,5 +1,4 @@
 #!/bin/bash
-clear
 type="$1"
 
 case "$1" in
@@ -16,17 +15,9 @@ case "$1" in
         sudo mkdir -p /etc/cas
         keystore="/etc/cas/casconfigserver.jks"
         echo "Generating keystore ${keystore} for CAS with DN=${dname}, SAN=${subjectAltName}"
-        [ -f "${keystore}" ] && rm "${keystore}"
+        [ -f "${keystore}" ] && sudo rm "${keystore}"
         sudo keytool -genkey -noprompt -alias cas -keyalg RSA -keypass changeit -storepass changeit \
           -keystore "${keystore}" -dname "${dname}" -ext SAN="${subjectAltName}"
-        ;;
-    bootadmin-server)
-        project="cas-server-webapp-bootadmin-server"
-        url=""
-        ;;
-    discovery-server)
-        project="cas-server-webapp-eureka-server"
-        url=""
         ;;
     *)
         echo -e "Unable to determine web application project $1"
@@ -40,14 +31,27 @@ tomcatVersion=$(cat gradle.properties | grep tomcatVersion | awk -F"=" '{printf 
 echo "Apache Tomcat version: ${tomcatVersion}"
 
 tomcatVersionTag="v${tomcatVersion}"
-tomcatUrl="https://downloads.apache.org/tomcat/tomcat-9/${tomcatVersionTag}/bin/apache-tomcat-${tomcatVersion}.zip"
+tomcatUrl="https://archive.apache.org/dist/tomcat/tomcat-10/${tomcatVersionTag}/bin/apache-tomcat-${tomcatVersion}.zip"
 
 export CATALINA_HOME=./apache-tomcat-${tomcatVersion}
 rm -Rf ${CATALINA_HOME}
 rm -Rf apache-tomcat-${tomcatVersion}.zip
 
 echo -e "Downloading Apache Tomcat from ${tomcatUrl}"
-wget --no-check-certificate ${tomcatUrl}
+success=false
+if [[ ! -f "apache-tomcat-${tomcatVersion}.zip" ]]; then
+  for i in $(seq 1 5); do
+      echo "Attempt $i - Downloading Apache Tomcat from ${tomcatUrl}"
+      wget --no-check-certificate --timeout=30 --tries=3 "${tomcatUrl}" > /dev/null 2>&1 && success=true && break
+      echo "Download failed. Retrying..."
+      sleep 10
+  done
+fi
+if [ "$success" = false ]; then
+  echo "Failed to download Apache Tomcat ${tomcatVersion}"
+  exit 1
+fi
+
 unzip apache-tomcat-${tomcatVersion}.zip >/dev/null 2>&1
 
 clear
@@ -83,7 +87,6 @@ sleep 5
 kill -9 $pid
 rm -Rf ${CATALINA_HOME}
 rm -Rf apache-tomcat-${tomcatVersion}.zip
-clear
 if [ "$rc" == 200 ]; then
     echo "Deployed the web application successfully."
     exit 0

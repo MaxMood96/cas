@@ -13,10 +13,10 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("JDBC")
-public class JpaBeansTests {
+@Tag("Hibernate")
+class JpaBeansTests {
     @Test
-    public void verifyConnectionValidity() throws Exception {
+    void verifyConnectionValidity() throws Throwable {
         val ds = mock(CloseableDataSource.class);
         when(ds.getConnection()).thenThrow(new RuntimeException());
         assertFalse(JpaBeans.isValidDataSourceConnection(ds, 1));

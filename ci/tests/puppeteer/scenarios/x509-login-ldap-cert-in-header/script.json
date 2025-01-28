@@ -1,8 +1,15 @@
 {
-  "dependencies": "x509-webflow,ldap,json-service-registry",
-  "properties": [
-    "--logging.level.org.apereo.cas=debug",
+  "dependencies": "x509-webflow,ldap,json-service-registry,scripting",
+  "conditions": {
+    "docker": "true"
+  },
 
+  "properties": [
+    "--cas.server.name=https://localhost:8443",
+    "--cas.server.prefix=${cas.server.name}/cas",
+    
+
+    
     "--cas.service-registry.core.init-from-json=true",
     "--cas.service-registry.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/services",
 
@@ -35,7 +42,7 @@
     "--cas.authn.attribute-repository.ldap[0].follow-referrals=false",
     "--cas.authn.attribute-repository.ldap[0].search-filter=(sAMAccountName={username})",
     "--cas.authn.attribute-repository.ldap[0].min-pool-size=0",
-    "--cas.authn.attribute-repository.ldap[0].trust-store=file:/tmp/adcacerts.jks",
+    "--cas.authn.attribute-repository.ldap[0].trust-store=file:${#systemProperties['java.io.tmpdir']}/adcacerts.jks",
     "--cas.authn.attribute-repository.ldap[0].trust-store-type=JKS",
     "--cas.authn.attribute-repository.ldap[0].trust-store-password=changeit",
     "--cas.authn.attribute-repository.ldap[0].hostname-verifier=ANY",
@@ -57,5 +64,5 @@
     "--cas.authn.attribute-repository.groovy[0].case-insensitive=false"
   ],
   "trustStoreCertificateFile": "./ci/tests/puppeteer/scenarios/x509-login-ldap-cert-in-header/cert.pem",
-  "initScript": "${PWD}/ci/tests/ldap/run-ad-server.sh"
+  "initScript": "${PWD}/ci/tests/ldap/run-ad-server.sh,${PWD}/ci/tests/httpbin/run-httpbin-server.sh"
 }

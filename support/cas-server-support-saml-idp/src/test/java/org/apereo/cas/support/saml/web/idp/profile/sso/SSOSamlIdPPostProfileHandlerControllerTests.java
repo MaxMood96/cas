@@ -7,14 +7,13 @@ import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
 import org.apereo.cas.support.saml.SamlProtocolConstants;
 import org.apereo.cas.support.saml.SamlUtils;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
-import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceServiceProviderMetadataFacade;
+import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceMetadataAdaptor;
 import org.apereo.cas.support.saml.web.idp.profile.slo.SamlIdPHttpRedirectDeflateEncoder;
 import org.apereo.cas.util.EncodingUtils;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 
-import lombok.SneakyThrows;
 import lombok.val;
-import net.shibboleth.utilities.java.support.net.URLBuilder;
+import net.shibboleth.shared.net.URLBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -27,7 +26,7 @@ import org.opensaml.saml.common.SAMLObjectBuilder;
 import org.opensaml.saml.common.xml.SAMLConstants;
 import org.opensaml.saml.saml2.core.AuthnRequest;
 import org.opensaml.saml.saml2.core.Issuer;
-import org.pac4j.core.context.JEEContext;
+import org.pac4j.jee.context.JEEContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -35,8 +34,9 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.util.Map;
 import java.util.Set;
 
@@ -48,13 +48,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Tag("SAML")
+@Tag("SAML2Web")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestPropertySource(properties = {
     "cas.tgc.crypto.enabled=false",
     "cas.authn.saml-idp.metadata.file-system.location=file:src/test/resources/metadata"
 })
-public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
+class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
     @Autowired
     @Qualifier("ssoPostProfileHandlerController")
     private SSOSamlIdPPostProfileHandlerController controller;
@@ -62,7 +62,7 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
     private SamlRegisteredService samlRegisteredService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         servicesManager.deleteAll();
         samlRegisteredService = getSamlRegisteredServiceFor(false, false,
             false, "https://cassp.example.org");
@@ -71,7 +71,7 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(1)
-    public void verifyPostSignRequest() throws Exception {
+    void verifyPostSignRequest() throws Throwable {
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
         val response = new MockHttpServletResponse();
@@ -84,7 +84,7 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(2)
-    public void verifyRedirectRequest() throws Exception {
+    void verifyRedirectRequest() throws Throwable {
         val request = new MockHttpServletRequest();
         request.setMethod("GET");
         val response = new MockHttpServletResponse();
@@ -103,7 +103,7 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(3)
-    public void verifyPutRequest() {
+    void verifyPutRequest() {
         val request = new MockHttpServletRequest();
         request.setMethod("PUT");
         val response = new MockHttpServletResponse();
@@ -113,7 +113,7 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(3)
-    public void verifyBadRequest() throws Exception {
+    void verifyBadRequest() {
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
         val response = new MockHttpServletResponse();
@@ -124,7 +124,7 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(4)
-    public void verifyPostRequest() throws Exception {
+    void verifyPostRequest() {
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
         val response = new MockHttpServletResponse();
@@ -137,12 +137,12 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(5)
-    public void verifyPostRequestWithSso() throws Exception {
+    void verifyPostRequestWithSso() throws Throwable {
+        val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
         val tgt = new MockTicketGrantingTicket("casuser");
         ticketRegistry.addTicket(tgt);
-        ticketGrantingTicketCookieGenerator.addCookie(response, tgt.getId());
-        val request = new MockHttpServletRequest();
+        ticketGrantingTicketCookieGenerator.addCookie(request, response, tgt.getId());
         request.setCookies(response.getCookies());
         request.setMethod("POST");
         val authnRequest = getAuthnRequest();
@@ -158,12 +158,12 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(6)
-    public void verifyPostRequestWithSsoForcedAuthn() throws Exception {
+    void verifyPostRequestWithSsoForcedAuthn() throws Throwable {
+        val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
         val tgt = new MockTicketGrantingTicket("casuser");
         ticketRegistry.addTicket(tgt);
-        ticketGrantingTicketCookieGenerator.addCookie(response, tgt.getId());
-        val request = new MockHttpServletRequest();
+        ticketGrantingTicketCookieGenerator.addCookie(request, response, tgt.getId());
         request.setCookies(response.getCookies());
         request.setMethod("POST");
         val authnRequest = getAuthnRequest();
@@ -178,11 +178,11 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(7)
-    public void verifyPostRequestWithUnknownCookie() throws Exception {
+    void verifyPostRequestWithUnknownCookie() {
+        val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
         val tgt = new MockTicketGrantingTicket("casuser");
-        ticketGrantingTicketCookieGenerator.addCookie(response, tgt.getId());
-        val request = new MockHttpServletRequest();
+        ticketGrantingTicketCookieGenerator.addCookie(request, response, tgt.getId());
         request.setCookies(response.getCookies());
         request.setMethod("POST");
         val authnRequest = getAuthnRequest();
@@ -196,15 +196,15 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
 
     @Test
     @Order(8)
-    public void verifyPostRequestWithSsoAndAccessStrategy() throws Exception {
+    void verifyPostRequestWithSsoAndAccessStrategy() throws Throwable {
         samlRegisteredService.setAccessStrategy(new DefaultRegisteredServiceAccessStrategy(Map.of("authnMethod", Set.of("X509"))));
         servicesManager.save(samlRegisteredService);
 
         val response = new MockHttpServletResponse();
+        val request = new MockHttpServletRequest();
         val tgt = new MockTicketGrantingTicket("casuser");
         ticketRegistry.addTicket(tgt);
-        ticketGrantingTicketCookieGenerator.addCookie(response, tgt.getId());
-        val request = new MockHttpServletRequest();
+        ticketGrantingTicketCookieGenerator.addCookie(request, response, tgt.getId());
         request.setCookies(response.getCookies());
         request.setMethod("POST");
         val authnRequest = getAuthnRequest();
@@ -215,16 +215,14 @@ public class SSOSamlIdPPostProfileHandlerControllerTests extends BaseSamlIdPConf
         val mv = controller.handleSaml2ProfileSsoPostRequest(response, request);
         assertNotNull(mv);
         val ex = mv.getModel().get(CasWebflowConstants.ATTRIBUTE_ERROR_ROOT_CAUSE_EXCEPTION);
-        assertTrue(ex instanceof PrincipalException);
+        assertInstanceOf(PrincipalException.class, ex);
         assertEquals(CasWebflowConstants.VIEW_ID_SERVICE_ERROR, mv.getViewName());
         assertEquals(HttpStatus.BAD_REQUEST, mv.getStatus());
     }
-
-    @SneakyThrows
     private AuthnRequest signAuthnRequest(final HttpServletRequest request,
                                           final HttpServletResponse response,
-                                          final AuthnRequest authnRequest) {
-        val adaptor = SamlRegisteredServiceServiceProviderMetadataFacade
+                                          final AuthnRequest authnRequest) throws Exception {
+        val adaptor = SamlRegisteredServiceMetadataAdaptor
             .get(samlRegisteredServiceCachingMetadataResolver, samlRegisteredService,
                 samlRegisteredService.getServiceId()).get();
         return samlIdPObjectSigner.encode(authnRequest, samlRegisteredService,

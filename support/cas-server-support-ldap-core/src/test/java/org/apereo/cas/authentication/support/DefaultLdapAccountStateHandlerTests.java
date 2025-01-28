@@ -8,7 +8,6 @@ import org.apereo.cas.authentication.support.password.PasswordPolicyContext;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
 import org.ldaptive.LdapAttribute;
 import org.ldaptive.LdapEntry;
 import org.ldaptive.auth.AccountState;
@@ -28,10 +27,10 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Tag("Ldap")
-public class DefaultLdapAccountStateHandlerTests {
+@Tag("LdapAuthentication")
+class DefaultLdapAccountStateHandlerTests {
     @Test
-    public void verifyActiveDirectoryErrors() {
+    void verifyActiveDirectoryErrors() {
         val handler = new DefaultLdapAccountStateHandler();
 
         val response = mock(AuthenticationResponse.class);
@@ -56,7 +55,7 @@ public class DefaultLdapAccountStateHandlerTests {
     }
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val handler = new DefaultLdapAccountStateHandler();
         handler.setAttributesToErrorMap(Map.of("attr1", AccountLockedException.class));
 
@@ -65,28 +64,24 @@ public class DefaultLdapAccountStateHandlerTests {
         entry.addAttributes(new LdapAttribute("attr1", "true"));
         when(response.getLdapEntry()).thenReturn(entry);
 
-        assertThrows(AccountLockedException.class, () ->
-            handler.handlePolicyAttributes(response));
+        assertThrows(AccountLockedException.class, () -> handler.handlePolicyAttributes(response));
     }
 
     @Test
-    public void verifyNoAttrs() {
+    void verifyNoAttrs() {
         val handler = new DefaultLdapAccountStateHandler();
         val response = mock(AuthenticationResponse.class);
         handler.setAttributesToErrorMap(Map.of("attr1", AccountLockedException.class));
         val entry = new LdapEntry();
         when(response.getLdapEntry()).thenReturn(entry);
         when(response.isSuccess()).thenReturn(Boolean.TRUE);
-        assertDoesNotThrow(new Executable() {
-            @Override
-            public void execute() throws Throwable {
-                handler.handle(response, new PasswordPolicyContext());
-            }
+        assertDoesNotThrow(() -> {
+            handler.handle(response, new PasswordPolicyContext());
         });
     }
 
     @Test
-    public void verifyNoWarning() {
+    void verifyNoWarning() {
         val handler = new DefaultLdapAccountStateHandler();
         val response = mock(AuthenticationResponse.class);
         handler.setAttributesToErrorMap(Map.of("attr1", AccountLockedException.class));
@@ -95,21 +90,15 @@ public class DefaultLdapAccountStateHandlerTests {
         when(response.getAccountState()).thenReturn(accountState);
         when(response.getLdapEntry()).thenReturn(entry);
         when(response.isSuccess()).thenReturn(Boolean.TRUE);
-        assertDoesNotThrow(new Executable() {
-            @Override
-            public void execute() throws Throwable {
-                handler.handle(response, new PasswordPolicyContext());
-            }
+        assertDoesNotThrow(() -> {
+            handler.handle(response, new PasswordPolicyContext());
         });
 
         val warning = mock(AccountState.Warning.class);
         when(accountState.getWarning()).thenReturn(warning);
         when(response.getAccountState()).thenReturn(accountState);
-        assertDoesNotThrow(new Executable() {
-            @Override
-            public void execute() throws Throwable {
-                handler.handle(response, new PasswordPolicyContext());
-            }
+        assertDoesNotThrow(() -> {
+            handler.handle(response, new PasswordPolicyContext());
         });
     }
 

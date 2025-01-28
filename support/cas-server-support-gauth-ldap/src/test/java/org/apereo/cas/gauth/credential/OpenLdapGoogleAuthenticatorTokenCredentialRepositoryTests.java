@@ -1,18 +1,17 @@
 package org.apereo.cas.gauth.credential;
 
 import org.apereo.cas.adaptors.ldap.LdapIntegrationTestsOperations;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import lombok.Cleanup;
-import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.ldaptive.BindConnectionInitializer;
 import org.ldaptive.Credential;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.scheduling.annotation.EnableScheduling;
-
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -34,13 +33,13 @@ import java.nio.charset.StandardCharsets;
         "cas.authn.mfa.gauth.crypto.enabled=true"
     })
 @EnableScheduling
-@Tag("Ldap")
-@EnabledIfPortOpen(port = 11636)
-public class OpenLdapGoogleAuthenticatorTokenCredentialRepositoryTests extends BaseLdapGoogleAuthenticatorTokenCredentialRepositoryTests {
+@Tag("LdapRepository")
+@ExtendWith(CasTestExtension.class)
+@EnabledIfListeningOnPort(port = 11636)
+class OpenLdapGoogleAuthenticatorTokenCredentialRepositoryTests extends BaseLdapGoogleAuthenticatorTokenCredentialRepositoryTests {
 
     @Override
-    @SneakyThrows
-    protected String getUsernameUnderTest() {
+    protected String getUsernameUnderTest() throws Exception {
         val uid = super.getUsernameUnderTest();
 
         val bindInit = new BindConnectionInitializer("cn=admin,dc=example,dc=org", new Credential("P@ssw0rd"));

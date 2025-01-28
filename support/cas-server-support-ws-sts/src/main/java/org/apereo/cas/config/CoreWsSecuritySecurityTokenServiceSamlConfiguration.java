@@ -1,17 +1,19 @@
 package org.apereo.cas.config;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.support.saml.OpenSamlConfigBean;
-
-import lombok.SneakyThrows;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.wss4j.common.crypto.WSProviderConfig;
 import org.apache.wss4j.common.saml.OpenSAMLUtil;
+import org.jooq.lambda.Unchecked;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.util.ReflectionUtils;
 
 /**
@@ -21,11 +23,11 @@ import org.springframework.util.ReflectionUtils;
  * @author Paul Spaude
  * @since 5.3.6
  */
-@Configuration(value = "CoreWsSecuritySecurityTokenServiceSamlConfiguration", proxyBeanMethods = false)
 @Slf4j
-@AutoConfigureAfter(CoreSamlConfiguration.class)
-public class CoreWsSecuritySecurityTokenServiceSamlConfiguration {
-    @SneakyThrows
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.WsFederationIdentityProvider)
+@AutoConfigureAfter(CasCoreSamlAutoConfiguration.class)
+@Configuration(value = "CoreWsSecuritySecurityTokenServiceSamlConfiguration", proxyBeanMethods = false)
+class CoreWsSecuritySecurityTokenServiceSamlConfiguration {
     private static void findFieldAndSetValue(final String fieldName, final Object value) {
         LOGGER.trace("Locating field name [{}]", fieldName);
         val field = ReflectionUtils.findField(OpenSAMLUtil.class, fieldName);
@@ -34,12 +36,12 @@ public class CoreWsSecuritySecurityTokenServiceSamlConfiguration {
             return;
         }
         ReflectionUtils.makeAccessible(field);
-
         LOGGER.trace("Setting field name [{}]", fieldName);
-        field.set(null, value);
+        Unchecked.consumer(__ -> field.set(null, value)).accept(field);
     }
 
     @Bean
+    @Lazy(false)
     public InitializingBean wsSecurityTokenServiceInitializingBean(
         @Qualifier(OpenSamlConfigBean.DEFAULT_BEAN_NAME)
         final OpenSamlConfigBean openSamlConfigBean) {

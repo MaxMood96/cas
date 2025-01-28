@@ -1,14 +1,18 @@
 package org.apereo.cas.services;
 
-import lombok.val;
+import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.springframework.context.support.StaticApplicationContext;
-
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -19,17 +23,21 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @Tag("RegisteredService")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class InMemoryServiceRegistryTests extends AbstractServiceRegistryTests {
+@SpringBootTest(classes = RefreshAutoConfiguration.class)
+@EnableConfigurationProperties(CasConfigurationProperties.class)
+@ExtendWith(CasTestExtension.class)
+class InMemoryServiceRegistryTests extends AbstractServiceRegistryTests {
 
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+    
     @Override
     public ServiceRegistry getNewServiceRegistry() {
-        val appCtx = new StaticApplicationContext();
-        appCtx.refresh();
-        return new InMemoryServiceRegistry(appCtx);
+        return new InMemoryServiceRegistry(applicationContext);
     }
 
     @Test
-    public void removeNonExistingService() {
+    void removeNonExistingService() {
         var registeredService = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString());
         assertTrue(getNewServiceRegistry().delete(registeredService));
     }

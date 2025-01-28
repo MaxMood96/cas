@@ -2,40 +2,39 @@ package org.apereo.cas.support.oauth.services;
 
 import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.authentication.principal.WebApplicationServiceFactory;
+import org.apereo.cas.multitenancy.TenantExtractor;
+import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import java.io.File;
-
+import java.nio.file.Files;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Misagh Moayyed
  * @since 4.0.0
  */
 @Tag("OAuth")
-public class OAuth20WebApplicationServiceTests {
+class OAuth20WebApplicationServiceTests {
 
-    private static final File JSON_FILE = new File(FileUtils.getTempDirectoryPath(), "oAuthWebApplicationService.json");
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
     @Test
-    public void verifySerializeACompletePrincipalToJson() throws Exception {
+    void verifySerializeACompletePrincipalToJson() throws Throwable {
+        val jsonFile = Files.createTempFile(RandomUtils.randomAlphabetic(8), ".json").toFile();
         val service = new OAuthRegisteredService();
         service.setName("checkCloning");
         service.setServiceId("testId");
         service.setTheme("theme");
         service.setDescription("description");
-        val factory = new WebApplicationServiceFactory();
+        val factory = new WebApplicationServiceFactory(mock(TenantExtractor.class));
         val serviceWritten = factory.createService(service.getServiceId());
-        MAPPER.writeValue(JSON_FILE, serviceWritten);
-        val serviceRead = MAPPER.readValue(JSON_FILE, WebApplicationService.class);
+        MAPPER.writeValue(jsonFile, serviceWritten);
+        val serviceRead = MAPPER.readValue(jsonFile, WebApplicationService.class);
         assertEquals(serviceWritten, serviceRead);
     }
 }

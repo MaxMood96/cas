@@ -1,6 +1,11 @@
 {
-  "dependencies": "discovery-profile,pac4j-webflow,oidc,simple-mfa",
+  "dependencies": "discovery-profile,oidc,pac4j-webflow,simple-mfa,pac4j-cas",
   "properties": [
+    "--cas.server.name=https://localhost:8443",
+    "--cas.server.prefix=${cas.server.name}/cas",
+
+    "--cas.http-client.host-name-verifier=none",
+
     "--cas.service-registry.core.init-from-json=true",
 
     "--cas.authn.pac4j.cas[0].login-url=https://localhost:8444/cas/login",
@@ -8,7 +13,7 @@
     "--cas.authn.pac4j.cas[0].client-name=CasClient",
 
     "--cas.authn.oidc.core.issuer=https://localhost:8443/cas/oidc",
-    "--cas.authn.oidc.jwks.file-system.jwks-file=file:/tmp/keystore.jwks",
+    "--cas.authn.oidc.jwks.file-system.jwks-file=file:${#systemProperties['java.io.tmpdir']}/keystore.jwks",
 
     "--cas.authn.attribute-repository.stub.attributes.phone=13477464523",
     "--cas.authn.attribute-repository.stub.attributes.mail=casuser@example.org",
@@ -17,9 +22,7 @@
     
     "--management.endpoints.web.exposure.include=discoveryProfile",
     "--management.endpoint.health.show-details=always",
-    "--management.endpoints.enabled-by-default=true"
+    "--management.endpoints.access.default=UNRESTRICTED"
   ]
 }
-
-
 

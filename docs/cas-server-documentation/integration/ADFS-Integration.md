@@ -12,7 +12,7 @@ The integration between the CAS Server and ADFS delegates user authentication fr
 to ADFS, making CAS Server a WS-Federation client. Claims released from ADFS are made 
 available as attributes to CAS Server, and by extension CAS Clients.
 
-<div class="alert alert-info"><strong>Remember</strong><p>The functionality described 
+<div class="alert alert-info">:information_source: <strong>Remember</strong><p>The functionality described 
 here allows CAS to use ADFS as an external identity provider. If you wish to do the 
 opposite, allowing ADFS to become a CAS client and using CAS as an identity 
 provider, you may take advantage of 
@@ -30,12 +30,12 @@ CAS Overlay to be able to resolve dependencies:
 repositories {
     maven { 
         mavenContent { releasesOnly() }
-        url "https://build.shibboleth.net/nexus/content/repositories/releases" 
+        url "https://build.shibboleth.net/maven/releases/" 
     }
 }
 ```
 
-<div class="alert alert-info"><strong>JCE Requirement</strong><p>It's safe to make sure you have the proper JCE bundle 
+<div class="alert alert-info">:information_source: <strong>JCE Requirement</strong><p>It's safe to make sure you have the proper JCE bundle 
 installed in your Java environment that is used by CAS, specially if you need to consume encrypted payloads issued by ADFS. 
 Be sure to pick the right version of the JCE for your Java version. Java 
 versions can be detected via the <code>java -version</code> command.</p></div>
@@ -45,7 +45,15 @@ versions can be detected via the <code>java -version</code> command.</p></div>
 Adjust and provide settings for the ADFS instance, and make sure you have obtained the ADFS 
 signing certificate and made it available to CAS at a location that can be resolved at runtime.
 
-{% include_cached casproperties.html properties="cas.authn.wsfed[0]" %}
+{% include_cached casproperties.html properties="cas.authn.wsfed[]." %}
+
+## Signed Assertions
+
+CAS is able to ascertain the validity of assertion signatures using dedicated certificate files that are defined
+via CAS settings. Certificate files and resources may be defined statically as file-system resources that are
+available to CAS to load and use, or the signing resource may point to ADFS federation metadata (either as a URL or XML file). 
+When using the federation metadata, the signing certificate is extracted from the `IDPSSODescriptor` key descriptor 
+that is marked for signing.
 
 ## Encrypted Assertions
 
@@ -55,7 +63,7 @@ you will first need to generate a private/public keypair:
 ```bash
 openssl genrsa -out private.key 1024
 openssl rsa -pubout -in private.key -out public.key -inform PEM -outform DER
-openssl pkcs8 -topk8 -inform PER -outform DER -nocrypt -in private.key -out private.p8
+openssl pkcs8 -topk8 -inform PEM -outform DER -nocrypt -in private.key -out private.p8
 openssl req -new -x509 -key private.key -out x509.pem -days 365
 
 # convert the X509 certificate to DER format
@@ -81,8 +89,7 @@ import java.util.*
 import org.apereo.cas.authentication.*
 
 Map run(final Object... args) {
-    def attributes = args[0]
-    def logger = args[1]
+    def (attributes,logger) = args
     logger.warn("Mutating attributes {}", attributes)
     return [upn: ["CASUser"]]
 }
@@ -97,6 +104,8 @@ The parameters passed to the script are as follows:
 
 Note that the execution result of the script *MUST* ensure that attributes are collected into a `Map`
 where the attribute name, the key, is a simple `String` and the attribute value is transformed into a collection.
+
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).
 
 ## Handling CAS Logout
 
@@ -117,7 +126,7 @@ registry to match the following:
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "^https://.+",
   "name" : "sample service",
   "id" : 100,
@@ -137,3 +146,14 @@ registry to match the following:
 
 Be aware of clock drift issues between CAS and the ADFS server. Validation failures 
 of the response do show up in the logs, and the request is routed back to ADFS again, causing redirect loops.
+
+To enable additional logging, configure the log4j configuration file to add the following levels:
+
+```xml
+...
+<Logger name="org.apereo.cas.support.wsfederation" level="debug" additivity="false">
+    <AppenderRef ref="casConsole"/>
+    <AppenderRef ref="casFile"/>
+</Logger>
+...
+```

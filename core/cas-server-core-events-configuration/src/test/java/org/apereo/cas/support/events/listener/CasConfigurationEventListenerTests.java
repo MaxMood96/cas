@@ -1,24 +1,24 @@
 package org.apereo.cas.support.events.listener;
 
-import org.apereo.cas.config.CasCoreEventsConfigEnvironmentConfiguration;
+import org.apereo.cas.config.CasConfigurationModifiedEvent;
+import org.apereo.cas.config.CasCoreConfigurationWatchAutoConfiguration;
+import org.apereo.cas.config.CasCoreEnvironmentBootstrapAutoConfiguration;
+import org.apereo.cas.config.CasCoreEventsConfigEnvironmentAutoConfiguration;
+import org.apereo.cas.config.CasCoreStandaloneBootstrapAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.configuration.config.CasCoreConfigurationWatchConfiguration;
-import org.apereo.cas.configuration.config.CasCoreEnvironmentConfiguration;
-import org.apereo.cas.configuration.config.standalone.CasCoreBootstrapStandaloneConfiguration;
-import org.apereo.cas.support.events.config.CasConfigurationModifiedEvent;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
+import org.springframework.cloud.context.scope.refresh.RefreshScopeRefreshedEvent;
 import org.springframework.context.ConfigurableApplicationContext;
-
 import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -27,12 +27,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
+
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    CasCoreEventsConfigEnvironmentConfiguration.class,
-    CasCoreConfigurationWatchConfiguration.class,
-    CasCoreBootstrapStandaloneConfiguration.class,
-    CasCoreEnvironmentConfiguration.class,
-    RefreshAutoConfiguration.class
+    CasCoreEventsConfigEnvironmentAutoConfiguration.class,
+    CasCoreConfigurationWatchAutoConfiguration.class,
+    CasCoreStandaloneBootstrapAutoConfiguration.class,
+    CasCoreEnvironmentBootstrapAutoConfiguration.class
 }, properties = {
     "spring.application.name=cas",
     "spring.profiles.active=standalone",
@@ -40,7 +41,8 @@ import static org.junit.jupiter.api.Assertions.*;
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("CasConfiguration")
-public class CasConfigurationEventListenerTests {
+@ExtendWith(CasTestExtension.class)
+class CasConfigurationEventListenerTests {
     @Autowired
     private ConfigurableApplicationContext applicationContext;
 
@@ -49,11 +51,13 @@ public class CasConfigurationEventListenerTests {
     private CasConfigurationEventListener casConfigurationEventListener;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(casConfigurationEventListener);
         assertDoesNotThrow(() -> applicationContext.publishEvent(
             new EnvironmentChangeEvent(Set.of("cas.server.name"))));
         assertDoesNotThrow(() -> applicationContext.publishEvent(
-            new CasConfigurationModifiedEvent(this, true)));
+            new CasConfigurationModifiedEvent(this, true, null)));
+        assertDoesNotThrow(() -> applicationContext.publishEvent(
+            new RefreshScopeRefreshedEvent()));
     }
 }

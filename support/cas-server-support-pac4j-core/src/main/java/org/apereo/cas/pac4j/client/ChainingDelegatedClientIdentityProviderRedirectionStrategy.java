@@ -3,12 +3,14 @@ package org.apereo.cas.pac4j.client;
 import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.web.DelegatedClientIdentityProviderConfiguration;
 
+import org.jooq.lambda.Unchecked;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.webflow.execution.RequestContext;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * This is {@link ChainingDelegatedClientIdentityProviderRedirectionStrategy}.
@@ -30,12 +32,13 @@ public class ChainingDelegatedClientIdentityProviderRedirectionStrategy implemen
     }
 
     @Override
-    public Optional<DelegatedClientIdentityProviderConfiguration> getPrimaryDelegatedAuthenticationProvider(final RequestContext context,
-                                                                                                            final WebApplicationService service,
-                                                                                                            final DelegatedClientIdentityProviderConfiguration provider) {
+    public Optional<DelegatedClientIdentityProviderConfiguration> select(
+        final RequestContext context,
+        final WebApplicationService service,
+        final Set<DelegatedClientIdentityProviderConfiguration> providers) {
         return strategies
             .stream()
-            .map(strategy -> strategy.getPrimaryDelegatedAuthenticationProvider(context, service, provider))
+            .map(Unchecked.function(strategy -> strategy.select(context, service, providers)))
             .filter(Optional::isPresent)
             .map(Optional::get)
             .findFirst();

@@ -18,21 +18,24 @@
             <div class="container-fluid container-fluid d-flex align-items-center justify-content-between">
                 <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start">
                     <button th:if="${'true' == #strings.defaultString(#themes.code('cas.drawer-menu.enabled'), 'true')}"
-                        class="mdc-icon-button mdc-top-app-bar__navigation-icon  btn btn-outline-light"
-                        data-bs-toggle="offcanvas"
-                        data-bs-target="#app-drawer">
-                        <span class="mdi mdi-menu fa fa-bars"></span>
+                            class="mdc-icon-button mdc-top-app-bar__navigation-icon  btn btn-outline-light"
+                            id="drawerButton"
+                            data-bs-toggle="offcanvas"
+                            data-bs-target="#app-drawer">
+                        <span class="mdi mdi-menu fa fa-bars" aria-hidden="true"></span>
                         <span class="visually-hidden">menu</span>
                     </button>
                 </section>
                 <section class="mdc-top-app-bar__section">
-                    <span class="cas-brand mx-auto">
-                        <span class="visually-hidden" th:text="${#strings.defaultString(#themes.code('cas.theme.name'), 'CAS')}">CAS</span>
-                        <img id="cas-logo" class="cas-logo"
-                            th:title="${#strings.defaultString(#themes.code('cas.theme.name'), 'CAS')}"
-                            th:src="@{${#strings.defaultString(#themes.code('cas.logo.file'), '/images/cas-logo.png')}}"
+                    <div class="cas-brand mx-auto">
+                        <h1 class="visually-hidden" th:text="${#strings.defaultString(#themes.code('cas.theme.name'), 'CAS')}">CAS</h1>
+                        <a th:href="@{/}">
+                            <img id="cas-logo" class="cas-logo"
+                                 th:alt="${#strings.defaultString(#themes.code('cas.theme.name'), 'CAS')}"
+                                 th:src="@{${#strings.defaultString(#themes.code('cas.logo.file'), '/images/cas-logo.png')}}"
                             />
-                    </span>
+                        </a>
+                    </div>
                 </section>
                 <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end">
                     <button id="cas-notifications-menu"
@@ -41,72 +44,29 @@
                             aria-label="Bookmark this page"
                             data-bs-toggle="modal"
                             data-bs-target="#cas-notification-dialog">
-                        <span class="mdi mdi-bell-alert fa fa-bell"></span>
+                        <span class="mdi mdi-bell-alert fa fa-bell" aria-hidden="true"></span>
                         <span class="visually-hidden">notifications</span>
                         <i id="notifications-count" class="notifications-count count">2</i>
                     </button>
 
-<!--                <a id="cas-user-account"-->
-<!--                   th:href="@{/account}"-->
-<!--                   th:if="${ticketGrantingTicketId != null}"-->
-<!--                   class="mdc-icon-button mdc-top-app-bar__action-item"-->
-<!--                   aria-label="User Account">-->
-<!--                    <span class="mdi mdi-account-group"></span>-->
-<!--                    <span class="visually-hidden">user account</span>-->
-<!--                </a>-->
+                    <a id="cas-user-account"
+                       th:href="@{/account}"
+                       th:if="${accountProfileManagementEnabled != null
+                        && accountProfileManagementEnabled
+                        && ticketGrantingTicketId != null}"
+                       class="mdc-icon-button mdc-top-app-bar__action-item"
+                       aria-label="User Account">
+                        <span class="mdi mdi-account-group" aria-hidden="true"></span>
+                        <span class="visually-hidden">user account</span>
+                    </a>
                 </section>
             </div>
         </nav>
     </header>
-    <aside id="app-drawer"
-           th:if="${'true' == #strings.defaultString(#themes.code('cas.drawer-menu.enabled'), 'true')}"
-           class="mdc-drawer mdc-drawer--dismissible mdc-drawer--modal offcanvas offcanvas-start">
-        <div class="mdc-drawer__header offcanvas-header flex-column">
-            <h3 class="mdc-drawer__title offcanvas-title" th:text="${#strings.defaultString(#themes.code('cas.theme.name'), 'CAS')}">CAS</h3>
-            <h6 class="mdc-drawer__subtitle offcanvas-title"
-                th:text="${#strings.defaultString(#themes.code('cas.theme.description'), 'Central Authentication Service')}">
-                Central Authentication Service</h6>
-        </div>
-        <div class="mdc-drawer__content offcanvas-body">
-            <nav class="mdc-list list-group list-group-flush">
-                <a th:href="@{/actuator}" class="mdc-list-item list-group-item list-group-item-action">
-                    <i class="mdi mdi-cogs fa fa-cogs"></i>&nbsp;
-                    <span class="mdc-list-item__text">[[#{cas.login.resources.endpoints}]]</span>
-                </a>
-                <hr class="mdc-list-divider bs-hide"/>
-                <a class="mdc-list-item list-group-item list-group-item-action" href="https://apereo.github.io/cas">
-                    <i class="mdi mdi-file-code-outline fas fa-file-code"></i>&nbsp;
-                    <span class="mdc-list-item__text">[[#{cas.login.resources.wiki}]]</span>
-                </a>
-                <a class="mdc-list-item list-group-item list-group-item-action" href="https://github.com/apereo/cas/pulls">
-                    <i class="mdi mdi-call-merge fas fa-code-branch"></i>&nbsp;
-                    <span class="mdc-list-item__text">[[#{cas.login.resources.pulls}]]</span>
-                </a>
-                <a class="mdc-list-item list-group-item list-group-item-action" href="https://apereo.github.io/cas/developer/Contributor-Guidelines.html">
-                    <i class="mdi mdi-information fas fa-info-circle"></i>&nbsp;
-                    <span class="mdc-list-item__text">[[#{cas.login.resources.contribguide}]]</span>
-                </a>
-                <a class="mdc-list-item list-group-item list-group-item-action" href="https://apereo.github.io/cas/Support.html">
-                    <i class="mdi mdi-help-circle fas fa-question-circle"></i>&nbsp;
-                    <span class="mdc-list-item__text">[[#{cas.login.resources.support}]]</span>
-                </a>
-                <a class="mdc-list-item list-group-item list-group-item-action" href="https://apereo.github.io/cas/Mailing-Lists.html">
-                    <i class="mdi mdi-email-newsletter fas fa-envelope-open-text"></i>&nbsp;
-                    <span class="mdc-list-item__text">[[#{cas.login.resources.mailinglist}]]</span>
-                </a>
-                <a class="mdc-list-item list-group-item list-group-item-action" href="https://gitter.im/apereo/cas">
-                    <i class="mdi mdi-message-text fas fa-comment-dots"></i>&nbsp;
-                    <span class="mdc-list-item__text">[[#{cas.login.resources.chat}]]</span>
-                </a>
-                <a class="mdc-list-item list-group-item list-group-item-action" href="https://apereo.github.io/">
-                    <i class="mdi mdi-post fas fa-newspaper"></i>&nbsp;
-                    <span class="mdc-list-item__text">[[#{cas.login.resources.blog}]]</span>
-                </a>
-            </nav>
-        </div>
-    </aside>
 
-    <script>var countMessages = 0;</script>
+    <div th:replace="~{fragments/logindrawer :: logindrawer}"/>
+
+    <script>let countMessages = 0;</script>
     <div
             th:if="${'true' == #strings.defaultString(#themes.code('cas.notifications-menu.enabled'), 'true')}"
             class="mdc-dialog cas-notification-dialog modal"
@@ -115,15 +75,13 @@
             aria-describedby="notif-dialog-content">
         <div class="mdc-dialog__container modal-dialog">
             <div class="mdc-dialog__surface modal-content">
-                <h1 class="mdc-dialog__title mt-lg-2 modal-header modal-title" id="notif-dialog-title">
-                    Notifications
-                </h1>
                 <div class="mdc-dialog__content modal-body" id="notif-dialog-content">
                     <div class="cas-notification-message mdc-typography--body1" th:if="${staticAuthentication}">
                         <script>countMessages++;</script>
-                        <h6 class="mdc-typography--headline6 mdi mdi-alert-circle fas fa-exclamation-circle" th:utext="#{screen.defaultauthn.title}"/>
-                        <p class="text text-wrap small" th:utext="#{screen.defaultauthn.heading}">
-                            <i class="mdi mdi-google fas fa-google"></i>
+                        <h3 class="mdc-typography--headline6 mdi mdi-alert-circle fas fa-exclamation-circle"
+                            th:utext="#{screen.defaultauthn.title}"/>
+                        <p class="text text-wrap small text-justify" th:utext="#{screen.defaultauthn.heading}">
+                            <i class="mdi mdi-google fas fa-google" aria-hidden="true"></i>
                             Static AuthN is ONLY useful for demo purposes. It is recommended that you connect CAS to
                             LDAP,
                             JDBC, etc
@@ -131,19 +89,29 @@
                         </p>
                     </div>
                     <div class="cas-notification-message mdc-typography--body1"
-                         th:if="${not #httpServletRequest.secure}">
-                        <h6 class="mdc-typography--headline6 mdi mdi-alert-circle fas fa-exclamation-circle" th:utext="#{screen.nonsecure.title}"/>
+                         th:unless="${httpRequestSecure}">
+                        <h3 class="mdc-typography--headline6 mdi mdi-alert-circle fas fa-exclamation-circle"
+                            th:utext="#{screen.nonsecure.title}"/>
                         <script>countMessages++;</script>
                         <p class="text-wrap small" th:utext="#{screen.nonsecure.message}">
                             Unsure Connection
                         </p>
                     </div>
+
+                    <div id="cookiesSupportedDiv" class="cas-notification-message mdc-typography--body1" style="display: none">
+                        <h3 class="mdc-typography--headline6 mdi mdi-alert-circle fas fa-exclamation-circle"
+                            th:utext="#{screen.cookies.disabled.title}"></h3>
+                        <p class="text-wrap small" th:utext="#{screen.cookies.disabled.message}">
+                            Cookies are not supported by this browser.
+                        </p>
+                    </div>
+
                 </div>
                 <footer class="mdc-dialog__actions modal-footer">
-                    <button type="button" class="mdc-button mdc-dialog__button btn btn-primary"
-                        data-mdc-dialog-action="accept"
-                        data-mdc-dialog-button-default
-                        data-bs-dismiss="modal">
+                    <button type="button" class="mdc-button mdc-button--raised mdc-dialog__button btn btn-primary"
+                            data-mdc-dialog-action="accept"
+                            data-mdc-dialog-button-default
+                            data-bs-dismiss="modal">
                         <span class="mdc-button__label">OK</span>
                     </button>
                 </footer>
@@ -153,91 +121,30 @@
     </div>
 
     <script type="text/javascript">
-
-        (function (material) {
-            var header = {
-                init: function () {
-                    header.attachTopbar();
-                    material.autoInit();
-                },
-                attachDrawer: function () {
-                    var elm = document.getElementById('app-drawer');
-                    if (elm != null) {
-                        var drawer = material.drawer.MDCDrawer.attachTo(elm);
-                        var closeDrawer = function (evt) {
-                            drawer.open = false;
-                        };
-                        drawer.foundation.handleScrimClick = closeDrawer;
-                        document.onkeydown = function (evt) {
-                            evt = evt || window.event;
-                            if (evt.keyCode == 27) {
-                                closeDrawer();
-                            }
-                        };
-                        header.drawer = drawer;
-                        return drawer;
-                    }
-                    return undefined;
-                },
-                attachTopbar: function (drawer) {
-
-                    var drawer = header.attachDrawer();
-                    var dialog = header.attachNotificationDialog();
-
-                    if (drawer != undefined) {
-                        header.attachDrawerToggle(drawer);
-                    }
-                    if (dialog != undefined) {
-                        header.attachNotificationToggle(dialog);
-                    }
-                },
-                checkCaps: function (ev) {
-                    var s = String.fromCharCode(ev.which);
-                    if (s.toUpperCase() === s && s.toLowerCase() !== s && !ev.shiftKey) {
-                        ev.target.parentElement.classList.add('caps-on');
-                    } else {
-                        ev.target.parentElement.classList.remove('caps-on');
-                    }
-                },
-                attachDrawerToggle: function (drawer) {
-                    let appBar = document.getElementById('app-bar');
-                    if (appBar != null) {
-                        let topAppBar = material.topAppBar.MDCTopAppBar.attachTo(appBar);
-                        topAppBar.setScrollTarget(document.getElementById('main-content'));
-                        topAppBar.listen('MDCTopAppBar:nav', function () {
-                            drawer.open = !drawer.open;
-                        });
-                        return topAppBar;
-                    }
-                    return undefined;
-                },
-                attachNotificationDialog: function () {
-                    var element = document.getElementById('cas-notification-dialog');
-                    if (element != null) {
-                        return material.dialog.MDCDialog.attachTo(element);
-                    }
-                    return undefined;
-                },
-                attachNotificationToggle: function (dialog) {
-                    var btn = document.getElementById('cas-notifications-menu');
-                    if (btn != null) {
-                        btn.addEventListener('click', function () {
-                            dialog.open();
-                        });
-                    }
-                }
+        function supportsCookies() {
+            try {
+                document.cookie = 'testcookie=1';
+                const ret = document.cookie.indexOf('testcookie=') !== -1;
+                document.cookie = 'testcookie=1; expires=Thu, 01-Jan-1970 00:00:01 GMT';
+                return ret;
+            } catch (e) {
+                console.log(e);
+                return false;
             }
-            document.addEventListener('DOMContentLoaded', function () {
-                if (material) {
-                    header.init();
-                }
-                if (countMessages == 0) {
-                    window.jQuery('#notifications-count').remove();
-                } else {
-                    window.jQuery('#notifications-count').text("(" + countMessages + ")")
-                }
-            });
-        })(typeof mdc !== 'undefined' && mdc);
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!supportsCookies()) {
+                countMessages++;
+                window.jQuery('#cookiesSupportedDiv').show();
+            }
+
+            if (countMessages === 0) {
+                window.jQuery('#notifications-count').remove();
+                window.jQuery('#cas-notifications-menu').remove();
+            } else {
+                window.jQuery('#notifications-count').text(`(${countMessages})`)
+            }
+        });
     </script>
 </div>
 

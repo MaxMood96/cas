@@ -1,10 +1,11 @@
 package org.apereo.cas.consent;
 
-import org.apereo.cas.config.CasConsentMongoDbConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.config.CasConsentMongoDbAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import lombok.Getter;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,7 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  * @since 5.3.0
  */
 @SpringBootTest(classes = {
-    CasConsentMongoDbConfiguration.class,
+    CasConsentMongoDbAutoConfiguration.class,
     BaseConsentRepositoryTests.SharedTestConfiguration.class
 },
     properties = {
@@ -29,11 +30,12 @@ import org.springframework.boot.test.context.SpringBootTest;
         "cas.consent.mongo.database-name=consent"
     })
 @Tag("MongoDb")
+@ExtendWith(CasTestExtension.class)
 @Getter
-@EnabledIfPortOpen(port = 27017)
-public class MongoDbConsentRepositoryTests extends BaseConsentRepositoryTests {
+@EnabledIfListeningOnPort(port = 27017)
+class MongoDbConsentRepositoryTests extends BaseConsentRepositoryTests {
 
     @Autowired
-    @Qualifier("consentRepository")
+    @Qualifier(ConsentRepository.BEAN_NAME)
     protected ConsentRepository repository;
 }

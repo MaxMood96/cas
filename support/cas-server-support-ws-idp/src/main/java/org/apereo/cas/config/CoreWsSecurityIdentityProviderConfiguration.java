@@ -9,24 +9,28 @@ import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.authentication.principal.ServiceFactory;
 import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.services.RegexRegisteredService;
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.services.CasRegisteredService;
 import org.apereo.cas.services.ServiceRegistryExecutionPlanConfigurer;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.services.ServicesManagerRegisteredServiceLocator;
-import org.apereo.cas.ticket.SecurityTokenTicketFactory;
+import org.apereo.cas.ticket.TicketFactory;
 import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
 import org.apereo.cas.util.InternalTicketValidator;
 import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.http.HttpClient;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.validation.AuthenticationAttributeReleasePolicy;
-import org.apereo.cas.web.ProtocolEndpointWebSecurityConfigurer;
+import org.apereo.cas.validation.TicketValidator;
+import org.apereo.cas.web.CasWebSecurityConfigurer;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.ws.idp.WSFederationConstants;
-import org.apereo.cas.ws.idp.authentication.WSFederationAuthenticationServiceSelectionStrategy;
 import org.apereo.cas.ws.idp.metadata.WSFederationMetadataController;
 import org.apereo.cas.ws.idp.services.DefaultRelyingPartyTokenProducer;
+import org.apereo.cas.ws.idp.services.DefaultWSFederationRelyingPartyAttributeWriter;
+import org.apereo.cas.ws.idp.services.WSFederationRelyingPartyAttributeWriter;
 import org.apereo.cas.ws.idp.services.WSFederationRelyingPartyTokenProducer;
 import org.apereo.cas.ws.idp.services.WSFederationServiceRegistry;
 import org.apereo.cas.ws.idp.services.WsFederationServicesManagerRegisteredServiceLocator;
@@ -37,7 +41,6 @@ import org.apereo.cas.ws.idp.web.WSFederationValidateRequestController;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.jasig.cas.client.validation.TicketValidator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -61,15 +64,17 @@ import java.util.List;
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ImportResource(locations = "classpath:META-INF/cxf/cxf.xml")
 @Slf4j
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.WsFederationIdentityProvider)
 @Configuration(value = "CoreWsSecurityIdentityProviderConfiguration", proxyBeanMethods = false)
-public class CoreWsSecurityIdentityProviderConfiguration {
+class CoreWsSecurityIdentityProviderConfiguration {
 
     @Configuration(value = "CoreWsSecurityIdentityProviderWebConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CoreWsSecurityIdentityProviderWebConfiguration {
+    static class CoreWsSecurityIdentityProviderWebConfiguration {
         @Bean
-        public ProtocolEndpointWebSecurityConfigurer<Void> wsFederationProtocolEndpointConfigurer() {
-            return new ProtocolEndpointWebSecurityConfigurer<>() {
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public CasWebSecurityConfigurer<Void> wsFederationProtocolEndpointConfigurer() {
+            return new CasWebSecurityConfigurer<>() {
 
                 @Override
                 public List<String> getIgnoredEndpoints() {
@@ -79,26 +84,12 @@ public class CoreWsSecurityIdentityProviderConfiguration {
         }
     }
 
-    @Configuration(value = "CoreWsSecurityIdentityProviderServiceSelectionConfiguration", proxyBeanMethods = false)
-    @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CoreWsSecurityIdentityProviderServiceSelectionConfiguration {
-        @Bean
-        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        @ConditionalOnMissingBean(name = "wsFederationAuthenticationServiceSelectionStrategy")
-        public AuthenticationServiceSelectionStrategy wsFederationAuthenticationServiceSelectionStrategy(
-            @Qualifier("webApplicationServiceFactory")
-            final ServiceFactory<WebApplicationService> webApplicationServiceFactory,
-            @Qualifier(ServicesManager.BEAN_NAME)
-            final ServicesManager servicesManager) {
-            return new WSFederationAuthenticationServiceSelectionStrategy(servicesManager, webApplicationServiceFactory);
-        }
-    }
-
     @Configuration(value = "CoreWsSecurityIdentityProviderServiceSelectionPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CoreWsSecurityIdentityProviderServiceSelectionPlanConfiguration {
+    static class CoreWsSecurityIdentityProviderServiceSelectionPlanConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "wsFederationAuthenticationServiceSelectionStrategyConfigurer")
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public AuthenticationServiceSelectionStrategyConfigurer wsFederationAuthenticationServiceSelectionStrategyConfigurer(
             @Qualifier("wsFederationAuthenticationServiceSelectionStrategy")
             final AuthenticationServiceSelectionStrategy wsFederationAuthenticationServiceSelectionStrategy) {
@@ -108,8 +99,9 @@ public class CoreWsSecurityIdentityProviderConfiguration {
 
     @Configuration(value = "CoreWsSecurityIdentityProviderServicesConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CoreWsSecurityIdentityProviderServicesConfiguration {
+    static class CoreWsSecurityIdentityProviderServicesConfiguration {
         @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "wsFederationServicesManagerRegisteredServiceLocator")
         public ServicesManagerRegisteredServiceLocator wsFederationServicesManagerRegisteredServiceLocator() {
             return new WsFederationServicesManagerRegisteredServiceLocator();
@@ -117,13 +109,14 @@ public class CoreWsSecurityIdentityProviderConfiguration {
 
         @Bean
         public Service wsFederationCallbackService(
-            @Qualifier("webApplicationServiceFactory")
+            @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
             final ServiceFactory<WebApplicationService> webApplicationServiceFactory) {
             return webApplicationServiceFactory
                 .createService(WSFederationConstants.ENDPOINT_FEDERATION_REQUEST_CALLBACK);
         }
 
         @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "wsFederationServiceRegistryExecutionPlanConfigurer")
         public ServiceRegistryExecutionPlanConfigurer wsFederationServiceRegistryExecutionPlanConfigurer(
             final ConfigurableApplicationContext applicationContext,
@@ -131,12 +124,13 @@ public class CoreWsSecurityIdentityProviderConfiguration {
             final Service wsFederationCallbackService) {
             return plan -> {
                 LOGGER.debug("Initializing WS Federation callback service [{}]", wsFederationCallbackService);
-                val service = new RegexRegisteredService();
-                service.setId(RandomUtils.nextLong());
+                val service = new CasRegisteredService();
+                service.setId(RandomUtils.nextInt());
                 service.setEvaluationOrder(Ordered.HIGHEST_PRECEDENCE);
                 service.setName(service.getClass().getSimpleName());
                 service.setDescription("WS-Federation Authentication Request");
                 service.setServiceId(wsFederationCallbackService.getId().concat(".+"));
+                service.markAsInternal();
                 LOGGER.debug("Saving callback service [{}] into the registry", service.getServiceId());
                 plan.registerServiceRegistry(new WSFederationServiceRegistry(applicationContext, service));
             };
@@ -145,27 +139,38 @@ public class CoreWsSecurityIdentityProviderConfiguration {
 
     @Configuration(value = "CoreWsSecurityIdentityProviderTicketsConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CoreWsSecurityIdentityProviderTicketsConfiguration {
+    static class CoreWsSecurityIdentityProviderTicketsConfiguration {
+
+        @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        @ConditionalOnMissingBean(name = "defaultWSFederationRelyingPartyAttributeWriter")
+        public WSFederationRelyingPartyAttributeWriter defaultWSFederationRelyingPartyAttributeWriter(
+            final CasConfigurationProperties casProperties) {
+            val claims = new HashSet<>(casProperties.getAuthn().getWsfedIdp().getSts().getCustomClaims());
+            return new DefaultWSFederationRelyingPartyAttributeWriter(claims);
+        }
 
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "wsFederationRelyingPartyTokenProducer")
         public WSFederationRelyingPartyTokenProducer wsFederationRelyingPartyTokenProducer(
+            @Qualifier("defaultWSFederationRelyingPartyAttributeWriter")
+            final WSFederationRelyingPartyAttributeWriter relyingPartyAttributeWriter,
             @Qualifier("securityTokenServiceCredentialCipherExecutor")
             final CipherExecutor securityTokenServiceCredentialCipherExecutor,
             @Qualifier("securityTokenServiceClientBuilder")
-            final SecurityTokenServiceClientBuilder securityTokenServiceClientBuilder,
-            final CasConfigurationProperties casProperties) {
+            final SecurityTokenServiceClientBuilder securityTokenServiceClientBuilder) {
             return new DefaultRelyingPartyTokenProducer(securityTokenServiceClientBuilder,
-                securityTokenServiceCredentialCipherExecutor, new HashSet<>(casProperties.getAuthn().getWsfedIdp().getSts().getCustomClaims()));
+                securityTokenServiceCredentialCipherExecutor, relyingPartyAttributeWriter);
         }
 
         @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "wsFederationTicketValidator")
         public TicketValidator wsFederationTicketValidator(
-            @Qualifier("webApplicationServiceFactory")
+            @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
             final ServiceFactory<WebApplicationService> webApplicationServiceFactory,
-            @Qualifier("authenticationAttributeReleasePolicy")
+            @Qualifier(AuthenticationAttributeReleasePolicy.BEAN_NAME)
             final AuthenticationAttributeReleasePolicy authenticationAttributeReleasePolicy,
             @Qualifier(CentralAuthenticationService.BEAN_NAME)
             final CentralAuthenticationService centralAuthenticationService,
@@ -178,20 +183,20 @@ public class CoreWsSecurityIdentityProviderConfiguration {
 
     @Configuration(value = "CoreWsSecurityIdentityProviderContextConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CoreWsSecurityIdentityProviderContextConfiguration {
+    static class CoreWsSecurityIdentityProviderContextConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public WSFederationRequestConfigurationContext wsFederationConfigurationContext(
             @Qualifier("wsFederationRelyingPartyTokenProducer")
             final WSFederationRelyingPartyTokenProducer wsFederationRelyingPartyTokenProducer,
-            @Qualifier("noRedirectHttpClient")
+            @Qualifier(HttpClient.BEAN_NAME_HTTPCLIENT_NO_REDIRECT)
             final HttpClient httpClient,
             @Qualifier("wsFederationAuthenticationServiceSelectionStrategy")
             final AuthenticationServiceSelectionStrategy wsFederationAuthenticationServiceSelectionStrategy,
             @Qualifier(TicketRegistrySupport.BEAN_NAME)
             final TicketRegistrySupport ticketRegistrySupport,
-            @Qualifier("securityTokenTicketFactory")
-            final SecurityTokenTicketFactory securityTokenTicketFactory,
+            @Qualifier(TicketFactory.BEAN_NAME)
+            final TicketFactory ticketFactory,
             @Qualifier(TicketRegistry.BEAN_NAME)
             final TicketRegistry ticketRegistry,
             @Qualifier("wsFederationCallbackService")
@@ -200,11 +205,11 @@ public class CoreWsSecurityIdentityProviderConfiguration {
             final SecurityTokenServiceTokenFetcher securityTokenServiceTokenFetcher,
             @Qualifier(ServicesManager.BEAN_NAME)
             final ServicesManager servicesManager,
-            @Qualifier("ticketGrantingTicketCookieGenerator")
+            @Qualifier(CasCookieBuilder.BEAN_NAME_TICKET_GRANTING_COOKIE_BUILDER)
             final CasCookieBuilder ticketGrantingTicketCookieGenerator,
             @Qualifier("wsFederationTicketValidator")
             final TicketValidator wsFederationTicketValidator,
-            @Qualifier("webApplicationServiceFactory")
+            @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
             final ServiceFactory<WebApplicationService> webApplicationServiceFactory,
             final CasConfigurationProperties casProperties) {
             return WSFederationRequestConfigurationContext.builder()
@@ -216,19 +221,18 @@ public class CoreWsSecurityIdentityProviderConfiguration {
                 .securityTokenServiceTokenFetcher(securityTokenServiceTokenFetcher)
                 .serviceSelectionStrategy(wsFederationAuthenticationServiceSelectionStrategy)
                 .httpClient(httpClient)
-                .securityTokenTicketFactory(securityTokenTicketFactory)
+                .ticketFactory(ticketFactory)
                 .ticketGrantingTicketCookieGenerator(ticketGrantingTicketCookieGenerator)
                 .ticketRegistry(ticketRegistry)
                 .ticketRegistrySupport(ticketRegistrySupport)
                 .callbackService(wsFederationCallbackService)
                 .build();
         }
-
     }
 
     @Configuration(value = "CoreWsSecurityIdentityProviderControllersConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CoreWsSecurityIdentityProviderControllersConfiguration {
+    static class CoreWsSecurityIdentityProviderControllersConfiguration {
         @ConditionalOnMissingBean(name = "federationValidateRequestController")
         @Bean
         public WSFederationValidateRequestController federationValidateRequestController(

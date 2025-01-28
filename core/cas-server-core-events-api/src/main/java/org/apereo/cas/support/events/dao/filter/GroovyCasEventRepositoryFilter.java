@@ -2,8 +2,8 @@ package org.apereo.cas.support.events.dao.filter;
 
 import org.apereo.cas.support.events.CasEventRepositoryFilter;
 import org.apereo.cas.support.events.dao.CasEvent;
-import org.apereo.cas.util.scripting.WatchableGroovyScriptResource;
-
+import org.apereo.cas.util.scripting.ExecutableCompiledScript;
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.DisposableBean;
@@ -17,14 +17,15 @@ import org.springframework.core.io.Resource;
  */
 @Slf4j
 public class GroovyCasEventRepositoryFilter implements CasEventRepositoryFilter, DisposableBean {
-    private final WatchableGroovyScriptResource watchableScript;
+    private final ExecutableCompiledScript watchableScript;
 
     public GroovyCasEventRepositoryFilter(final Resource groovyResource) {
-        this.watchableScript = new WatchableGroovyScriptResource(groovyResource);
+        val scriptFactory = ExecutableCompiledScriptFactory.getExecutableCompiledScriptFactory();
+        this.watchableScript = scriptFactory.fromResource(groovyResource);
     }
 
     @Override
-    public boolean shouldSaveEvent(final CasEvent event) {
+    public boolean shouldSaveEvent(final CasEvent event) throws Throwable {
         val args = new Object[]{event, LOGGER};
         return watchableScript.execute("shouldSaveEvent", Boolean.class, args);
     }

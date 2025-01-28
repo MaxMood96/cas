@@ -1,5 +1,12 @@
 description = "Apereo CAS Swagger API Support"
-
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "REST Protocol",
+            title: "Swagger UI",
+            aliases: ["swagger"]
+    ]
+}
 dependencies {
     api libraries.swagger
     implementation libraries.springdoc
@@ -8,6 +15,7 @@ dependencies {
     implementation project(":core:cas-server-core-web-api")
     
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
 
     testImplementation project(path: ":core:cas-server-core-webflow", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core", configuration: "tests")

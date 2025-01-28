@@ -1,7 +1,16 @@
 description = "Apereo CAS Web Application JDBC Session Management"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "HTTP Session Management",
+            title: "HTTP Session Management via JDBC"
+    ]
+}
+
 dependencies {
     implementation project(":core:cas-server-core-authentication-api")
     implementation project(":core:cas-server-core-configuration-api")
+    implementation project(":core:cas-server-core-util-api")
 
     implementation project(":support:cas-server-support-jpa-util")
 
@@ -9,4 +18,6 @@ dependencies {
     
     implementation libraries.springsession
     implementation libraries.springsessionjdbc
+
+    testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
 }

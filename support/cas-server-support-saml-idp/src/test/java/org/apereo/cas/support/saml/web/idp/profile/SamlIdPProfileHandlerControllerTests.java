@@ -3,9 +3,8 @@ package org.apereo.cas.support.saml.web.idp.profile;
 import org.apereo.cas.services.UnauthorizedServiceException;
 import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
-import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceServiceProviderMetadataFacade;
+import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceMetadataAdaptor;
 import org.apereo.cas.support.saml.web.idp.profile.sso.SSOSamlIdPPostProfileHandlerController;
-import org.apereo.cas.support.saml.web.idp.profile.sso.SSOSamlIdPProfileCallbackHandlerControllerTests;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 
 import lombok.val;
@@ -19,7 +18,6 @@ import org.opensaml.messaging.context.MessageContext;
 import org.opensaml.saml.common.SAMLException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.TestPropertySource;
 
@@ -34,19 +32,19 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("SAML")
-@Import(SSOSamlIdPProfileCallbackHandlerControllerTests.SamlIdPTestConfiguration.class)
+@Tag("SAML2Web")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestPropertySource(properties = "cas.authn.saml-idp.metadata.file-system.location=file:src/test/resources/metadata")
-public class SamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
+class SamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
     @Autowired
     @Qualifier("ssoPostProfileHandlerController")
     private SSOSamlIdPPostProfileHandlerController controller;
 
     @Test
-    public void verifyNoMetadataForRequest() {
+    void verifyNoMetadataForRequest() {
         val service = new SamlRegisteredService();
         service.setServiceId(UUID.randomUUID().toString());
+        service.setName("SAML2Service");
         servicesManager.save(service);
 
         val request = new MockHttpServletRequest();
@@ -58,15 +56,16 @@ public class SamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigurati
     }
 
     @Test
-    public void verifyNoSignAuthnRequest() throws Exception {
+    void verifyNoSignAuthnRequest() {
         val service = new SamlRegisteredService();
         service.setServiceId(UUID.randomUUID().toString());
+        service.setName("SAML2Service");
         servicesManager.save(service);
 
         val request = new MockHttpServletRequest();
         val authnRequest = getAuthnRequestFor(service.getServiceId());
 
-        val adaptor = mock(SamlRegisteredServiceServiceProviderMetadataFacade.class);
+        val adaptor = mock(SamlRegisteredServiceMetadataAdaptor.class);
         when(adaptor.isAuthnRequestsSigned()).thenReturn(true);
         val context = new MessageContext();
         context.setMessage(authnRequest);
@@ -76,7 +75,7 @@ public class SamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigurati
 
 
     @Test
-    public void verifyException() {
+    void verifyException() {
         val request = new MockHttpServletRequest();
         request.addParameter("username", "casuser");
         val results = controller.handleUnauthorizedServiceException(request, new IllegalStateException());
@@ -84,6 +83,6 @@ public class SamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigurati
         assertTrue(results.getModel().containsKey(CasWebflowConstants.ATTRIBUTE_ERROR_ROOT_CAUSE_EXCEPTION));
 
         assertThrows(UnauthorizedServiceException.class,
-            () -> controller.verifySamlRegisteredService(StringUtils.EMPTY));
+            () -> controller.verifySamlRegisteredService(StringUtils.EMPTY, request));
     }
 }

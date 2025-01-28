@@ -1,26 +1,22 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.services.util.RegisteredServiceJsonSerializer;
-import org.apereo.cas.util.serialization.StringSerializer;
-
-import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.experimental.Accessors;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -38,22 +34,20 @@ import java.io.Serializable;
 @SuperBuilder
 @NoArgsConstructor
 @Slf4j
+@Accessors(chain = true)
 public class JpaRegisteredServiceEntity implements Serializable {
     /**
      * Th JPA entity name.
      */
     public static final String ENTITY_NAME = "JpaRegisteredServiceEntity";
 
+    @Serial
     private static final long serialVersionUID = 6534421912995436609L;
-
-    private static StringSerializer<RegisteredService> SERIALIZER =
-        new RegisteredServiceJsonSerializer(new MinimalPrettyPrinter());
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO, generator = "service_sequence")
     @SequenceGenerator(name = "service_sequence", allocationSize = 100)
-    @Builder.Default
-    private long id = RegisteredService.INITIAL_IDENTIFIER_VALUE;
+    private long id;
 
     @Column(nullable = false)
     private String serviceId;
@@ -70,32 +64,4 @@ public class JpaRegisteredServiceEntity implements Serializable {
     @Column(nullable = false, length = 8_000)
     private String body;
 
-    /**
-     * From registered service.
-     *
-     * @param service the service
-     * @return the jpa registered service entity
-     */
-    public static JpaRegisteredServiceEntity fromRegisteredService(final RegisteredService service) {
-        val jsonBody = SERIALIZER.toString(service);
-        return JpaRegisteredServiceEntity.builder()
-            .id(service.getId())
-            .name(service.getName())
-            .serviceId(service.getServiceId())
-            .evaluationOrder(service.getEvaluationOrder())
-            .body(jsonBody)
-            .build();
-    }
-
-    /**
-     * To registered service.
-     *
-     * @return the registered service
-     */
-    public RegisteredService toRegisteredService() {
-        val service = SERIALIZER.from(this.body);
-        service.setId(this.id);
-        LOGGER.trace("Converted JPA entity [{}] to [{}]", this, service);
-        return service;
-    }
 }

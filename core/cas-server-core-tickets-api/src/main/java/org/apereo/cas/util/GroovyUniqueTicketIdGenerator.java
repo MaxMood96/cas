@@ -1,8 +1,8 @@
 package org.apereo.cas.util;
 
 import org.apereo.cas.ticket.UniqueTicketIdGenerator;
-import org.apereo.cas.util.scripting.WatchableGroovyScriptResource;
-
+import org.apereo.cas.util.scripting.ExecutableCompiledScript;
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -17,14 +17,15 @@ import org.springframework.core.io.Resource;
 @RequiredArgsConstructor
 @Slf4j
 public class GroovyUniqueTicketIdGenerator implements UniqueTicketIdGenerator {
-    private final transient WatchableGroovyScriptResource watchableScript;
+    private final ExecutableCompiledScript watchableScript;
 
     public GroovyUniqueTicketIdGenerator(final Resource groovyResource) {
-        this.watchableScript = new WatchableGroovyScriptResource(groovyResource);
+        val scriptFactory = ExecutableCompiledScriptFactory.getExecutableCompiledScriptFactory();
+        this.watchableScript = scriptFactory.fromResource(groovyResource);
     }
 
     @Override
-    public String getNewTicketId(final String prefix) {
+    public String getNewTicketId(final String prefix) throws Throwable {
         val args = new Object[]{prefix, LOGGER};
         return watchableScript.execute(args, String.class);
     }

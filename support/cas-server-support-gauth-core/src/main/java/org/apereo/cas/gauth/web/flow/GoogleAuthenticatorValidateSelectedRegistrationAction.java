@@ -2,11 +2,14 @@ package org.apereo.cas.gauth.web.flow;
 
 import org.apereo.cas.authentication.OneTimeTokenAccount;
 import org.apereo.cas.gauth.credential.GoogleAuthenticatorTokenCredential;
+import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustRecord;
+import org.apereo.cas.trusted.util.MultifactorAuthenticationTrustUtils;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -17,7 +20,7 @@ import org.springframework.webflow.execution.RequestContext;
  * @since 6.3.0
  */
 @Slf4j
-public class GoogleAuthenticatorValidateSelectedRegistrationAction extends AbstractAction {
+public class GoogleAuthenticatorValidateSelectedRegistrationAction extends BaseCasWebflowAction {
     private static final String CODE = "screen.authentication.gauth.invalid";
 
     private static void addErrorMessageToContext(final RequestContext requestContext) {
@@ -25,8 +28,14 @@ public class GoogleAuthenticatorValidateSelectedRegistrationAction extends Abstr
     }
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
-        val account = WebUtils.getOneTimeTokenAccount(requestContext, OneTimeTokenAccount.class);
+    protected Event doExecuteInternal(final RequestContext requestContext) {
+        if (MultifactorAuthenticationTrustUtils.isMultifactorAuthenticationTrustedInScope(requestContext)) {
+            val trustedDevice = MultifactorAuthenticationTrustUtils.getMultifactorAuthenticationTrustRecord(requestContext, MultifactorAuthenticationTrustRecord.class).orElseThrow();
+            LOGGER.info("Multifactor authentication device [{}] is trusted with fingerprint [{}]", trustedDevice.getName(), trustedDevice.getDeviceFingerprint());
+            return success(trustedDevice);
+        }
+
+        val account = MultifactorAuthenticationWebflowUtils.getOneTimeTokenAccount(requestContext, OneTimeTokenAccount.class);
         if (account == null) {
             LOGGER.warn("Unable to determine google authenticator account");
             addErrorMessageToContext(requestContext);

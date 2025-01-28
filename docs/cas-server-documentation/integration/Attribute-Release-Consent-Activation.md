@@ -25,7 +25,7 @@ selection. A sample chain of attribute consent polices follows:
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "sample",
   "name" : "sample",
   "id" : 100,
@@ -71,14 +71,7 @@ The script itself may be designed as such:
 import org.apereo.cas.util.model.TriStateBoolean
 
 def run(Object[] args) {
-    def consentEngine = args[0]
-    def casProperties = args[1]
-    def service = args[2]
-    def registeredService = args[3]
-    def authentication = args[4]
-    def request = args[5]
-    def logger = args[6]
-
+    def (consentEngine,casProperties,service,registeredService,authentication,request,logger) = args
     logger.debug("Activating consent for ${registeredService.name}")
     return true;
 }
@@ -86,14 +79,16 @@ def run(Object[] args) {
 
 The following parameters are passed to the script:
 
-| Parameter             | Description
-|-----------------------------------------------------------------------------------------------------------------
-| `consentEngine`       | A reference to the `ConsentEngine` object.
-| `casProperties`       | A reference to the CAS configuration properties loaded from property sources.
-| `service`             | The `Service` object representing the requesting application.
-| `registeredService`   | The `RegisteredService` object representing the service definition in the registry.
-| `authentication`      | The `Authentication` object representing the active authentication transaction.
-| `request`             | The object representing the HTTP servlet request.
-| `logger`              | The object responsible for issuing log messages such as `logger.info(...)`.
+| Parameter           | Description                                                                         |
+|---------------------|-------------------------------------------------------------------------------------|
+| `consentEngine`     | A reference to the `ConsentEngine` object.                                          |
+| `casProperties`     | A reference to the CAS configuration properties loaded from property sources.       |
+| `service`           | The `Service` object representing the requesting application.                       |
+| `registeredService` | The `RegisteredService` object representing the service definition in the registry. |
+| `authentication`    | The `Authentication` object representing the active authentication transaction.     |
+| `request`           | The object representing the HTTP servlet request.                                   |
+| `logger`            | The object responsible for issuing log messages such as `logger.info(...)`.         |
 
 The script is expected to return either `true` or `false` to determine whether or not consent is required.
+
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).

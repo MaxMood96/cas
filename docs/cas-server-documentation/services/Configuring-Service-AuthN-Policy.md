@@ -15,7 +15,7 @@ to enhance the authentication flow.
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "https://app.example.org/.+",
   "name" : "ExampleApp",
   "id" : 1,
@@ -50,7 +50,7 @@ Maps to the `Required` [authentication policy](../authentication/Configuring-Aut
 
 ```json
 {
-  "@class": "org.apereo.cas.services.RegexRegisteredService",
+  "@class": "org.apereo.cas.services.CasRegisteredService",
   "serviceId": "^(https|imaps)://.*",
   "name": "Example",
   "id": 1,
@@ -58,11 +58,15 @@ Maps to the `Required` [authentication policy](../authentication/Configuring-Aut
     "@class": "org.apereo.cas.services.DefaultRegisteredServiceAuthenticationPolicy",
     "requiredAuthenticationHandlers" : ["java.util.TreeSet", [ "JSON" ]],
     "criteria": {
-      "@class": "org.apereo.cas.services.AllowedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria"
+      "@class": "org.apereo.cas.services.AllowedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria",
+      "tryAll: false
     }
   }
 }
 ```
+      
+The `tryAll` flag will ensure that the total number of collected credentials in the current authentication transaction
+matches the sum of all authentication successes and failures.
 
 ### Excluded
 
@@ -70,7 +74,7 @@ Enable the authentication policy criteria to exclude and disqualify indicated au
 
 ```json
 {
-  "@class": "org.apereo.cas.services.RegexRegisteredService",
+  "@class": "org.apereo.cas.services.CasRegisteredService",
   "serviceId": "^(https|imaps)://.*",
   "name": "Example",
   "id": 1,
@@ -90,7 +94,7 @@ Maps to the `Any` [authentication policy](../authentication/Configuring-Authenti
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "https://app.example.org/.+",
   "name" : "ExampleApp",
   "id" : 1,
@@ -110,7 +114,7 @@ Maps to the `All` [authentication policy](../authentication/Configuring-Authenti
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "https://app.example.org/.+",
   "name" : "ExampleApp",
   "id" : 1,
@@ -129,7 +133,7 @@ Maps to the `Not Prevented` [authentication policy](../authentication/Configurin
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "https://app.example.org/.+",
   "name" : "ExampleApp",
   "id" : 1,
@@ -148,7 +152,7 @@ Maps to the `Groovy` [authentication policy](../authentication/Configuring-Authe
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "https://app.example.org/.+",
   "name" : "ExampleApp",
   "id" : 1,
@@ -162,7 +166,8 @@ Maps to the `Groovy` [authentication policy](../authentication/Configuring-Authe
 }
 ```
 
-The `script` attribute can either be an inline Groovy script or a reference to an external file. 
+The `script` attribute can either be an inline Groovy script or a reference to an external file.
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).
 
 ### REST
 
@@ -170,7 +175,7 @@ The `script` attribute can either be an inline Groovy script or a reference to a
  
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "https://app.example.org/.+",
   "name" : "ExampleApp",
   "id" : 1,

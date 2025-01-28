@@ -4,11 +4,12 @@ import org.apereo.cas.configuration.model.core.authentication.PasswordEncoderPro
 import org.apereo.cas.configuration.model.core.authentication.PrincipalTransformationProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+
+import java.io.Serial;
 
 /**
  * Configuration properties for Redis.
@@ -20,9 +21,10 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("RedisAuthenticationProperties")
+
 public class RedisAuthenticationProperties extends BaseRedisProperties {
 
+    @Serial
     private static final long serialVersionUID = -1232996050439638782L;
 
     /**

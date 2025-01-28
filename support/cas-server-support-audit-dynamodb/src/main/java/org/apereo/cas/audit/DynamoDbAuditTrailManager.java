@@ -6,8 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.apereo.inspektr.audit.AuditActionContext;
 
-import java.time.LocalDate;
-import java.util.Set;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This is {@link DynamoDbAuditTrailManager}.
@@ -32,8 +32,8 @@ public class DynamoDbAuditTrailManager extends AbstractAuditTrailManager {
     }
 
     @Override
-    public Set<? extends AuditActionContext> getAuditRecordsSince(final LocalDate localDate) {
-        return dynamoDbFacilitator.getAuditRecordsSince(localDate);
+    public List<? extends AuditActionContext> getAuditRecords(final Map<WhereClauseFields, Object> whereClause) {
+        return dynamoDbFacilitator.getAuditRecords(whereClause);
     }
 
     @Override

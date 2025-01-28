@@ -1,15 +1,15 @@
 package org.apereo.cas.config;
 
 import org.apereo.cas.BasePrincipalAttributeRepositoryTests;
-
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -24,10 +24,11 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.attribute-repository.core.expiration-time-unit=seconds"
 })
 @Tag("Attributes")
-public class CasPersonDirectoryConfigurationCachingAttributeRepositoryTests {
+@ExtendWith(CasTestExtension.class)
+class CasPersonDirectoryConfigurationCachingAttributeRepositoryTests {
     @Autowired
     @Qualifier("cachingAttributeRepository")
-    private IPersonAttributeDao cachingAttributeRepository;
+    private PersonAttributeDao cachingAttributeRepository;
 
     /**
      * These two username produce the same hashcode
@@ -36,7 +37,7 @@ public class CasPersonDirectoryConfigurationCachingAttributeRepositoryTests {
      * for each user while also maintaining a unique cache key for each.
      */
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val p1 = cachingAttributeRepository.getPerson("tensada");
         assertEquals("tensada", p1.getName());
         assertEquals("Tens", p1.getAttributeValue("oldName"));

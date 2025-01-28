@@ -1,22 +1,30 @@
 package org.apereo.cas.ticket.registry;
 
+import org.apereo.cas.authentication.Authentication;
+import org.apereo.cas.authentication.principal.Principal;
+import org.apereo.cas.configuration.support.RelaxedPropertyNames;
 import org.apereo.cas.jpa.AbstractJpaEntityFactory;
 import org.apereo.cas.ticket.AuthenticationAwareTicket;
+import org.apereo.cas.ticket.ServiceAwareTicket;
 import org.apereo.cas.ticket.Ticket;
+import org.apereo.cas.ticket.TicketGrantingTicketAwareTicket;
 import org.apereo.cas.ticket.registry.generic.BaseTicketEntity;
 import org.apereo.cas.ticket.registry.generic.JpaTicketEntity;
+import org.apereo.cas.ticket.registry.mssql.MsSqlServerJpaTicketEntity;
 import org.apereo.cas.ticket.registry.mysql.MySQLJpaTicketEntity;
+import org.apereo.cas.ticket.registry.oracle.OracleJpaTicketEntity;
 import org.apereo.cas.ticket.registry.postgres.PostgresJpaTicketEntity;
 import org.apereo.cas.ticket.serialization.TicketSerializationManager;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.spring.ApplicationContextProvider;
-
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.ObjectUtils;
-
+import jakarta.persistence.Table;
 import java.time.Clock;
 import java.time.ZonedDateTime;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * This is {@link JpaTicketEntityFactory}.
@@ -26,10 +34,14 @@ import java.time.ZonedDateTime;
  */
 @Slf4j
 public class JpaTicketEntityFactory extends AbstractJpaEntityFactory<BaseTicketEntity> {
-    private static TicketSerializationManager TICKET_SERIALIZATION_MANAGER;
 
     public JpaTicketEntityFactory(final String dialect) {
         super(dialect);
+    }
+
+    private static final class ThreadSafeHolder {
+        private static final TicketSerializationManager TICKET_SERIALIZATION_MANAGER =
+            ApplicationContextProvider.getApplicationContext().getBean(TicketSerializationManager.class);
     }
 
     /**
@@ -38,10 +50,7 @@ public class JpaTicketEntityFactory extends AbstractJpaEntityFactory<BaseTicketE
      * @return the instance
      */
     public static TicketSerializationManager getTicketSerializationManager() {
-        if (TICKET_SERIALIZATION_MANAGER == null) {
-            TICKET_SERIALIZATION_MANAGER = ApplicationContextProvider.getApplicationContext().getBean(TicketSerializationManager.class);
-        }
-        return TICKET_SERIALIZATION_MANAGER;
+        return ThreadSafeHolder.TICKET_SERIALIZATION_MANAGER;
     }
 
     public String getEntityName() {
@@ -49,26 +58,37 @@ public class JpaTicketEntityFactory extends AbstractJpaEntityFactory<BaseTicketE
     }
 
     /**
-     * From.
+     * From tickets objects to entity.
      *
-     * @param ticket the ticket
+     * @param encodedTicket the ticket
+     * @param realTicket    the real ticket
      * @return the jpa ticket entity
      */
-    @SneakyThrows
-    public BaseTicketEntity fromTicket(final Ticket ticket) {
-        val jsonBody = getTicketSerializationManager().serializeTicket(ticket);
-        val authentication = ticket instanceof AuthenticationAwareTicket
-            ? ((AuthenticationAwareTicket) ticket).getAuthentication()
+    public BaseTicketEntity fromTicket(final Ticket encodedTicket, final Ticket realTicket) {
+        val jsonBody = getTicketSerializationManager().serializeTicket(encodedTicket);
+        val authentication = encodedTicket instanceof final AuthenticationAwareTicket authAware
+            ? authAware.getAuthentication()
             : null;
 
-        val entity = getEntityClass().getDeclaredConstructor().newInstance();
+        val parentTicket = encodedTicket instanceof final TicketGrantingTicketAwareTicket tgtAware
+            ? tgtAware.getTicketGrantingTicket()
+            : null;
+
+        val expirationTime = realTicket.getExpirationPolicy().toMaximumExpirationTime(realTicket);
+        val entity = FunctionUtils.doUnchecked(() -> getEntityClass().getDeclaredConstructor().newInstance());
         return entity
-            .setId(ticket.getId())
-            .setParentId(ticket.getTicketGrantingTicket() != null ? ticket.getTicketGrantingTicket().getId() : null)
+            .setId(encodedTicket.getId())
+            .setParentId(Optional.ofNullable(parentTicket).map(Ticket::getId).orElse(null))
             .setBody(jsonBody)
-            .setType(ticket.getClass().getName())
-            .setPrincipalId(authentication != null ? authentication.getPrincipal().getId() : null)
-            .setCreationTime(ObjectUtils.defaultIfNull(ticket.getCreationTime(), ZonedDateTime.now(Clock.systemUTC())));
+            .setType(encodedTicket.getClass().getName())
+            .setService(realTicket instanceof final ServiceAwareTicket sat && Objects.nonNull(sat.getService()) ? sat.getService().getId() : null)
+            .setPrincipalId(Optional.ofNullable(authentication)
+                .map(Authentication::getPrincipal)
+                .map(Principal::getId)
+                .orElse(null))
+            .setExpirationTime(expirationTime)
+            .setLastUsedTime(ObjectUtils.defaultIfNull(encodedTicket.getLastTimeUsed(), ZonedDateTime.now(Clock.systemUTC())))
+            .setCreationTime(ObjectUtils.defaultIfNull(encodedTicket.getCreationTime(), ZonedDateTime.now(Clock.systemUTC())));
     }
 
     @Override
@@ -88,14 +108,29 @@ public class JpaTicketEntityFactory extends AbstractJpaEntityFactory<BaseTicketE
         return ticket;
     }
 
+    /**
+     * Gets table name.
+     *
+     * @return the table name
+     */
+    public String getTableName() {
+        val tableName = getType().getAnnotation(Table.class).name();
+        return RelaxedPropertyNames.NameManipulations.CAMELCASE_TO_UNDERSCORE_TITLE_CASE.apply(tableName);
+    }
+
     private Class<? extends BaseTicketEntity> getEntityClass() {
+        if (isOracle()) {
+            return OracleJpaTicketEntity.class;
+        }
         if (isMySql()) {
             return MySQLJpaTicketEntity.class;
         }
         if (isPostgres()) {
             return PostgresJpaTicketEntity.class;
         }
+        if (isMsSqlServer()) {
+            return MsSqlServerJpaTicketEntity.class;
+        }
         return JpaTicketEntity.class;
     }
-
 }

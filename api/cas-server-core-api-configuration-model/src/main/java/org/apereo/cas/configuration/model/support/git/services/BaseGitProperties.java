@@ -1,5 +1,6 @@
 package org.apereo.cas.configuration.model.support.git.services;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.model.SpringResourceProperties;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
@@ -11,6 +12,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -23,7 +25,8 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-public abstract class BaseGitProperties implements Serializable {
+public abstract class BaseGitProperties implements CasFeatureModule, Serializable {
+    @Serial
     private static final long serialVersionUID = 4194689836396653458L;
 
     /**
@@ -66,9 +69,14 @@ public abstract class BaseGitProperties implements Serializable {
     private boolean pushChanges;
 
     /**
-     * Whether or not commits should be signed.
+     * Whether commits should be signed.
      */
     private boolean signCommits;
+
+    /**
+     * Whether to rebase on pulls.
+     */
+    private boolean rebase;
 
     /**
      * Password for the SSH private key.

@@ -3,6 +3,7 @@ package org.apereo.cas.services;
 import org.apereo.cas.support.events.service.CasRegisteredServiceLoadedEvent;
 
 import lombok.val;
+import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import java.util.Collection;
@@ -27,6 +28,7 @@ public class DynamoDbServiceRegistry extends AbstractServiceRegistry {
 
     @Override
     public RegisteredService save(final RegisteredService registeredService) {
+        registeredService.assignIdIfNecessary();
         invokeServiceRegistryListenerPreSave(registeredService);
         dbTableService.put(registeredService);
         return registeredService;
@@ -45,11 +47,12 @@ public class DynamoDbServiceRegistry extends AbstractServiceRegistry {
     @Override
     public Collection<RegisteredService> load() {
         val svc = dbTableService.getAll();
+        val clientInfo = ClientInfoHolder.getClientInfo();
         return svc
             .stream()
             .map(this::invokeServiceRegistryListenerPostLoad)
             .filter(Objects::nonNull)
-            .peek(s -> publishEvent(new CasRegisteredServiceLoadedEvent(this, s)))
+            .peek(s -> publishEvent(new CasRegisteredServiceLoadedEvent(this, s, clientInfo)))
             .collect(Collectors.toList());
     }
 

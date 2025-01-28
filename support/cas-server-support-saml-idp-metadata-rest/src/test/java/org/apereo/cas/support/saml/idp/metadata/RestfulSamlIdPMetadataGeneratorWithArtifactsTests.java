@@ -45,18 +45,18 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.saml-idp.metadata.rest.crypto.enabled=false"
 })
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class RestfulSamlIdPMetadataGeneratorWithArtifactsTests extends BaseRestfulSamlMetadataTests {
+class RestfulSamlIdPMetadataGeneratorWithArtifactsTests extends BaseRestfulSamlMetadataTests {
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
     private static MockWebServer SERVER;
 
     @Autowired
-    @Qualifier("samlIdPMetadataGenerator")
+    @Qualifier(SamlIdPMetadataGenerator.BEAN_NAME)
     protected SamlIdPMetadataGenerator samlIdPMetadataGenerator;
 
     @Autowired
-    @Qualifier("samlIdPMetadataLocator")
+    @Qualifier(SamlIdPMetadataLocator.BEAN_NAME)
     protected SamlIdPMetadataLocator samlIdPMetadataLocator;
 
     @BeforeAll
@@ -80,10 +80,10 @@ public class RestfulSamlIdPMetadataGeneratorWithArtifactsTests extends BaseRestf
 
     @Test
     @Order(1)
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         samlIdPMetadataGenerator.generate(Optional.empty());
         assertNotNull(samlIdPMetadataLocator.resolveMetadata(Optional.empty()));
-        assertNotNull(samlIdPMetadataLocator.getEncryptionCertificate(Optional.empty()));
+        assertNotNull(samlIdPMetadataLocator.resolveEncryptionCertificate(Optional.empty()));
         assertNotNull(samlIdPMetadataLocator.resolveEncryptionKey(Optional.empty()));
         assertNotNull(samlIdPMetadataLocator.resolveSigningCertificate(Optional.empty()));
         assertNotNull(samlIdPMetadataLocator.resolveSigningKey(Optional.empty()));
@@ -91,7 +91,7 @@ public class RestfulSamlIdPMetadataGeneratorWithArtifactsTests extends BaseRestf
 
     @Test
     @Order(2)
-    public void verifyService() throws Exception {
+    void verifyService() throws Throwable {
         val service = new SamlRegisteredService();
         service.setName("TestShib");
         service.setId(1000);
@@ -99,7 +99,7 @@ public class RestfulSamlIdPMetadataGeneratorWithArtifactsTests extends BaseRestf
 
         samlIdPMetadataGenerator.generate(registeredService);
         assertNotNull(samlIdPMetadataLocator.resolveMetadata(registeredService));
-        assertNotNull(samlIdPMetadataLocator.getEncryptionCertificate(registeredService));
+        assertNotNull(samlIdPMetadataLocator.resolveEncryptionCertificate(registeredService));
         assertNotNull(samlIdPMetadataLocator.resolveEncryptionKey(registeredService));
         assertNotNull(samlIdPMetadataLocator.resolveSigningCertificate(registeredService));
         assertNotNull(samlIdPMetadataLocator.resolveSigningKey(registeredService));

@@ -1,12 +1,13 @@
 package org.apereo.cas.gauth.credential;
 
-import org.apereo.cas.config.GoogleAuthenticatorDynamoDbConfiguration;
+import org.apereo.cas.config.CasGoogleAuthenticatorDynamoDbAutoConfiguration;
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import lombok.Getter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,7 +23,7 @@ import software.amazon.awssdk.core.SdkSystemSetting;
  * @since 6.5.0
  */
 @SpringBootTest(classes = {
-    GoogleAuthenticatorDynamoDbConfiguration.class,
+    CasGoogleAuthenticatorDynamoDbAutoConfiguration.class,
     BaseOneTimeTokenCredentialRepositoryTests.SharedTestConfiguration.class
 },
     properties = {
@@ -31,13 +32,14 @@ import software.amazon.awssdk.core.SdkSystemSetting;
         "cas.authn.mfa.gauth.dynamo-db.local-instance=true",
         "cas.authn.mfa.gauth.dynamo-db.region=us-east-1"
     })
-@EnableTransactionManagement
-@EnableAspectJAutoProxy
+@EnableTransactionManagement(proxyTargetClass = false)
+@EnableAspectJAutoProxy(proxyTargetClass = false)
 @EnableScheduling
 @Getter
-@EnabledIfPortOpen(port = 8000)
+@EnabledIfListeningOnPort(port = 8000)
 @Tag("DynamoDb")
-public class DynamoDbGoogleAuthenticatorTokenCredentialRepositoryTests extends BaseOneTimeTokenCredentialRepositoryTests {
+@ExtendWith(CasTestExtension.class)
+class DynamoDbGoogleAuthenticatorTokenCredentialRepositoryTests extends BaseOneTimeTokenCredentialRepositoryTests {
     static {
         System.setProperty(SdkSystemSetting.AWS_ACCESS_KEY_ID.property(), "AKIAIPPIGGUNIO74C63Z");
         System.setProperty(SdkSystemSetting.AWS_SECRET_ACCESS_KEY.property(), "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");
@@ -48,7 +50,7 @@ public class DynamoDbGoogleAuthenticatorTokenCredentialRepositoryTests extends B
     private OneTimeTokenCredentialRepository registry;
 
     @BeforeEach
-    public void cleanUp() {
+    void cleanUp() {
         registry.deleteAll();
     }
 }

@@ -1,6 +1,9 @@
 #!/bin/bash
-echo -e "Removing previous SAML metadata directory"
-rm -Rf "${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/saml-md"
+
+echo -e "Removing previous SAML metadata directory from ${SCENARIO_FOLDER}"
+rm -Rf "${SCENARIO_FOLDER}/saml-md"
+rm -Rf "${SCENARIO_FOLDER}/saml-sp"
 
 echo -e "Fetching InCommon signing certificate..."
-wget http://md.incommon.org/certs/inc-md-cert-mdq.pem -P "${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/saml-md"
+mkdir ${SCENARIO_FOLDER}/saml-md
+curl -L http://md.incommon.org/certs/inc-md-cert-mdq.pem -o "${SCENARIO_FOLDER}/saml-md/inc-md-cert-mdq.pem"

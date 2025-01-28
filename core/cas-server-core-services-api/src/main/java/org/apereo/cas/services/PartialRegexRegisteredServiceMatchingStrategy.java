@@ -1,16 +1,12 @@
 package org.apereo.cas.services;
 
 import org.apereo.cas.util.RegexUtils;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.springframework.data.annotation.Transient;
-
-import java.util.regex.Pattern;
+import lombok.val;
+import java.io.Serial;
 
 /**
  * This is {@link PartialRegexRegisteredServiceMatchingStrategy}.
@@ -22,21 +18,14 @@ import java.util.regex.Pattern;
 @NoArgsConstructor
 @EqualsAndHashCode
 @JsonInclude(JsonInclude.Include.NON_DEFAULT)
-@AllArgsConstructor
 public class PartialRegexRegisteredServiceMatchingStrategy implements RegisteredServiceMatchingStrategy {
+    @Serial
     private static final long serialVersionUID = -8345895859210185565L;
-
-    @JsonIgnore
-    @Transient
-    @javax.persistence.Transient
-    private transient Pattern servicePattern;
 
     @Override
     public boolean matches(final RegisteredService registeredService, final String serviceId) {
-        if (servicePattern == null) {
-            this.servicePattern = RegexUtils.createPattern(registeredService.getServiceId());
-        }
-        return servicePattern.matcher(serviceId).find();
+        val pattern = RegexUtils.createPattern(registeredService.getServiceId());
+        return pattern.matcher(serviceId).find();
     }
 
 }

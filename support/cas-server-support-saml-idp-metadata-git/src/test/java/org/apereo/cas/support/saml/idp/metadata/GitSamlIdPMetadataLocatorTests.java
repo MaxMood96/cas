@@ -2,6 +2,7 @@ package org.apereo.cas.support.saml.idp.metadata;
 
 import org.apereo.cas.support.saml.BaseGitSamlMetadataTests;
 import org.apereo.cas.util.LoggingUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -17,7 +18,6 @@ import org.springframework.test.context.TestPropertySource;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystemException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,14 +29,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @TestPropertySource(properties = {
+    "cas.authn.saml-idp.metadata.http.metadata-backup-location=file://${java.io.tmpdir}/metadata-backups",
+
     "cas.authn.saml-idp.metadata.git.sign-commits=false",
     "cas.authn.saml-idp.metadata.git.idp-metadata-enabled=true",
     "cas.authn.saml-idp.metadata.git.repository-url=file://${java.io.tmpdir}/cas-metadata-idp",
     "cas.authn.saml-idp.metadata.git.clone-directory.location=file://${java.io.tmpdir}/cas-saml-metadata-gsimlt"
 })
-@Tag("FileSystem")
+@Tag("Git")
 @Slf4j
-public class GitSamlIdPMetadataLocatorTests extends BaseGitSamlMetadataTests {
+class GitSamlIdPMetadataLocatorTests extends BaseGitSamlMetadataTests {
 
     @BeforeAll
     public static void setup() {
@@ -57,25 +59,22 @@ public class GitSamlIdPMetadataLocatorTests extends BaseGitSamlMetadataTests {
     }
 
     @AfterAll
-    public static void cleanUp() throws Exception {
+    public static void cleanUp() {
         val gitRepoDir = new File(FileUtils.getTempDirectory(), "cas-metadata-idp");
         if (gitRepoDir.exists()) {
-            PathUtils.deleteDirectory(gitRepoDir.toPath(), StandardDeleteOption.OVERRIDE_READ_ONLY);
+            FunctionUtils.doAndHandle(
+                __ -> PathUtils.deleteDirectory(gitRepoDir.toPath(), StandardDeleteOption.OVERRIDE_READ_ONLY));
         }
         val cloneDirectory = "cas-saml-metadata-gsimlt";
         val gitCloneRepoDir = new File(FileUtils.getTempDirectory(), cloneDirectory);
-        val cloneRepoPath = gitCloneRepoDir.toPath();
         if (gitCloneRepoDir.exists()) {
-            try {
-                PathUtils.deleteDirectory(cloneRepoPath, StandardDeleteOption.OVERRIDE_READ_ONLY);
-            } catch (final FileSystemException e) {
-                LOGGER.warn("Can't cleanup [{}] until bean closed: [{}]", cloneRepoPath, e.getMessage());
-            }
+            FunctionUtils.doAndHandle(
+                __ -> PathUtils.deleteDirectory(gitCloneRepoDir.toPath(), StandardDeleteOption.OVERRIDE_READ_ONLY));
         }
     }
 
     @Test
-    public void verifySigningKeyWithoutService() {
+    void verifySigningKeyWithoutService() throws Throwable {
         val resource = samlIdPMetadataLocator.resolveSigningKey(Optional.empty());
         assertNotNull(resource);
     }

@@ -5,12 +5,11 @@ import org.apereo.cas.support.saml.OpenSamlConfigBean;
 import org.apereo.cas.support.saml.SamlUtils;
 import org.apereo.cas.util.CompressionUtils;
 import org.apereo.cas.util.EncodingUtils;
-import org.apereo.cas.util.InetAddressUtils;
-import org.apereo.cas.util.RandomUtils;
-
+import org.apereo.cas.util.function.FunctionUtils;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.opensaml.core.xml.ElementExtensibleXMLObject;
 import org.opensaml.core.xml.XMLObject;
 import org.opensaml.saml.common.SAMLObject;
 import org.opensaml.saml.common.SAMLVersion;
@@ -20,7 +19,6 @@ import org.opensaml.saml.saml2.core.AttributeValue;
 import org.opensaml.saml.saml2.core.Audience;
 import org.opensaml.saml.saml2.core.AudienceRestriction;
 import org.opensaml.saml.saml2.core.AuthnContext;
-import org.opensaml.saml.saml2.core.AuthnContextClassRef;
 import org.opensaml.saml.saml2.core.AuthnStatement;
 import org.opensaml.saml.saml2.core.Conditions;
 import org.opensaml.saml.saml2.core.EncryptedID;
@@ -28,6 +26,8 @@ import org.opensaml.saml.saml2.core.Issuer;
 import org.opensaml.saml.saml2.core.LogoutRequest;
 import org.opensaml.saml.saml2.core.LogoutResponse;
 import org.opensaml.saml.saml2.core.NameID;
+import org.opensaml.saml.saml2.core.RequestAbstractType;
+import org.opensaml.saml.saml2.core.RequesterID;
 import org.opensaml.saml.saml2.core.Response;
 import org.opensaml.saml.saml2.core.SessionIndex;
 import org.opensaml.saml.saml2.core.Statement;
@@ -38,15 +38,16 @@ import org.opensaml.saml.saml2.core.Subject;
 import org.opensaml.saml.saml2.core.SubjectConfirmation;
 import org.opensaml.saml.saml2.core.SubjectConfirmationData;
 import org.opensaml.soap.soap11.ActorBearing;
-
-import javax.xml.namespace.QName;
+import java.io.Serial;
+import java.net.InetAddress;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * This is {@link AbstractSaml20ObjectBuilder}.
@@ -56,7 +57,8 @@ import java.util.Map;
  * @since 4.1
  */
 @Slf4j
-public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuilder {
+public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuilder implements Saml20ObjectBuilder {
+    @Serial
     private static final long serialVersionUID = -4325127376598205277L;
 
     protected AbstractSaml20ObjectBuilder(final OpenSamlConfigBean configBean) {
@@ -69,34 +71,17 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
             return;
         }
 
-        val compareFormat = nameFormat.trim().toLowerCase();
+        val compareFormat = nameFormat.trim().toLowerCase(Locale.ENGLISH);
         switch (compareFormat) {
-            case "basic":
-            case Attribute.BASIC:
-                attribute.setNameFormat(Attribute.BASIC);
-                break;
-            case "uri":
-            case Attribute.URI_REFERENCE:
-                attribute.setNameFormat(Attribute.URI_REFERENCE);
-                break;
-            case "unspecified":
-            case Attribute.UNSPECIFIED:
-                attribute.setNameFormat(Attribute.UNSPECIFIED);
-                break;
-            default:
-                attribute.setNameFormat(nameFormat);
-                break;
+            case "basic", Attribute.BASIC -> attribute.setNameFormat(Attribute.BASIC);
+            case "uri", Attribute.URI_REFERENCE -> attribute.setNameFormat(Attribute.URI_REFERENCE);
+            case "unspecified", Attribute.UNSPECIFIED -> attribute.setNameFormat(Attribute.UNSPECIFIED);
+            default -> attribute.setNameFormat(nameFormat);
         }
     }
 
-    /**
-     * Gets name id.
-     *
-     * @param nameIdFormat the name id format
-     * @param nameIdValue  the name id value
-     * @return the name iD
-     */
-    public NameID getNameID(final String nameIdFormat, final String nameIdValue) {
+    @Override
+    public NameID newNameID(final String nameIdFormat, final String nameIdValue) {
         val nameId = newSamlObject(NameID.class);
         nameId.setFormat(nameIdFormat);
         nameId.setValue(nameIdValue);
@@ -144,13 +129,7 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
         return samlResponse;
     }
 
-    /**
-     * Create a new SAML status object.
-     *
-     * @param codeValue     the code value
-     * @param statusMessage the status message
-     * @return the status
-     */
+    @Override
     public Status newStatus(final String codeValue, final String statusMessage) {
         LOGGER.trace("Creating new SAML Status for code value: [{}], status message: [{}]", codeValue, statusMessage);
         val status = newSamlObject(Status.class);
@@ -163,22 +142,6 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
             status.setStatusMessage(message);
         }
         return status;
-    }
-
-    /**
-     * Create a new SAML2 Assertion object.
-     *
-     * @param authnStatement the authn statement
-     * @param issuer         the issuer
-     * @param issuedAt       the issued at
-     * @param id             the id
-     * @return the assertion
-     */
-    public Assertion newAssertion(final AuthnStatement authnStatement, final String issuer,
-                                  final ZonedDateTime issuedAt, final String id) {
-        val list = new ArrayList<Statement>(1);
-        list.add(authnStatement);
-        return newAssertion(list, issuer, issuedAt, id);
     }
 
     /**
@@ -201,16 +164,7 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
         return assertion;
     }
 
-    /**
-     * New logout response.
-     *
-     * @param id          the id
-     * @param destination the destination
-     * @param issuer      the issuer
-     * @param status      the status
-     * @param recipient   the recipient
-     * @return the logout response
-     */
+    @Override
     public LogoutResponse newLogoutResponse(final String id, final String destination,
                                             final Issuer issuer, final Status status,
                                             final String recipient) {
@@ -224,18 +178,8 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
         logoutResponse.setVersion(SAMLVersion.VERSION_20);
         return logoutResponse;
     }
-
-    /**
-     * New saml2 logout request.
-     *
-     * @param id           the id
-     * @param issueInstant the issue instant
-     * @param destination  the destination
-     * @param issuer       the issuer
-     * @param sessionIndex the session index
-     * @param nameId       the name id
-     * @return the logout request
-     */
+    
+    @Override
     public LogoutRequest newLogoutRequest(final String id, final ZonedDateTime issueInstant,
                                           final String destination, final Issuer issuer,
                                           final String sessionIndex, final NameID nameId) {
@@ -267,6 +211,7 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
      * @param issuerValue the issuer
      * @return the issuer
      */
+    @Override
     public Issuer newIssuer(final String issuerValue) {
         val issuer = newSamlObject(Issuer.class);
         issuer.setValue(issuerValue);
@@ -290,24 +235,20 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
     }
 
     /**
-     * New authn statement.
+     * New authn statement authn statement.
      *
-     * @param contextClassRef the context class ref such as {@link AuthnContext#PASSWORD_AUTHN_CTX}
-     * @param authnInstant    the authn instant
-     * @param sessionIndex    the session index
+     * @param context      the context
+     * @param authnInstant the authn instant
+     * @param sessionIndex the session index
      * @return the authn statement
      */
-    public AuthnStatement newAuthnStatement(final String contextClassRef, final ZonedDateTime authnInstant,
+    public AuthnStatement newAuthnStatement(final AuthnContext context,
+                                            final ZonedDateTime authnInstant,
                                             final String sessionIndex) {
         LOGGER.trace("Building authentication statement with context class ref [{}] @ [{}] with index [{}]",
-            contextClassRef, authnInstant, sessionIndex);
+            context, authnInstant, sessionIndex);
         val stmt = newSamlObject(AuthnStatement.class);
-        val ctx = newSamlObject(AuthnContext.class);
-
-        val classRef = newSamlObject(AuthnContextClassRef.class);
-        classRef.setURI(contextClassRef);
-        ctx.setAuthnContextClassRef(classRef);
-        stmt.setAuthnContext(ctx);
+        stmt.setAuthnContext(context);
         stmt.setAuthnInstant(authnInstant.toInstant());
         stmt.setSessionIndex(sessionIndex);
         return stmt;
@@ -338,96 +279,67 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
     }
 
     /**
-     * New subject subject.
+     * New subject confirmation.
      *
-     * @param nameIdFormat the name id format
-     * @param nameIdValue  the name id value
      * @param recipient    the recipient
      * @param notOnOrAfter the not on or after
      * @param inResponseTo the in response to
      * @param notBefore    the not before
-     * @return the subject
+     * @param address      the address
+     * @return the subject confirmation
      */
-    public Subject newSubject(final String nameIdFormat, final String nameIdValue,
-                              final String recipient, final ZonedDateTime notOnOrAfter,
-                              final String inResponseTo, final ZonedDateTime notBefore) {
-        val nameID = getNameID(nameIdFormat, nameIdValue);
-        return newSubject(nameID, null, recipient, notOnOrAfter, inResponseTo, notBefore);
+    public SubjectConfirmation newSubjectConfirmation(final String recipient, final ZonedDateTime notOnOrAfter,
+                                                      final String inResponseTo, final ZonedDateTime notBefore,
+                                                      final InetAddress address) {
+        LOGGER.debug("Building subject confirmation for recipient [{}], in response to [{}]", recipient, inResponseTo);
+        val confirmation = newSamlObject(SubjectConfirmation.class);
+        confirmation.setMethod(SubjectConfirmation.METHOD_BEARER);
+        val data = newSamlObject(SubjectConfirmationData.class);
+        FunctionUtils.doIfNotBlank(recipient, data::setRecipient);
+        FunctionUtils.doIfNotBlank(inResponseTo, data::setInResponseTo);
+        FunctionUtils.doIfNotNull(address, __ -> data.setAddress(address.getHostAddress()));
+        FunctionUtils.doIfNotNull(notOnOrAfter, __ -> data.setNotOnOrAfter(notOnOrAfter.toInstant()));
+        FunctionUtils.doIfNotNull(notBefore, __ -> data.setNotBefore(notBefore.toInstant()));
+        confirmation.setSubjectConfirmationData(data);
+        return confirmation;
     }
 
     /**
      * New subject element.
      *
-     * @param nameId            the nameId
-     * @param subjectConfNameId the subject conf name id
-     * @param recipient         the recipient
-     * @param notOnOrAfter      the not on or after
-     * @param inResponseTo      the in response to
-     * @param notBefore         the not before
+     * @param nameId              the nameId
+     * @param subjectConfNameId   the subject conf name id
+     * @param subjectConfirmation the subject confirmation
      * @return the subject
      */
     public Subject newSubject(final SAMLObject nameId,
                               final SAMLObject subjectConfNameId,
-                              final String recipient,
-                              final ZonedDateTime notOnOrAfter,
-                              final String inResponseTo,
-                              final ZonedDateTime notBefore) {
+                              final SubjectConfirmation subjectConfirmation) {
 
-        LOGGER.debug("Building subject for NameID [{}] and recipient [{}], in response to [{}]", nameId, recipient, inResponseTo);
-        val confirmation = newSamlObject(SubjectConfirmation.class);
-        confirmation.setMethod(SubjectConfirmation.METHOD_BEARER);
-        val data = newSamlObject(SubjectConfirmationData.class);
-
-        if (StringUtils.isNotBlank(recipient)) {
-            data.setRecipient(recipient);
-        }
-
-        if (notOnOrAfter != null) {
-            data.setNotOnOrAfter(notOnOrAfter.toInstant());
-        }
-
-        if (StringUtils.isNotBlank(inResponseTo)) {
-            data.setInResponseTo(inResponseTo);
-            val ip = InetAddressUtils.getByName(inResponseTo);
-            if (ip != null) {
-                data.setAddress(ip.getHostName());
-            }
-        }
-
-        if (notBefore != null) {
-            data.setNotBefore(notBefore.toInstant());
-        }
-
-        confirmation.setSubjectConfirmationData(data);
+        LOGGER.debug("Building subject for NameID [{}]", nameId);
         val subject = newSamlObject(Subject.class);
         subject.setNameID(null);
-        subject.getSubjectConfirmations().forEach(c -> c.setNameID(null));
+        subject.getSubjectConfirmations().forEach(confirmation -> confirmation.setNameID(null));
 
-        if (nameId instanceof NameID) {
-            subject.setNameID((NameID) nameId);
+        if (nameId instanceof final NameID instance) {
+            subject.setNameID(instance);
             subject.setEncryptedID(null);
         }
-        if (nameId instanceof EncryptedID) {
+        if (nameId instanceof final EncryptedID instance) {
             subject.setNameID(null);
-            subject.setEncryptedID((EncryptedID) nameId);
+            subject.setEncryptedID(instance);
         }
-        if (subjectConfNameId instanceof NameID) {
-            confirmation.setNameID((NameID) subjectConfNameId);
-            confirmation.setEncryptedID(null);
+        if (subjectConfNameId instanceof final NameID instance) {
+            subjectConfirmation.setNameID(instance);
+            subjectConfirmation.setEncryptedID(null);
         }
-        if (subjectConfNameId instanceof EncryptedID) {
-            confirmation.setNameID(null);
-            confirmation.setEncryptedID((EncryptedID) subjectConfNameId);
+        if (subjectConfNameId instanceof final EncryptedID instance) {
+            subjectConfirmation.setNameID(null);
+            subjectConfirmation.setEncryptedID(instance);
         }
-        subject.getSubjectConfirmations().add(confirmation);
-
+        subject.getSubjectConfirmations().add(subjectConfirmation);
         LOGGER.debug("Built subject [{}]", subject);
         return subject;
-    }
-
-    @Override
-    public String generateSecureRandomId() {
-        return RandomUtils.generateSecureRandomId();
     }
 
     /**
@@ -445,26 +357,10 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
         return inflateAuthnRequest(decodedBytes);
     }
 
-    /**
-     * New saml object.
-     *
-     * @param <T>        the type parameter
-     * @param objectType the name id class
-     * @return the t
-     */
-    protected <T extends SAMLObject> T newSamlObject(final Class<T> objectType) {
+    @Override
+    public <T extends SAMLObject> T newSamlObject(final Class<T> objectType) {
         val qName = getSamlObjectQName(objectType);
         return SamlUtils.newSamlObject(objectType, qName);
-    }
-
-    /**
-     * Gets saml object q name.
-     *
-     * @param objectType the object type
-     * @return the saml object q name
-     */
-    protected QName getSamlObjectQName(final Class objectType) {
-        return SamlUtils.getSamlObjectQName(objectType);
     }
 
 
@@ -512,17 +408,25 @@ public abstract class AbstractSaml20ObjectBuilder extends AbstractSamlObjectBuil
         return attribute;
     }
 
-    /**
-     * Inflate authn request string.
-     *
-     * @param decodedBytes the decoded bytes
-     * @return the string
-     */
     protected String inflateAuthnRequest(final byte[] decodedBytes) {
         val inflated = CompressionUtils.inflate(decodedBytes);
         if (!StringUtils.isEmpty(inflated)) {
             return inflated;
         }
-        return CompressionUtils.decodeByteArrayToString(decodedBytes);
+        return CompressionUtils.inflateToString(decodedBytes);
+    }
+
+    protected String getInResponseTo(final RequestAbstractType request, final String entityId, final boolean skipInResponseTo) {
+        var generateInResponseTo = !skipInResponseTo && StringUtils.isNotBlank(request.getID());
+        if (generateInResponseTo && request.getExtensions() != null) {
+            val extensions = Optional.ofNullable(request.getExtensions())
+                .map(ElementExtensibleXMLObject::getUnknownXMLObjects).orElseGet(List::of);
+            generateInResponseTo = extensions
+                .stream()
+                .filter(RequesterID.class::isInstance)
+                .map(RequesterID.class::cast)
+                .noneMatch(info -> entityId.equalsIgnoreCase(info.getURI()));
+        }
+        return generateInResponseTo ? request.getID() : null;
     }
 }

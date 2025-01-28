@@ -5,6 +5,7 @@ import org.apereo.cas.services.RegisteredService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jooq.lambda.fi.util.function.CheckedConsumer;
 
 import java.io.File;
 import java.util.function.Consumer;
@@ -17,14 +18,14 @@ import java.util.function.Consumer;
  */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class BaseResourceBasedRegisteredServiceWatcher implements Consumer<File> {
+public abstract class BaseResourceBasedRegisteredServiceWatcher implements CheckedConsumer<File> {
     /**
      * Consumer to log warnings for duplicate service defns.
      */
     static final Consumer<RegisteredService> LOG_SERVICE_DUPLICATE =
         service -> LOGGER.warn("Found a service definition [{}] with a duplicate id [{}]. "
-            + "This will overwrite previous service definitions and is likely a configuration problem. "
-            + "Make sure all services have a unique id and try again.", service.getServiceId(), service.getId());
+                               + "This will overwrite previous service definitions and is likely a configuration problem. "
+                               + "Make sure all services have a unique id and try again.", service.getServiceId(), service.getId());
 
     /**
      * Service registry instance.

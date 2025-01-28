@@ -2,11 +2,11 @@ package org.apereo.cas.configuration.model.support.oauth;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -19,9 +19,10 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("OAuthCodeProperties")
+
 public class OAuthCodeProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -7687928082301669359L;
 
     /**
@@ -39,4 +40,10 @@ public class OAuthCodeProperties implements Serializable {
      * backing ticket registry implementation.
      */
     private String storageName = "oauthCodesCache";
+
+    /**
+     * Remove the related access tokens when trying to use a code
+     * which is expired or no longer exists.
+     */
+    private boolean removeRelatedAccessTokens;
 }

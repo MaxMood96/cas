@@ -25,10 +25,10 @@ import static org.mockito.Mockito.*;
  * @since 6.0.0
  */
 @Tag("RegisteredService")
-public class DeleteResourceBasedRegisteredServiceWatcherTests {
+class DeleteResourceBasedRegisteredServiceWatcherTests {
 
     @Test
-    public void verifyOperationNotFound() throws Exception {
+    void verifyOperationNotFound() {
         val result = new AtomicBoolean(false);
         val mockAppContext = mock(ConfigurableApplicationContext.class);
         doAnswer(args -> {
@@ -37,7 +37,7 @@ public class DeleteResourceBasedRegisteredServiceWatcherTests {
             return null;
         }).when(mockAppContext).publishEvent(any());
         val watcher = new DeleteResourceBasedRegisteredServiceWatcher(new AbstractResourceBasedServiceRegistry(new ClassPathResource("services"),
-            List.of(new RegisteredServiceJsonSerializer()), mockAppContext,
+            List.of(new RegisteredServiceJsonSerializer(mockAppContext)), mockAppContext,
             new ArrayList<>()) {
             @Override
             protected String[] getExtensions() {
@@ -49,7 +49,7 @@ public class DeleteResourceBasedRegisteredServiceWatcherTests {
     }
 
     @Test
-    public void verifyOperationFoundDeleted() throws Exception {
+    void verifyOperationFoundDeleted() {
         val result = new AtomicBoolean(false);
         val mockAppContext = mock(ConfigurableApplicationContext.class);
         doAnswer(args -> {
@@ -58,7 +58,7 @@ public class DeleteResourceBasedRegisteredServiceWatcherTests {
             return null;
         }).when(mockAppContext).publishEvent(any());
         val registry = new AbstractResourceBasedServiceRegistry(new ClassPathResource("services"),
-            List.of(new RegisteredServiceJsonSerializer()), mockAppContext,
+            List.of(new RegisteredServiceJsonSerializer(mockAppContext)), mockAppContext,
             new ArrayList<>()) {
             @Override
             protected String[] getExtensions() {
@@ -74,7 +74,7 @@ public class DeleteResourceBasedRegisteredServiceWatcherTests {
     }
 
     @Test
-    public void verifyTempFilesIgnored() throws Exception {
+    void verifyTempFilesIgnored() {
         val result = new AtomicBoolean(false);
         val mockAppContext = mock(ConfigurableApplicationContext.class);
         doAnswer(args -> {
@@ -83,7 +83,7 @@ public class DeleteResourceBasedRegisteredServiceWatcherTests {
             return null;
         }).when(mockAppContext).publishEvent(any());
         val registry = new AbstractResourceBasedServiceRegistry(new ClassPathResource("services"),
-            List.of(new RegisteredServiceJsonSerializer()), mockAppContext,
+            List.of(new RegisteredServiceJsonSerializer(mockAppContext)), mockAppContext,
             new ArrayList<>()) {
             @Override
             protected String[] getExtensions() {

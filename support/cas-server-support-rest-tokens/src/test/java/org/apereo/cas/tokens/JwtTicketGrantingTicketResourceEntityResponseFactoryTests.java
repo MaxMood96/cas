@@ -4,6 +4,7 @@ import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.rest.factory.RestHttpRequestCredentialFactory;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.token.TokenConstants;
 
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -23,13 +24,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.2.0
  */
 @Tag("Tickets")
-public class JwtTicketGrantingTicketResourceEntityResponseFactoryTests extends BaseTicketResourceEntityResponseFactoryTests {
+class JwtTicketGrantingTicketResourceEntityResponseFactoryTests extends BaseTicketResourceEntityResponseFactoryTests {
 
     @Autowired
     private CasConfigurationProperties casProperties;
 
     @Test
-    public void verifyTicketGrantingTicketAsDefault() throws Exception {
+    void verifyTicketGrantingTicketAsDefault() throws Throwable {
         val registeredService = RegisteredServiceTestUtils.getRegisteredService(casProperties.getServer().getPrefix());
         servicesManager.save(registeredService);
 
@@ -42,13 +43,13 @@ public class JwtTicketGrantingTicketResourceEntityResponseFactoryTests extends B
     }
 
     @Test
-    public void verifyTicketGrantingTicketAsJwt() throws Exception {
+    void verifyTicketGrantingTicketAsJwt() throws Throwable {
         val registeredService = RegisteredServiceTestUtils.getRegisteredService(casProperties.getServer().getPrefix());
         servicesManager.save(registeredService);
 
         val result = CoreAuthenticationTestUtils.getAuthenticationResult(authenticationSystemSupport,
             CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword("casuser"));
-        val tgt = centralAuthenticationService.createTicketGrantingTicket(result);
+        val tgt = (TicketGrantingTicket) centralAuthenticationService.createTicketGrantingTicket(result);
 
         val request = new MockHttpServletRequest();
         request.addParameter(TokenConstants.PARAMETER_NAME_TOKEN, Boolean.TRUE.toString());
@@ -58,24 +59,24 @@ public class JwtTicketGrantingTicketResourceEntityResponseFactoryTests extends B
         assertNotNull(response);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
 
-        val jwt = this.tokenCipherExecutor.decode(response.getBody());
+        val jwt = tokenCipherExecutor.decode(response.getBody());
         val claims = JWTClaimsSet.parse(jwt.toString());
         assertEquals(claims.getSubject(), tgt.getAuthentication().getPrincipal().getId());
         assertEquals(2, claims.getStringArrayClaim("customParameter").length);
         assertNull(claims.getStringClaim(TokenConstants.PARAMETER_NAME_TOKEN));
-        assertNull(claims.getStringClaim(RestHttpRequestCredentialFactory.PARAMETER_USERNAME));
+        assertNotNull(claims.getStringClaim(RestHttpRequestCredentialFactory.PARAMETER_USERNAME));
         assertNull(claims.getStringClaim(RestHttpRequestCredentialFactory.PARAMETER_PASSWORD));
         assertEquals(2, claims.getStringArrayClaim("customParameter").length);
     }
 
     @Test
-    public void verifyTicketGrantingTicketAsJwtWithHeader() throws Exception {
+    void verifyTicketGrantingTicketAsJwtWithHeader() throws Throwable {
         val registeredService = RegisteredServiceTestUtils.getRegisteredService(casProperties.getServer().getPrefix());
         servicesManager.save(registeredService);
 
         val result = CoreAuthenticationTestUtils.getAuthenticationResult(authenticationSystemSupport,
             CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword("casuser"));
-        val tgt = centralAuthenticationService.createTicketGrantingTicket(result);
+        val tgt = (TicketGrantingTicket) centralAuthenticationService.createTicketGrantingTicket(result);
 
         val request = new MockHttpServletRequest();
         request.addHeader(TokenConstants.PARAMETER_NAME_TOKEN, Boolean.TRUE.toString());
@@ -83,7 +84,7 @@ public class JwtTicketGrantingTicketResourceEntityResponseFactoryTests extends B
         assertNotNull(response);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
 
-        val jwt = this.tokenCipherExecutor.decode(response.getBody());
+        val jwt = tokenCipherExecutor.decode(response.getBody());
         val claims = JWTClaimsSet.parse(jwt.toString());
         assertEquals(claims.getSubject(), tgt.getAuthentication().getPrincipal().getId());
     }

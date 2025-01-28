@@ -10,10 +10,12 @@ import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.support.password.PasswordEncoderUtils;
 import org.apereo.cas.authentication.support.password.PasswordPolicyContext;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.services.ServicesManager;
-import org.apereo.cas.syncope.authentication.SyncopeAuthenticationHandler;
+import org.apereo.cas.syncope.SyncopeAuthenticationHandler;
 import org.apereo.cas.util.function.FunctionUtils;
-import org.apereo.cas.util.spring.BeanContainer;
+import org.apereo.cas.util.spring.beans.BeanContainer;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
 import com.google.common.base.Splitter;
 import lombok.val;
@@ -35,16 +37,16 @@ import java.util.stream.Collectors;
  * @since 5.3.0
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.Authentication, module = "syncope")
 @Configuration(value = "SyncopeAuthenticationConfiguration", proxyBeanMethods = false)
-public class SyncopeAuthenticationConfiguration {
-
+class SyncopeAuthenticationConfiguration {
     @ConditionalOnMissingBean(name = "syncopePrincipalFactory")
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     public PrincipalFactory syncopePrincipalFactory() {
         return PrincipalFactoryUtils.newPrincipalFactory();
     }
-
+    
     @ConditionalOnMissingBean(name = "syncopeAuthenticationHandlers")
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -62,8 +64,7 @@ public class SyncopeAuthenticationConfiguration {
         val handlers = Splitter.on(",").splitToList(syncope.getDomain())
             .stream()
             .map(domain -> {
-                val h = new SyncopeAuthenticationHandler(syncope.getName(), servicesManager,
-                    syncopePrincipalFactory, syncope.getUrl(), domain.trim());
+                val h = new SyncopeAuthenticationHandler(syncope, servicesManager, syncopePrincipalFactory, domain.trim());
                 h.setState(syncope.getState());
                 h.setPasswordEncoder(PasswordEncoderUtils.newPasswordEncoder(syncope.getPasswordEncoder(), applicationContext));
                 h.setPasswordPolicyConfiguration(syncopePasswordPolicyConfiguration);

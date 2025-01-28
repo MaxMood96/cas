@@ -1,5 +1,7 @@
 package org.apereo.cas.ticket;
 
+import java.io.Serializable;
+
 /**
  * This is {@link TicketDefinitionProperties}. Ticket definition describes additional Properties and misc settings
  * that may be associated with a given ticket to be used by registries. Each CAS module on start up
@@ -16,14 +18,7 @@ package org.apereo.cas.ticket;
  * @see TicketCatalog
  * @since 5.1.0
  */
-public interface TicketDefinitionProperties {
-
-    /**
-     * Sets exclude from cascade.
-     *
-     * @param value the value
-     */
-    void setExcludeFromCascade(boolean value);
+public interface TicketDefinitionProperties extends Serializable {
 
     /**
      * Is exclude from cascade ?
@@ -31,6 +26,13 @@ public interface TicketDefinitionProperties {
      * @return true/false
      */
     boolean isExcludeFromCascade();
+
+    /**
+     * Sets exclude from cascade.
+     *
+     * @param value the value
+     */
+    void setExcludeFromCascade(boolean value);
 
     /**
      * Generically describes if this ticket is linked to all ticket entities

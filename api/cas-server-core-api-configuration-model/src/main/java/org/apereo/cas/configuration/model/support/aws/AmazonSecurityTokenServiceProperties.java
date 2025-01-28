@@ -1,11 +1,13 @@
 package org.apereo.cas.configuration.model.support.aws;
 
+import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * This is {@link AmazonSecurityTokenServiceProperties}.
@@ -17,8 +19,9 @@ import lombok.experimental.Accessors;
 @Setter
 @RequiresModule(name = "cas-server-support-aws")
 @Accessors(chain = true)
-@JsonFilter("AmazonSecurityTokenServiceProperties")
+
 public class AmazonSecurityTokenServiceProperties extends BaseAmazonWebServicesProperties {
+    @Serial
     private static final long serialVersionUID = 5426637051495147084L;
 
     /**
@@ -34,6 +37,7 @@ public class AmazonSecurityTokenServiceProperties extends BaseAmazonWebServicesP
      * for the principal to authorize the user to
      * proceed with obtaining credentials.
      */
+    @RegularExpressionCapable
     private String principalAttributeValue;
 
     /**

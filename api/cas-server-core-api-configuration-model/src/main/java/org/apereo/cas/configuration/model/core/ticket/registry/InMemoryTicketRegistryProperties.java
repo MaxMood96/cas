@@ -3,11 +3,11 @@ package org.apereo.cas.configuration.model.core.ticket.registry;
 import org.apereo.cas.configuration.model.core.util.EncryptionRandomizedSigningJwtCryptographyProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -19,18 +19,12 @@ import java.io.Serializable;
 @RequiresModule(name = "cas-server-core-tickets", automated = true)
 @Getter
 @Setter
-@JsonFilter("InMemoryTicketRegistryProperties")
+
 public class InMemoryTicketRegistryProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -2600525447128979994L;
-
-    /**
-     * Allow the ticket registry to cache ticket items for period of time
-     * and auto-evict and clean up, removing the need to running a ticket
-     * registry cleaner in the background.
-     */
-    private boolean cache;
-
+    
     /**
      * The initial capacity of the underlying memory store.
      * The implementation performs internal sizing to accommodate this many elements.

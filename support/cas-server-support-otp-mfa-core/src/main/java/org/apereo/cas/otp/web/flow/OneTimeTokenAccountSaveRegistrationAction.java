@@ -4,12 +4,13 @@ import org.apereo.cas.authentication.OneTimeTokenAccount;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
 import org.apereo.cas.util.LoggingUtils;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -21,7 +22,7 @@ import org.springframework.webflow.execution.RequestContext;
  */
 @RequiredArgsConstructor
 @Slf4j
-public class OneTimeTokenAccountSaveRegistrationAction extends AbstractAction {
+public class OneTimeTokenAccountSaveRegistrationAction<T extends OneTimeTokenAccount> extends BaseCasWebflowAction {
 
     /**
      * Parameter name indicating account name.
@@ -37,15 +38,9 @@ public class OneTimeTokenAccountSaveRegistrationAction extends AbstractAction {
 
     private final CasConfigurationProperties casProperties;
 
-    /**
-     * Build one time token account.
-     *
-     * @param requestContext the request context
-     * @return the one time token account
-     */
     protected OneTimeTokenAccount buildOneTimeTokenAccount(final RequestContext requestContext) {
         val currentAcct = getCandidateAccountFrom(requestContext);
-        val accountName = requestContext.getRequestParameters().getRequired(REQUEST_PARAMETER_ACCOUNT_NAME);
+        val accountName = WebUtils.getRequestParameterOrAttribute(requestContext, REQUEST_PARAMETER_ACCOUNT_NAME).orElseThrow();
         return OneTimeTokenAccount.builder()
             .username(currentAcct.getUsername())
             .secretKey(currentAcct.getSecretKey())
@@ -55,37 +50,36 @@ public class OneTimeTokenAccountSaveRegistrationAction extends AbstractAction {
             .build();
     }
 
-    /**
-     * Gets candidate account from.
-     *
-     * @param requestContext the request context
-     * @return the candidate account from
-     */
-    protected OneTimeTokenAccount getCandidateAccountFrom(final RequestContext requestContext) {
-        return requestContext.getFlowScope()
+    protected T getCandidateAccountFrom(final RequestContext requestContext) {
+        return (T) requestContext.getFlowScope()
             .get(OneTimeTokenAccountCreateRegistrationAction.FLOW_SCOPE_ATTR_ACCOUNT, OneTimeTokenAccount.class);
     }
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
+    protected Event doExecuteInternal(final RequestContext requestContext) {
         try {
             val currentAcct = getCandidateAccountFrom(requestContext);
-            if (!casProperties.getAuthn().getMfa().getGauth().getCore().isMultipleDeviceRegistrationEnabled()) {
-                if (repository.count(currentAcct.getUsername()) > 0) {
-                    LOGGER.warn("Unable to register multiple devices for [{}]", currentAcct.getUsername());
-                    return getErrorEvent(requestContext);
-                }
+            val deviceRegistrationEnabled = MultifactorAuthenticationWebflowUtils.isMultifactorDeviceRegistrationEnabled(requestContext);
+            if (!deviceRegistrationEnabled) {
+                LOGGER.warn("Device registration is disabled for [{}]", currentAcct.getUsername());
+                return getErrorEvent(requestContext);
             }
-            val account = buildOneTimeTokenAccount(requestContext);
+
+            if (!casProperties.getAuthn().getMfa().getGauth().getCore().isMultipleDeviceRegistrationEnabled()
+                && repository.count(currentAcct.getUsername()) > 0) {
+                LOGGER.warn("Unable to register multiple devices for [{}]", currentAcct.getUsername());
+                return getErrorEvent(requestContext);
+            }
+            val account = (T) buildOneTimeTokenAccount(requestContext);
             if (!validate(account, requestContext)) {
-                LOGGER.error("Unable to validate account");
+                LOGGER.error("Unable to validate account [{}]", account);
                 return getErrorEvent(requestContext);
             }
 
             val validate = requestContext.getRequestParameters().getBoolean(REQUEST_PARAMETER_VALIDATE);
             if (validate == null || !validate) {
                 LOGGER.trace("Storing account [{}]", account);
-                WebUtils.putOneTimeTokenAccount(requestContext, repository.save(account));
+                MultifactorAuthenticationWebflowUtils.putOneTimeTokenAccount(requestContext, repository.save(account));
             }
             return success();
         } catch (final Exception e) {
@@ -94,23 +88,10 @@ public class OneTimeTokenAccountSaveRegistrationAction extends AbstractAction {
         return getErrorEvent(requestContext);
     }
 
-    /**
-     * Validate account and context.
-     *
-     * @param account        the account
-     * @param requestContext the request context
-     * @return true/false
-     */
-    protected boolean validate(final OneTimeTokenAccount account, final RequestContext requestContext) {
+    protected boolean validate(final T account, final RequestContext requestContext) {
         return true;
     }
 
-    /**
-     * Gets error event.
-     *
-     * @param requestContext the request context
-     * @return the error event
-     */
     protected Event getErrorEvent(final RequestContext requestContext) {
         return error();
     }

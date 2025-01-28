@@ -1,46 +1,36 @@
 package org.apereo.cas.monitor;
 
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.monitor.config.MongoDbMonitoringConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-import org.apereo.cas.util.spring.BeanContainer;
-
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasMongoDbMonitoringAutoConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryAutoConfiguration;
+import org.apereo.cas.mongo.CasMongoOperations;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import org.apereo.cas.util.spring.beans.BeanContainer;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.apereo.inspektr.audit.AuditActionContext;
+import org.apereo.inspektr.common.web.ClientInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-import org.springframework.data.mongodb.core.MongoTemplate;
-
-import java.util.Date;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -50,29 +40,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.3.0
  */
 @Tag("MongoDb")
+@ExtendWith(CasTestExtension.class)
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    MongoDbMonitoringConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasPersonDirectoryConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreServicesAuthenticationConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreAuthenticationPolicyConfiguration.class,
-    CasCoreAuthenticationMetadataConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationHandlersConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    RefreshAutoConfiguration.class,
-    CasCoreConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class
+    CasMongoDbMonitoringAutoConfiguration.class,
+    CasCoreTicketsAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class,
+    CasPersonDirectoryAutoConfiguration.class,
+    CasCoreLogoutAutoConfiguration.class,
+    CasCoreServicesAutoConfiguration.class,
+    CasCoreAuthenticationAutoConfiguration.class,
+    CasCoreAutoConfiguration.class,
+    CasCoreNotificationsAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class
 },
     properties = {
         "cas.monitor.mongo[0].user-id=root",
@@ -82,35 +62,33 @@ import static org.junit.jupiter.api.Assertions.*;
         "cas.monitor.mongo[0].authentication-database-name=admin",
         "cas.monitor.mongo[0].database-name=monitor"
     })
-@EnabledIfPortOpen(port = 27017)
-@SuppressWarnings("JavaUtilDate")
-public class MongoDbHealthIndicatorTests {
+@EnabledIfListeningOnPort(port = 27017)
+class MongoDbHealthIndicatorTests {
     @Autowired
     @Qualifier("mongoHealthIndicator")
     private HealthIndicator mongoHealthIndicator;
 
     @Autowired
     @Qualifier("mongoHealthIndicatorTemplate")
-    private BeanContainer<MongoTemplate> mongoHealthIndicatorTemplate;
+    private BeanContainer<CasMongoOperations> mongoHealthIndicatorTemplate;
 
     @BeforeEach
-    public void bootstrap() {
+    void bootstrap() {
         val template = mongoHealthIndicatorTemplate.first();
         template.save(new AuditActionContext("casuser", "resource",
-            "action", "appcode", new Date(), "clientIp",
-            "serverIp", UUID.randomUUID().toString()), "monitor");
+            "action", "appcode", LocalDateTime.now(Clock.systemUTC()),
+            new ClientInfo("clientIp", "serverIp", UUID.randomUUID().toString(), "Paris")));
     }
 
     @Test
-    public void verifyMonitor() {
+    void verifyMonitor() {
         val health = mongoHealthIndicator.health();
         assertEquals(Status.UP, health.getStatus());
         val details = (Map) health.getDetails().get(MongoDbHealthIndicator.class.getSimpleName() + "-monitor");
         assertTrue(details.containsKey("name"));
 
         details.values().forEach(value -> {
-            if (value instanceof Map) {
-                val map = (Map<String, ?>) value;
+            if (value instanceof final Map map) {
                 assertTrue(map.containsKey("size"));
                 assertTrue(map.containsKey("capacity"));
                 assertTrue(map.containsKey("evictions"));

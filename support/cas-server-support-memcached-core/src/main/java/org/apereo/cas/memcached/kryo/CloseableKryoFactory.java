@@ -71,6 +71,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.regex.Pattern;
 
 /**
@@ -154,10 +157,12 @@ public class CloseableKryoFactory implements FactoryBean<CloseableKryo> {
 
         ImmutableMultimapSerializer.registerSerializers(kryo);
 
-        kryo.register(Collections.EMPTY_LIST.getClass(), new CollectionsEmptyListSerializer());
-        kryo.register(Collections.EMPTY_MAP.getClass(), new CollectionsEmptyMapSerializer());
-        kryo.register(Collections.EMPTY_SET.getClass(), new CollectionsEmptySetSerializer());
-
+        //CHECKSTYLE:OFF
+        kryo.register(Collections.emptyList().getClass(), new CollectionsEmptyListSerializer());
+        kryo.register(Collections.emptyMap().getClass(), new CollectionsEmptyMapSerializer());
+        kryo.register(Collections.emptySet().getClass(), new CollectionsEmptySetSerializer());
+        //CHECKSTYLE:ON
+        
         /*
          * Can't directly access Collections classes (private class),
          * so instantiate one and do a getClass().
@@ -186,9 +191,12 @@ public class CloseableKryoFactory implements FactoryBean<CloseableKryo> {
         kryo.register(LinkedList.class);
         kryo.register(HashMap.class);
         kryo.register(LinkedHashMap.class);
+        kryo.register(ConcurrentHashMap.class);
         kryo.register(LinkedHashSet.class);
-        kryo.register(TreeMap.class);
-        kryo.register(TreeSet.class);
+        kryo.register(ConcurrentSkipListSet.class);
+        kryo.register(ConcurrentSkipListMap.class, new DefaultSerializers.ConcurrentSkipListMapSerializer());
+        kryo.register(TreeMap.class, new DefaultSerializers.TreeMapSerializer());
+        kryo.register(TreeSet.class, new DefaultSerializers.TreeSetSerializer());
         kryo.register(HashSet.class);
         kryo.register(EnumMap.class, new EnumMapSerializer());
         kryo.register(EnumSet.class, new EnumSetSerializer());
@@ -201,7 +209,9 @@ public class CloseableKryoFactory implements FactoryBean<CloseableKryo> {
         kryo.register(double[].class);
         kryo.register(float[].class);
         kryo.register(long[].class);
+        kryo.register(char[].class);
         kryo.register(int[].class);
+        kryo.register(short[].class);
         kryo.register(byte[].class);
         kryo.register(ByteBuffer.class);
 

@@ -9,14 +9,16 @@ import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.rest.authentication.RestAuthenticationService;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.RegexUtils;
-import org.apereo.cas.web.BaseCasActuatorEndpoint;
-
+import org.apereo.cas.web.BaseCasRestActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEndpoint;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.actuate.endpoint.Access;
+import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.MultiValueMap;
@@ -29,8 +31,8 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.Credentials;
 import software.amazon.awssdk.services.sts.model.GetSessionTokenRequest;
-
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.LinkedHashMap;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,14 +43,15 @@ import java.util.UUID;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@RestControllerEndpoint(id = "awsSts", enableByDefault = false)
+@Endpoint(id = "awsSts", defaultAccess = Access.NONE)
 @Slf4j
-public class AmazonSecurityTokenServiceEndpoint extends BaseCasActuatorEndpoint {
-    private final RestAuthenticationService restAuthenticationService;
+public class AmazonSecurityTokenServiceEndpoint extends BaseCasRestActuatorEndpoint {
+    private final ObjectProvider<RestAuthenticationService> restAuthenticationService;
 
-    public AmazonSecurityTokenServiceEndpoint(final CasConfigurationProperties casProperties,
-                                              final RestAuthenticationService restAuthenticationService) {
-        super(casProperties);
+    public AmazonSecurityTokenServiceEndpoint(final ObjectProvider<CasConfigurationProperties> casProperties,
+                                              final ConfigurableApplicationContext applicationContext,
+                                              final ObjectProvider<RestAuthenticationService> restAuthenticationService) {
+        super(casProperties.getObject(), applicationContext);
         this.restAuthenticationService = restAuthenticationService;
     }
 
@@ -85,36 +88,37 @@ public class AmazonSecurityTokenServiceEndpoint extends BaseCasActuatorEndpoint 
     /**
      * Fetch credentials.
      *
-     * @param duration     the duration
      * @param tokenCode    the token code
      * @param profile      the profile
      * @param serialNumber the serial number
      * @param roleArn      the role arn
      * @param requestBody  the request body
      * @param request      the request
+     * @param response     the response
      * @return the map
      */
     @PostMapping
     @Operation(summary = "Fetch temporary credentials from Amazon Security Token Service", parameters = {
-        @Parameter(name = "duration"),
-        @Parameter(name = "tokenCode"),
-        @Parameter(name = "profile"),
-        @Parameter(name = "serialNumber"),
-        @Parameter(name = "roleArn"),
-        @Parameter(name = "requestBody"),
-        @Parameter(name = "request")
+        @Parameter(name = "duration", description = "Duration of the temporary credentials"),
+        @Parameter(name = "tokenCode", description = "MFA token code"),
+        @Parameter(name = "profile", description = "AWS profile name"),
+        @Parameter(name = "serialNumber", description = "MFA serial number"),
+        @Parameter(name = "roleArn", description = "Role ARN"),
+        @Parameter(name = "requestBody", description = "Request body"),
+        @Parameter(name = "request", description = "Request"),
+        @Parameter(name = "response", description = "Response")
     })
-    public ResponseEntity<String> fetchCredentials(@RequestParam(required = false, defaultValue = "PT1H") final String duration,
-                                                   @RequestParam(value = "token", required = false) final String tokenCode,
+    public ResponseEntity<String> fetchCredentials(@RequestParam(value = "token", required = false) final String tokenCode,
                                                    @RequestParam(required = false) final String profile,
                                                    @RequestParam(required = false) final String serialNumber,
                                                    @RequestParam(required = false) final String roleArn,
                                                    @RequestBody final MultiValueMap<String, String> requestBody,
-                                                   final HttpServletRequest request) {
+                                                   final HttpServletRequest request,
+                                                   final HttpServletResponse response) throws Throwable {
 
         var authenticationResult = (AuthenticationResult) null;
         try {
-            authenticationResult = restAuthenticationService.authenticate(requestBody, request)
+            authenticationResult = restAuthenticationService.getObject().authenticate(requestBody, request, response)
                 .orElseThrow(AuthenticationException::new);
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
@@ -130,11 +134,12 @@ public class AmazonSecurityTokenServiceEndpoint extends BaseCasActuatorEndpoint 
         }
 
         val credentials = ChainingAWSCredentialsProvider.getInstance(amz.getCredentialAccessKey(),
-            amz.getCredentialSecretKey(), amz.getProfilePath(), StringUtils.defaultString(profile, amz.getProfileName()));
+            amz.getCredentialSecretKey(), amz.getProfilePath(), StringUtils.defaultIfBlank(profile, amz.getProfileName()));
         val builder = StsClient.builder();
-        AmazonClientConfigurationBuilder.prepareClientBuilder(builder, credentials, amz);
+        AmazonClientConfigurationBuilder.prepareSyncClientBuilder(builder, credentials, amz);
         val client = builder.build();
-
+        
+        val duration = StringUtils.defaultIfBlank(requestBody.getFirst("duration"), "PT15S");
         if (amz.isRbacEnabled()) {
             val attributeValues = principal.getAttributes().get(amz.getPrincipalAttributeName());
             LOGGER.debug("Found roles [{}]", attributeValues);
@@ -149,8 +154,9 @@ public class AmazonSecurityTokenServiceEndpoint extends BaseCasActuatorEndpoint 
                         .body("Specified role is not allowed. Current roles:" + attributeValues);
                 }
             }
-            val role = StringUtils.defaultString(roleArn, attributeValues.get(0).toString());
+            val role = StringUtils.defaultIfBlank(roleArn, attributeValues.getFirst().toString());
             LOGGER.debug("Using role [{}]", role);
+
             val roleRequest = AssumeRoleRequest.builder()
                 .durationSeconds(Long.valueOf(Beans.newDuration(duration).toSeconds()).intValue())
                 .roleArn(role)

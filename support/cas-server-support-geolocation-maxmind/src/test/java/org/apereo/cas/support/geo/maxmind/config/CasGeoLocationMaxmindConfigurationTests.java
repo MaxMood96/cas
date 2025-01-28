@@ -1,15 +1,16 @@
 package org.apereo.cas.support.geo.maxmind.config;
 
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationService;
-import org.apereo.cas.support.geo.config.CasGeoLocationMaxmindConfiguration;
-
+import org.apereo.cas.config.CasGeoLocationAutoConfiguration;
+import org.apereo.cas.config.CasGeoLocationMaxmindAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**                                                            
@@ -18,18 +19,20 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasGeoLocationMaxmindConfiguration.class
+    CasGeoLocationAutoConfiguration.class,
+    CasGeoLocationMaxmindAutoConfiguration.class
 })
-@Tag("CasConfiguration")
-public class CasGeoLocationMaxmindConfigurationTests {
+@Tag("GeoLocation")
+@ExtendWith(CasTestExtension.class)
+class CasGeoLocationMaxmindConfigurationTests {
     @Autowired
-    @Qualifier("geoLocationService")
+    @Qualifier(GeoLocationService.BEAN_NAME)
     private GeoLocationService geoLocationService;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(geoLocationService);
     }
 }

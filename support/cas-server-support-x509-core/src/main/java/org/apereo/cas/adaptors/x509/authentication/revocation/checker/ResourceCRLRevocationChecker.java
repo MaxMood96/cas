@@ -5,9 +5,9 @@ import org.apereo.cas.adaptors.x509.authentication.ResourceCRLFetcher;
 import org.apereo.cas.adaptors.x509.authentication.handler.support.X509CredentialsAuthenticationHandler;
 import org.apereo.cas.adaptors.x509.authentication.revocation.policy.RevocationPolicy;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.DisposableBean;
@@ -45,7 +45,7 @@ public class ResourceCRLRevocationChecker extends AbstractCRLRevocationChecker i
     /**
      * Executor responsible for refreshing CRL data.
      */
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory());
 
     /**
      * CRL refresh interval in seconds.
@@ -127,20 +127,19 @@ public class ResourceCRLRevocationChecker extends AbstractCRLRevocationChecker i
     /**
      * Initializes the process that periodically fetches CRL data.
      */
-    @SneakyThrows
     @SuppressWarnings("FutureReturnValueIgnored")
     public void init() {
         if (!validateConfiguration()) {
             return;
         }
 
-        val results = this.fetcher.fetch(getResources());
-        ResourceCRLRevocationChecker.this.addCrls(results);
+        val results = FunctionUtils.doUnchecked(() -> this.fetcher.fetch(getResources()));
+        this.addCrls(results);
 
         final Runnable scheduledFetcher = () -> {
             try {
                 val fetchedResults = getFetcher().fetch(getResources());
-                ResourceCRLRevocationChecker.this.addCrls(fetchedResults);
+                this.addCrls(fetchedResults);
             } catch (final Exception e) {
                 LOGGER.debug(e.getMessage(), e);
             }

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.net.URL;
+import java.net.URI;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -24,46 +24,45 @@ import static org.mockito.Mockito.*;
  * @since 3.0.0
  */
 @Tag("AuthenticationHandler")
-public class Cas20ProxyHandlerTests {
+class Cas20ProxyHandlerTests {
 
     private Cas20ProxyHandler handler;
 
     @Mock
     private TicketGrantingTicket proxyGrantingTicket;
 
-    public Cas20ProxyHandlerTests() {
+    Cas20ProxyHandlerTests() {
         MockitoAnnotations.openMocks(this);
     }
 
     @BeforeEach
-    public void initialize() {
+    void initialize() {
         val factory = new SimpleHttpClientFactoryBean();
         factory.setConnectionTimeout(10000);
-        factory.setReadTimeout(10000);
         this.handler = new Cas20ProxyHandler(factory.getObject(), new DefaultUniqueTicketIdGenerator());
         when(this.proxyGrantingTicket.getId()).thenReturn("proxyGrantingTicket");
     }
 
     @Test
-    public void verifyValidProxyTicketWithoutQueryString() throws Exception {
-        assertNotNull(this.handler.handle(new HttpBasedServiceCredential(new URL("https://www.google.com/"),
+    void verifyValidProxyTicketWithoutQueryString() throws Throwable {
+        assertNotNull(this.handler.handle(new HttpBasedServiceCredential(new URI("https://www.google.com/").toURL(),
             CoreAuthenticationTestUtils.getRegisteredService("https://some.app.edu")), proxyGrantingTicket));
     }
 
     @Test
-    public void verifyValidProxyTicketWithQueryString() throws Exception {
-        assertNotNull(this.handler.handle(new HttpBasedServiceCredential(new URL("https://www.google.com/?test=test"),
+    void verifyValidProxyTicketWithQueryString() throws Throwable {
+        assertNotNull(this.handler.handle(new HttpBasedServiceCredential(new URI("https://www.google.com/?test=test").toURL(),
             CoreAuthenticationTestUtils.getRegisteredService("https://some.app.edu")), proxyGrantingTicket));
     }
 
     @Test
-    public void verifyNonValidProxyTicket() throws Exception {
+    void verifyNonValidProxyTicket() throws Throwable {
         val clientFactory = new SimpleHttpClientFactoryBean();
         clientFactory.setAcceptableCodes(CollectionUtils.wrapList(900));
 
         this.handler = new Cas20ProxyHandler(clientFactory.getObject(), new DefaultUniqueTicketIdGenerator());
 
-        assertNull(this.handler.handle(new HttpBasedServiceCredential(new URL("http://www.rutgers.edu"),
+        assertNull(this.handler.handle(new HttpBasedServiceCredential(new URI("http://www.rutgers.edu").toURL(),
             CoreAuthenticationTestUtils.getRegisteredService("https://some.app.edu")), proxyGrantingTicket));
     }
 }

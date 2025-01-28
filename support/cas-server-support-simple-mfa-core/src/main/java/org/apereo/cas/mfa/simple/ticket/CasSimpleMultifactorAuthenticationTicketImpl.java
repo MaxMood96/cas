@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,7 +31,9 @@ import java.util.Map;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonIdentityInfo(generator = ObjectIdGenerators.IntSequenceGenerator.class)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
-public class CasSimpleMultifactorAuthenticationTicketImpl extends AbstractTicket implements CasSimpleMultifactorAuthenticationTicket {
+public class CasSimpleMultifactorAuthenticationTicketImpl extends AbstractTicket
+    implements CasSimpleMultifactorAuthenticationTicket {
+    @Serial
     private static final long serialVersionUID = -6580305495605099699L;
 
     /**
@@ -38,16 +41,11 @@ public class CasSimpleMultifactorAuthenticationTicketImpl extends AbstractTicket
      */
     private Service service;
 
-    /**
-     * The Properties.
-     */
-    private Map<String, Object> properties = new HashMap<>(0);
-
     public CasSimpleMultifactorAuthenticationTicketImpl(final String id, final ExpirationPolicy expirationPolicy,
                                                         final Service service, final Map<String, Serializable> properties) {
         super(id, expirationPolicy);
         this.service = service;
-        this.properties = new HashMap<>(properties);
+        setProperties(new HashMap<>(properties));
     }
 
     @Override

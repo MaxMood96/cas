@@ -1,9 +1,8 @@
 package org.apereo.cas.web.flow;
 
 import org.apereo.cas.AbstractCentralAuthenticationServiceTests;
-import org.apereo.cas.web.config.CasSupportActionsConfiguration;
-
-import org.springframework.context.annotation.Import;
+import org.apereo.cas.config.CasSupportActionsAutoConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 
 /**
  * This is {@link AbstractWebflowActionsTests}.
@@ -11,6 +10,6 @@ import org.springframework.context.annotation.Import;
  * @author Misagh Moayyed
  * @since 6.0.0
  */
-@Import(CasSupportActionsConfiguration.class)
-public class AbstractWebflowActionsTests extends AbstractCentralAuthenticationServiceTests {
+@ImportAutoConfiguration(CasSupportActionsAutoConfiguration.class)
+public abstract class AbstractWebflowActionsTests extends AbstractCentralAuthenticationServiceTests {
 }

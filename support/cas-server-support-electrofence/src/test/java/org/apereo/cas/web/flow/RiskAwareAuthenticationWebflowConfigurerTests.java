@@ -1,19 +1,16 @@
 package org.apereo.cas.web.flow;
 
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.ElectronicFenceConfiguration;
-import org.apereo.cas.config.ElectronicFenceWebflowConfiguration;
-import org.apereo.cas.support.events.config.CasCoreEventsConfiguration;
-import org.apereo.cas.web.flow.config.CasMultifactorAuthenticationWebflowConfiguration;
-
+import org.apereo.cas.config.CasCoreEventsAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasElectronicFenceAutoConfiguration;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.webflow.engine.Flow;
 import org.springframework.webflow.engine.TransitionableState;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -22,19 +19,17 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Import({
-    CasCoreEventsConfiguration.class,
-    CasCoreMultifactorAuthenticationConfiguration.class,
-    CasMultifactorAuthenticationWebflowConfiguration.class,
-    ElectronicFenceConfiguration.class,
-    ElectronicFenceWebflowConfiguration.class,
-    BaseWebflowConfigurerTests.SharedTestConfiguration.class
+@ImportAutoConfiguration({
+    CasCoreEventsAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+    CasElectronicFenceAutoConfiguration.class
 })
 @TestPropertySource(properties = "cas.authn.adaptive.risk.ip.enabled=true")
 @Tag("WebflowConfig")
-public class RiskAwareAuthenticationWebflowConfigurerTests extends BaseWebflowConfigurerTests {
+class RiskAwareAuthenticationWebflowConfigurerTests extends BaseWebflowConfigurerTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertFalse(casWebflowExecutionPlan.getWebflowConfigurers().isEmpty());
         val flow = (Flow) this.loginFlowDefinitionRegistry.getFlowDefinition(CasWebflowConfigurer.FLOW_ID_LOGIN);
         assertNotNull(flow);

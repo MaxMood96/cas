@@ -1,0 +1,223 @@
+name: Unit & Integration Tests
+
+env:
+  JAVA_OPTS: "-Xms512m -Xmx8048m -Xss512m -XX:ReservedCodeCacheSize=512m -server"
+  TERM: xterm-256color
+  GH_PACKAGE_REGISTRY_USER: ${{ secrets.GH_PACKAGE_REGISTRY_USER }}
+  GH_PACKAGE_REGISTRY_TOKEN: ${{ secrets.GH_PACKAGE_REGISTRY_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
+#  GRADLE_BUILDCACHE_USER: ci
+#  GRADLE_BUILDCACHE_PSW: ${{ secrets.GRADLE_BUILDCACHE_PSW }}
+  CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
+  SONARCLOUD_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+  CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  COSMOS_DB_URL: ${{ secrets.COSMOS_DB_URL }}
+  COSMOS_DB_KEY: ${{ secrets.COSMOS_DB_KEY }}
+  AZURE_MAPS_SUBSCRIPTION_ID: ${{ secrets.AZURE_MAPS_SUBSCRIPTION_ID }}
+  AZURE_MAPS_CLIENT_ID: ${{ secrets.AZURE_MAPS_CLIENT_ID }}
+  AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
+  AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+  AZURE_AD_USER_PASSWORD: ${{ secrets.AZURE_AD_USER_PASSWORD }}
+  AZURE_AD_TENANT: ${{ secrets.AZURE_AD_TENANT }}
+  AZURE_AD_DOMAIN: ${{ secrets.AZURE_AD_DOMAIN }}
+  PERMIT_IO_API_KEY: ${{ secrets.PERMIT_IO_API_KEY }}
+  JDK_CURRENT: 21
+  JDK_DISTRIBUTION: "corretto"
+  RETRY_ATTEMPTS: 2
+  RETRY_MINUTES: 40
+  CATEGORY_REGEX: ".*"
+##########################################################################
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 17 * * *'
+    - cron: '0 10 * * *'  # This needs to match the condition below that disables PTS mode.
+  push:
+    branches:
+      - master
+      - '!**.**.**'
+      - '!heroku-*'
+  pull_request:
+    types: [ labeled ]
+    branches: [ master, pr-* ]
+
+concurrency:
+  group: "workflow = ${{ github.workflow }}, ref = ${{ github.event.ref }}, pr = ${{ github.event.pull_request.id }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.repository != 'apereo/cas' }}
+
+##########################################################################
+
+jobs:
+  trigger-ci:
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'CI')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger CI
+        run: echo "CI Triggered"
+  ##########################################################################
+  initialize:
+    needs: [ trigger-ci ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JDK_CURRENT }}
+          distribution: ${{ env.JDK_DISTRIBUTION }}
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Initialize
+        run: ls ./ci && find ./ci -type f -name "*.sh" -exec chmod +x "{}" \; && ./ci/init-build.sh
+
+  ##########################################################################
+
+  testcategories:
+    needs: [ initialize ]
+    runs-on: ubuntu-latest
+    outputs:
+      categories: ${{ steps.get-categories.outputs.categories }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JDK_CURRENT }}
+          distribution: ${{ env.JDK_DISTRIBUTION }}
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - id: print-categories
+        run: ./gradlew --build-cache --configure-on-demand --no-daemon -q testCategories
+      - id: get-categories
+        run: echo "categories=$(./gradlew --build-cache --configure-on-demand --no-daemon -q testCategories)" >> $GITHUB_OUTPUT
+  ##########################################################################
+  
+  tests:
+    needs: [ testcategories ]
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        category: ${{fromJSON(needs.testcategories.outputs.categories)}}
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.category }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JDK_CURRENT }}
+          distribution: ${{ env.JDK_DISTRIBUTION }}
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Initialize
+        run: find ./ci -type f -name "*.sh" -exec chmod +x "{}" \; && ./ci/init-build.sh
+        shell: bash
+      - name: Run Tests
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: ${{ env.RETRY_ATTEMPTS }}
+          retry_on: error
+          retry_wait_seconds: 5
+          timeout_minutes: ${{ env.RETRY_MINUTES }}
+          shell: bash
+          command: |
+            if [[ "${{ github.event_name }}" == "schedule" ]] && [[ "${{ github.event.schedule == '0 10 * * *'}}" ]]; then
+              echo "Running tests without PTS mode"
+              ./testcas.sh --no-watch --category ${{ matrix.category }} --events FAILED --no-pts
+              [[ $? -eq 0 ]] && ./testcas.sh --no-watch --with-coverage
+            else 
+              if [[ "${{ github.event_name }}" == "push" ]] || [[ "${{ github.event_name }}" == "schedule" ]]; then
+                ptsMode="REMAINING_TESTS";
+              else
+                ptsMode="RELEVANT_TESTS";
+              fi
+              echo "Running tests with PTS mode: $ptsMode"
+              ./testcas.sh --no-watch --category ${{ matrix.category }} --events FAILED --pts $ptsMode
+              [[ $? -eq 0 ]] && ./testcas.sh --no-watch --with-coverage
+            fi
+      - name: Check Coverage Report
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+        run: |
+          xml_files=$(find build/reports -type f -name "*.xml")
+          if [ -z "$xml_files" ]; then
+            echo "No coverage XML files found"
+          else
+            echo ${xml_files}
+          fi
+      - name: Upload to SonarCloud
+        if: env.SONARCLOUD_TOKEN != null && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+        continue-on-error: true
+        run: |
+          coverageReport="$PWD/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml"
+          echo "Uploading coverage report to SonarCloud from $coverageReport"
+          ./gradlew sonar --build-cache --configure-on-demand \
+            --no-daemon -DskipAot=true --parallel \
+            -x javadoc -x test -DskipNestedConfigMetadataGen=true \
+            -PsonarOrganization="${{ github.repository_owner }}" \
+            -Dsonar.coverage.jacoco.xmlReportPaths="$coverageReport"
+      - name: "Upload to Codecov"
+        uses: "codecov/codecov-action@v5"
+        continue-on-error: true
+        if: env.CODECOV_TOKEN != null && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: ./build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
+          flags: ${{ matrix.category }}
+          name: ${{ matrix.category }}
+          verbose: true
+          fail_ci_if_error: false
+      - name: Upload Coverage Report
+        uses: "actions/upload-artifact@v4"
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+        with:
+          name: "cas-tests-${{ matrix.category }}.coverage"
+          path: "./build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml"
+  ##########################################################################
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: [ tests ]
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JDK_CURRENT }}
+          distribution: ${{ env.JDK_DISTRIBUTION }}
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Download coverage files
+        uses: "actions/download-artifact@v4"
+        with:
+          path: "reports"
+      - name: Collect Coverage Files
+        run: |
+          find $PWD -type f -name 'jacocoRootReport.xml'
+          export files=''
+          for file in $(find $PWD -type f -name 'jacocoRootReport.xml'); do export files="$file,${files}"; done
+          export files="${files%?}"
+          echo $files
+          echo "COVERAGE_REPORTS=${files}" >> $GITHUB_ENV
+      - name: Upload Coverage to Codacy
+        uses: codacy/codacy-coverage-reporter-action@v1
+        with:
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          coverage-reports: ${{ env.COVERAGE_REPORTS }}
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        if: ${{ env.CODECOV_TOKEN != null }}
+        continue-on-error: true
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
+          fail_ci_if_error: false
+          files: ${{ env.COVERAGE_REPORTS }}

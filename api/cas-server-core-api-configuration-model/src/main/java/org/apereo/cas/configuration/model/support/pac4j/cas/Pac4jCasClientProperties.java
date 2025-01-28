@@ -1,14 +1,14 @@
 package org.apereo.cas.configuration.model.support.pac4j.cas;
 
 import org.apereo.cas.configuration.model.support.pac4j.Pac4jBaseClientProperties;
-import org.apereo.cas.configuration.support.CasFeatureModule;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * This is {@link Pac4jCasClientProperties}.
@@ -20,9 +20,10 @@ import lombok.experimental.Accessors;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("Pac4jCasClientProperties")
-public class Pac4jCasClientProperties extends Pac4jBaseClientProperties implements CasFeatureModule {
 
+public class Pac4jCasClientProperties extends Pac4jBaseClientProperties {
+
+    @Serial
     private static final long serialVersionUID = -2738631545437677447L;
 
     /**

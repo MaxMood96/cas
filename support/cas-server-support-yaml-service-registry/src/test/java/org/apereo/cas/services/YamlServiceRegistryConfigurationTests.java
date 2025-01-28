@@ -1,19 +1,13 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.services.config.YamlServiceRegistryConfiguration;
-
+import org.apereo.cas.config.CasYamlServiceRegistryAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -23,23 +17,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @SpringBootTest(classes = {
-    CasCoreWebConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    RefreshAutoConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    YamlServiceRegistryConfiguration.class
+    AbstractServiceRegistryTests.SharedTestConfiguration.class,
+    CasYamlServiceRegistryAutoConfiguration.class
 },
     properties = "cas.service-registry.yaml.location=classpath:/services")
 @Tag("FileSystem")
-public class YamlServiceRegistryConfigurationTests {
+@ExtendWith(CasTestExtension.class)
+class YamlServiceRegistryConfigurationTests {
     @Autowired
     @Qualifier("yamlServiceRegistry")
     private ServiceRegistry serviceRegistry;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(this.serviceRegistry);
     }
 }

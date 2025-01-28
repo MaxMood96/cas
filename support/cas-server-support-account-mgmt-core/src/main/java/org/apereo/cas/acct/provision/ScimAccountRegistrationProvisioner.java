@@ -2,9 +2,9 @@ package org.apereo.cas.acct.provision;
 
 import org.apereo.cas.acct.AccountRegistrationRequest;
 import org.apereo.cas.acct.AccountRegistrationResponse;
-import org.apereo.cas.api.PrincipalProvisioner;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
+import org.apereo.cas.authentication.principal.PrincipalProvisioner;
 import org.apereo.cas.util.CollectionUtils;
 
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ public class ScimAccountRegistrationProvisioner implements AccountRegistrationPr
     private final PrincipalFactory principalFactory;
 
     @Override
-    public AccountRegistrationResponse provision(final AccountRegistrationRequest request) throws Exception {
+    public AccountRegistrationResponse provision(final AccountRegistrationRequest request) throws Throwable {
         val attributes = new LinkedHashMap<String, List<Object>>();
         request.asMap().forEach((key, value) -> attributes.put(key, CollectionUtils.wrapList(value)));
         val principal = principalFactory.createPrincipal(request.getUsername(), attributes);

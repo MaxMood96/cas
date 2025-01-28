@@ -1,7 +1,9 @@
 package org.apereo.cas.consent;
 
+import org.apereo.cas.test.CasTestExtension;
 import lombok.Getter;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,9 +18,10 @@ import org.springframework.boot.test.context.SpringBootTest;
     properties = "cas.consent.groovy.location=classpath:/ConsentRepository.groovy")
 @Getter
 @Tag("Groovy")
-public class GroovyConsentRepositoryTests extends BaseConsentRepositoryTests {
+@ExtendWith(CasTestExtension.class)
+class GroovyConsentRepositoryTests extends BaseConsentRepositoryTests {
 
     @Autowired
-    @Qualifier("consentRepository")
+    @Qualifier(ConsentRepository.BEAN_NAME)
     protected ConsentRepository repository;
 }

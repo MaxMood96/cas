@@ -3,10 +3,11 @@ package org.apereo.cas.configuration.model.core.services;
 import org.apereo.cas.configuration.model.BaseRestEndpointProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * This is {@link RestfulServiceRegistryProperties}.
@@ -18,7 +19,8 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @Getter
 @Setter
-@JsonFilter("RestfulServiceRegistryProperties")
+
 public class RestfulServiceRegistryProperties extends BaseRestEndpointProperties {
+    @Serial
     private static final long serialVersionUID = 7086088180957285517L;
 }

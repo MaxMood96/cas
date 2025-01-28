@@ -1,7 +1,11 @@
 {
   "dependencies": "pm-webflow",
+  "conditions": {
+    "docker": "true"
+  },
+
   "properties": [
-    "--cas.audit.engine.enabled=false",
+
     "--cas.authn.pm.core.enabled=true",
 
     "--spring.mail.host=localhost",
@@ -11,8 +15,8 @@
     "--cas.server.prefix=https://localhost:8443/cas",
     
     "--cas.authn.pm.reset.mail.from=cas@apereo.org",
-    "--cas.authn.pm.reset.mail.text=%s",
-    "--cas.authn.pm.reset.mail.subject=Reset your password",
+    "--cas.authn.pm.reset.mail.text=${url}",
+    "--cas.authn.pm.reset.mail.subject=Reset",
     "--cas.authn.pm.reset.mail.attribute-name=mail",
 
     "--cas.authn.pm.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/accounts.json"

@@ -1,8 +1,8 @@
 package org.apereo.cas.config;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
-
-import lombok.Getter;
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,8 +12,8 @@ import org.springframework.context.annotation.Configuration;
  * @author Misagh Moayyed
  * @since 5.2.0
  */
-@Configuration(value = "CasMetricsRepositoryConfiguration", proxyBeanMethods = false)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-@Getter
-public class CasMetricsRepositoryConfiguration {
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.Metrics)
+@Configuration(value = "CasMetricsRepositoryConfiguration", proxyBeanMethods = false)
+class CasMetricsRepositoryConfiguration {
 }

@@ -1,7 +1,7 @@
 package org.apereo.cas.authentication;
 
-import org.apereo.cas.util.scripting.WatchableGroovyScriptResource;
-
+import org.apereo.cas.util.scripting.ExecutableCompiledScript;
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -19,21 +19,23 @@ import org.springframework.core.io.Resource;
 @Setter
 @Slf4j
 public class GroovyAuthenticationPreProcessor implements AuthenticationPreProcessor, DisposableBean {
-    private final transient WatchableGroovyScriptResource watchableScript;
+    private final ExecutableCompiledScript watchableScript;
+
     private int order;
 
     public GroovyAuthenticationPreProcessor(final Resource groovyResource) {
-        this.watchableScript = new WatchableGroovyScriptResource(groovyResource);
+        val scriptFactory = ExecutableCompiledScriptFactory.getExecutableCompiledScriptFactory();
+        this.watchableScript = scriptFactory.fromResource(groovyResource);
     }
 
     @Override
-    public boolean process(final AuthenticationTransaction transaction) throws AuthenticationException {
+    public boolean process(final AuthenticationTransaction transaction) throws Throwable {
         val args = new Object[]{transaction, LOGGER};
         return watchableScript.execute(args, Boolean.class);
     }
 
     @Override
-    public boolean supports(final Credential credential) {
+    public boolean supports(final Credential credential) throws Throwable {
         val args = new Object[]{credential, LOGGER};
         return watchableScript.execute("supports", Boolean.class, args);
     }

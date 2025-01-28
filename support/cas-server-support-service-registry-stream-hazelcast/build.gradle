@@ -1,4 +1,12 @@
 description = "Apereo CAS Service Registry Streaming Support with Hazelcast"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "Service Registry Synchronization",
+            title: "Service Registry Synchronization via Hazelcast"
+    ]
+}
+
 dependencies {
     implementation libraries.hazelcast
 
@@ -11,6 +19,7 @@ dependencies {
     implementation project(":support:cas-server-support-hazelcast-core")
     implementation project(":support:cas-server-support-service-registry-stream")
 
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-notifications")
 

@@ -6,7 +6,7 @@ import org.apereo.cas.services.DefaultRegisteredServiceProperty;
 import org.apereo.cas.services.RegisteredServiceProperty;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ServicesManager;
-import org.apereo.cas.util.MockServletContext;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.val;
@@ -15,13 +15,7 @@ import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,21 +28,11 @@ import static org.mockito.Mockito.*;
  * @since 6.5.0
  */
 @Tag("Simple")
-public class DefaultCaptchaActivationStrategyTests {
-
-    private static MockRequestContext getRequestContext(final HttpServletRequest request) {
-        val context = new MockRequestContext();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
-        return context;
-    }
-
+class DefaultCaptchaActivationStrategyTests {
     @Test
-    public void verifyByProps() {
+    void verifyByProps() throws Throwable {
         val strategy = new DefaultCaptchaActivationStrategy(mock(ServicesManager.class));
-        val context = getRequestContext(new MockHttpServletRequest());
+        val context = MockRequestContext.create();
 
         val properties = new GoogleRecaptchaProperties().setEnabled(true);
         assertTrue(strategy.shouldActivate(context, properties).isPresent());
@@ -58,30 +42,28 @@ public class DefaultCaptchaActivationStrategyTests {
     }
 
     @Test
-    public void verifyByIpPattern() {
+    void verifyByIpPattern() throws Throwable {
         val strategy = new DefaultCaptchaActivationStrategy(mock(ServicesManager.class));
         val request = new MockHttpServletRequest();
-        val context = getRequestContext(request);
+        val context = MockRequestContext.create();
 
         val properties = new GoogleRecaptchaProperties()
             .setEnabled(true)
             .setActivateForIpAddressPattern("127.+");
         request.setRemoteAddr("185.86.151.11");
         request.setLocalAddr("195.88.151.11");
-        ClientInfoHolder.setClientInfo(new ClientInfo(request));
+        ClientInfoHolder.setClientInfo(ClientInfo.from(request));
         assertFalse(strategy.shouldActivate(context, properties).isPresent());
     }
 
     @Test
-    public void verifyByIpPatternPerService() {
+    void verifyByIpPatternPerService() throws Throwable {
         val servicesManager = mock(ServicesManager.class);
-
         val strategy = new DefaultCaptchaActivationStrategy(servicesManager);
-        val request = new MockHttpServletRequest();
-        val context = getRequestContext(request);
-        request.setRemoteAddr("185.86.151.99");
-        request.setLocalAddr("195.88.151.11");
-        ClientInfoHolder.setClientInfo(new ClientInfo(request));
+        val context = MockRequestContext.create();
+        context.setRemoteAddr("185.86.151.99");
+        context.setLocalAddr("195.88.151.11");
+        context.setClientInfo();
 
         val service = RegisteredServiceTestUtils.getService(UUID.randomUUID().toString());
         val registeredService = RegisteredServiceTestUtils.getRegisteredService(service.getId());
@@ -98,11 +80,11 @@ public class DefaultCaptchaActivationStrategyTests {
     }
 
     @Test
-    public void verifyByService() {
+    void verifyByService() throws Throwable {
         val servicesManager = mock(ServicesManager.class);
 
         val strategy = new DefaultCaptchaActivationStrategy(servicesManager);
-        val context = getRequestContext(new MockHttpServletRequest());
+        val context = MockRequestContext.create();
 
         val service = RegisteredServiceTestUtils.getService(UUID.randomUUID().toString());
         val registeredService = RegisteredServiceTestUtils.getRegisteredService(service.getId());

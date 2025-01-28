@@ -2,37 +2,34 @@ package org.apereo.cas.support.oauth.web.endpoints;
 
 import org.apereo.cas.audit.AuditableContext;
 import org.apereo.cas.audit.AuditableExecution;
-import org.apereo.cas.authentication.AuthenticationCredentialsThreadLocalBinder;
-import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.support.oauth.OAuth20Constants;
-import org.apereo.cas.support.oauth.OAuth20GrantTypes;
-import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
 import org.apereo.cas.support.oauth.validator.token.device.InvalidOAuth20DeviceTokenException;
 import org.apereo.cas.support.oauth.validator.token.device.ThrottledOAuth20DeviceUserCodeApprovalException;
 import org.apereo.cas.support.oauth.validator.token.device.UnapprovedOAuth20DeviceUserCodeException;
 import org.apereo.cas.support.oauth.web.response.accesstoken.OAuth20TokenGeneratedResult;
-import org.apereo.cas.support.oauth.web.response.accesstoken.ext.AccessTokenRequestDataHolder;
-import org.apereo.cas.support.oauth.web.response.accesstoken.response.OAuth20AccessTokenResponseResult;
+import org.apereo.cas.support.oauth.web.response.accesstoken.ext.AccessTokenRequestContext;
+import org.apereo.cas.ticket.AuthenticationAwareTicket;
+import org.apereo.cas.ticket.OAuth20Token;
 import org.apereo.cas.ticket.OAuth20UnauthorizedScopeRequestException;
-import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.util.LoggingUtils;
-
+import org.apereo.cas.util.spring.beans.BeanSupplier;
 import com.google.common.base.Supplier;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.pac4j.core.context.JEEContext;
+import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.Unchecked;
 import org.pac4j.core.context.WebContext;
+import org.pac4j.jee.context.JEEContext;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.ModelAndView;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * This controller returns an access token according to the given
@@ -72,11 +69,11 @@ public class OAuth20AccessTokenEndpointController<T extends OAuth20Configuration
         this.accessTokenGrantAuditableRequestExtractor = accessTokenGrantAuditableRequestExtractor;
     }
 
-    private static ModelAndView handleAccessTokenException(final Exception exception, final HttpServletResponse response) {
+    private static ModelAndView handleAccessTokenException(final Throwable exception, final HttpServletResponse response) {
         val data = ACCESS_TOKEN_RESPONSE_EXCEPTIONS.getOrDefault(exception.getClass().getName(),
             new AccessTokenExceptionResponses(OAuth20Constants.INVALID_GRANT, "Invalid or unauthorized grant"));
-        LoggingUtils.error(LOGGER, data.getMessage(), exception);
-        return OAuth20Utils.writeError(response, data.getCode());
+        LoggingUtils.error(LOGGER, String.format("%s: %s", data.message(), exception.getMessage()), exception);
+        return OAuth20Utils.writeError(response, data.code(), data.message());
     }
 
     /**
@@ -98,21 +95,38 @@ public class OAuth20AccessTokenEndpointController<T extends OAuth20Configuration
                 LoggingUtils.error(LOGGER, "Access token validation failed");
                 return OAuth20Utils.writeError(response, OAuth20Constants.INVALID_GRANT);
             }
-        } catch (final Exception e) {
+        } catch (final Throwable e) {
             LoggingUtils.error(LOGGER, e);
             return OAuth20Utils.writeError(response, OAuth20Constants.INVALID_REQUEST);
         }
 
         try {
-            val requestHolder = examineAndExtractAccessTokenGrantRequest(request, response);
-            LOGGER.debug("Creating access token for [{}]", requestHolder);
-            AuthenticationCredentialsThreadLocalBinder.bindCurrent(requestHolder.getAuthentication());
-            val tokenResult = getConfigurationContext().getAccessTokenGenerator().generate(requestHolder);
-            LOGGER.debug("Access token generated result is: [{}]", tokenResult);
-            return generateAccessTokenResponse(context, requestHolder, tokenResult);
-        } catch (final Exception e) {
+            val tokenRequestContext = examineAndExtractAccessTokenGrantRequest(request, response);
+            logProtocolRequest(tokenRequestContext);
+            LOGGER.debug("Creating access token for [{}]", tokenRequestContext);
+            val generatedTokenResult = getConfigurationContext().getAccessTokenGenerator().generate(tokenRequestContext);
+            LOGGER.debug("Access token generated result is: [{}]", generatedTokenResult);
+            return generateAccessTokenResponse(tokenRequestContext, generatedTokenResult);
+        } catch (final Throwable e) {
             return handleAccessTokenException(e, response);
         }
+    }
+
+    private static void logProtocolRequest(final AccessTokenRequestContext tokenRequestContext) {
+        var authn = tokenRequestContext.getAuthentication();
+        if (authn == null && tokenRequestContext.getTicketGrantingTicket() instanceof final AuthenticationAwareTicket aat) {
+            authn = aat.getAuthentication();
+        }
+        Objects.requireNonNull(authn, "No authentication is available to handle this request");
+        LoggingUtils.protocolMessage("OAuth/OpenID Connect Token Request",
+            Map.of("Token", Optional.ofNullable(tokenRequestContext.getToken()).map(OAuth20Token::getId).orElse("none"),
+                "Device Code", StringUtils.defaultString(tokenRequestContext.getDeviceCode()),
+                "Scopes", String.join(",", tokenRequestContext.getScopes()),
+                "Registered Service", tokenRequestContext.getRegisteredService().getName(),
+                "Service", tokenRequestContext.getService().getId(),
+                "Principal", authn.getPrincipal().getId(),
+                "Grant Type", tokenRequestContext.getGrantType().getType(),
+                "Response Type", tokenRequestContext.getResponseType().getType()));
     }
 
     /**
@@ -129,64 +143,35 @@ public class OAuth20AccessTokenEndpointController<T extends OAuth20Configuration
         return handleRequest(request, response);
     }
 
-    /**
-     * Generate access token response model and view.
-     *
-     * @param context       the context
-     * @param requestHolder the request holder
-     * @param result        the result
-     * @return the model and view
-     */
-    protected ModelAndView generateAccessTokenResponse(final WebContext context,
-                                                       final AccessTokenRequestDataHolder requestHolder,
-                                                       final OAuth20TokenGeneratedResult result) {
-        LOGGER.debug("Generating access token response for [{}]", result);
-        val deviceRefreshInterval = Beans.newDuration(getConfigurationContext().getCasProperties()
-            .getAuthn().getOauth().getDeviceToken().getRefreshInterval()).getSeconds();
-        val dtPolicy = getConfigurationContext().getDeviceTokenExpirationPolicy();
-        val tokenResult = OAuth20AccessTokenResponseResult.builder()
-            .registeredService(requestHolder.getRegisteredService())
-            .service(requestHolder.getService())
-            .accessTokenTimeout(result.getAccessToken().map(OAuth20AccessToken::getExpiresIn).orElse(0L))
-            .deviceRefreshInterval(deviceRefreshInterval)
-            .deviceTokenTimeout(dtPolicy.buildTicketExpirationPolicy().getTimeToLive())
-            .responseType(result.getResponseType().orElse(OAuth20ResponseTypes.NONE))
-            .casProperties(getConfigurationContext().getCasProperties())
-            .generatedToken(result)
-            .grantType(result.getGrantType().orElse(OAuth20GrantTypes.NONE))
-            .build();
-        return getConfigurationContext().getAccessTokenResponseGenerator().generate(context, tokenResult);
+    protected ModelAndView generateAccessTokenResponse(
+        final AccessTokenRequestContext tokenRequestContext,
+        final OAuth20TokenGeneratedResult result) {
+        return new OAuth20AccessTokenResponseEncoder(getConfigurationContext()).encode(tokenRequestContext, result);
     }
 
-    @RequiredArgsConstructor
-    @Getter
-    private static class AccessTokenExceptionResponses {
-        private final String code;
-
-        private final String message;
+    @SuppressWarnings("UnusedVariable")
+    private record AccessTokenExceptionResponses(String code, String message) {
     }
 
-    private AccessTokenRequestDataHolder examineAndExtractAccessTokenGrantRequest(final HttpServletRequest request,
-                                                                                  final HttpServletResponse response) {
-        val audit = AuditableContext.builder()
+    private AccessTokenRequestContext examineAndExtractAccessTokenGrantRequest(final HttpServletRequest request,
+                                                                               final HttpServletResponse response) throws Throwable {
+        val audit = AuditableContext
+            .builder()
             .httpRequest(request)
             .httpResponse(response)
             .build();
         val accessResult = accessTokenGrantAuditableRequestExtractor.execute(audit);
         val execResult = accessResult.getExecutionResult();
-        return (AccessTokenRequestDataHolder) execResult.orElseThrow(
+        return (AccessTokenRequestContext) execResult.orElseThrow(
             () -> new UnsupportedOperationException("Access token request is not supported"));
     }
 
-    /**
-     * Verify the access token request.
-     *
-     * @return true, if successful
-     */
-    private boolean verifyAccessTokenRequest(final WebContext context) {
+    private boolean verifyAccessTokenRequest(final WebContext context) throws Throwable {
         val validators = getConfigurationContext().getAccessTokenGrantRequestValidators().getObject();
-        return validators.stream()
-            .filter(ext -> ext.supports(context))
+        return validators
+            .stream()
+            .filter(BeanSupplier::isNotProxy)
+            .filter(Unchecked.predicate(ext -> ext.supports(context)))
             .findFirst()
             .orElseThrow((Supplier<RuntimeException>) () -> new UnsupportedOperationException("Access token request is not supported"))
             .validate(context);

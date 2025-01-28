@@ -4,22 +4,22 @@ import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.services.DefaultRegisteredServiceUserInterfaceInfo;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.test.MockRequestContext;
-
 import java.io.Serializable;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -28,21 +28,23 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.2.0
  */
-@SpringBootTest(classes = BaseOAuth20WebflowTests.SharedTestConfiguration.class,
-    properties = "spring.main.allow-bean-definition-overriding=true")
-@Tag("OAuth")
-public class OAuth20RegisteredServiceUIActionTests {
+@SpringBootTest(classes = BaseOAuth20WebflowTests.SharedTestConfiguration.class)
+@Tag("OAuthWeb")
+@ExtendWith(CasTestExtension.class)
+class OAuth20RegisteredServiceUIActionTests {
     @Autowired
-    @Qualifier("oauth20RegisteredServiceUIAction")
+    @Qualifier(CasWebflowConstants.ACTION_ID_OAUTH20_REGISTERED_SERVICE_UI)
     private Action oauth20RegisteredServiceUIAction;
 
     @Autowired
     @Qualifier(ServicesManager.BEAN_NAME)
     private ServicesManager servicesManager;
 
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
     @Test
-    public void verifyOAuthActionWithoutMDUI() throws Exception {
-        val ctx = new MockRequestContext();
+    void verifyOAuthActionWithoutMDUI() throws Throwable {
+        val ctx = MockRequestContext.create(applicationContext);
         val service = RegisteredServiceTestUtils.getService();
         WebUtils.putServiceIntoFlowScope(ctx, service);
         val svc = RegisteredServiceTestUtils.getRegisteredService(service.getId());
@@ -55,7 +57,7 @@ public class OAuth20RegisteredServiceUIActionTests {
     }
 
     @Test
-    public void verifyOAuthActionWithMDUI() throws Exception {
+    void verifyOAuthActionWithMDUI() throws Throwable {
         val svc = new OAuthRegisteredService();
         svc.setClientId("id");
         svc.setName("oauth");
@@ -67,7 +69,7 @@ public class OAuth20RegisteredServiceUIActionTests {
         svc.setLogo("logo");
         servicesManager.save(svc);
 
-        val ctx = new MockRequestContext();
+        val ctx = MockRequestContext.create(applicationContext);
         val service = RegisteredServiceTestUtils.getService("https://www.example.org?client_id=id&client_secret=secret&redirect_uri=https://oauth.example.org");
         service.getAttributes().put(OAuth20Constants.CLIENT_ID, List.of("id"));
         

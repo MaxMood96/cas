@@ -3,14 +3,17 @@ package org.apereo.cas.util.cipher;
 import org.apereo.cas.util.EncodingUtils;
 import org.apereo.cas.util.ResourceUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
+import org.apereo.cas.util.crypto.IdentifiableKey;
 import org.apereo.cas.util.crypto.PrivateKeyFactoryBean;
 import org.apereo.cas.util.crypto.PublicKeyFactoryBean;
+import org.apereo.cas.util.function.FunctionUtils;
+import org.apereo.cas.util.jwt.JsonWebTokenSigner;
 
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.SneakyThrows;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -29,6 +32,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Abstract cipher to provide common operations around signing objects.
@@ -40,6 +44,7 @@ import java.util.Map;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
+@Accessors(chain = true)
 public abstract class AbstractCipherExecutor<T, R> implements CipherExecutor<T, R> {
     private static final BigInteger RSA_PUBLIC_KEY_EXPONENT = BigInteger.valueOf(65537);
 
@@ -49,7 +54,13 @@ public abstract class AbstractCipherExecutor<T, R> implements CipherExecutor<T, 
 
     private Key signingKey;
 
-    private Map<String, Object> customHeaders = new LinkedHashMap<>();
+    private Map<String, Object> signingOpHeaders = new LinkedHashMap<>();
+
+    private Map<String, Object> encryptionOpHeaders = new LinkedHashMap<>();
+
+    private Map<String, Object> commonHeaders = new LinkedHashMap<>();
+
+    private String signingAlgorithm;
 
     /**
      * Extract private key from resource private key.
@@ -57,15 +68,16 @@ public abstract class AbstractCipherExecutor<T, R> implements CipherExecutor<T, 
      * @param signingSecretKey the signing secret key
      * @return the private key
      */
-    @SneakyThrows
     public static PrivateKey extractPrivateKeyFromResource(final String signingSecretKey) {
-        LOGGER.debug("Attempting to extract private key...");
-        val resource = ResourceUtils.getResourceFrom(signingSecretKey);
-        val factory = new PrivateKeyFactoryBean();
-        factory.setAlgorithm(RsaKeyUtil.RSA);
-        factory.setLocation(resource);
-        factory.setSingleton(false);
-        return factory.getObject();
+        return FunctionUtils.doAndThrowUnchecked(() -> {
+            LOGGER.debug("Attempting to extract private key...");
+            val resource = ResourceUtils.getResourceFrom(signingSecretKey);
+            val factory = new PrivateKeyFactoryBean();
+            factory.setAlgorithm(RsaKeyUtil.RSA);
+            factory.setLocation(resource);
+            factory.setSingleton(false);
+            return factory.getObject();
+        }, e -> new IllegalArgumentException("Unable to extract private key from location %s".formatted(signingSecretKey)));
     }
 
     /**
@@ -74,13 +86,14 @@ public abstract class AbstractCipherExecutor<T, R> implements CipherExecutor<T, 
      * @param secretKeyToUse the secret key to use
      * @return the public key
      */
-    @SneakyThrows
     public static PublicKey extractPublicKeyFromResource(final String secretKeyToUse) {
-        LOGGER.debug("Attempting to extract public key from [{}]...", secretKeyToUse);
-        val resource = ResourceUtils.getResourceFrom(secretKeyToUse);
-        val factory = new PublicKeyFactoryBean(resource, RsaKeyUtil.RSA);
-        factory.setSingleton(false);
-        return factory.getObject();
+        return FunctionUtils.doUnchecked(() -> {
+            LOGGER.debug("Attempting to extract public key from [{}]...", secretKeyToUse);
+            val resource = ResourceUtils.getResourceFrom(secretKeyToUse);
+            val factory = new PublicKeyFactoryBean(resource, RsaKeyUtil.RSA);
+            factory.setSingleton(false);
+            return factory.getObject();
+        });
     }
 
     @Override
@@ -122,7 +135,15 @@ public abstract class AbstractCipherExecutor<T, R> implements CipherExecutor<T, 
      * @return the byte [ ]
      */
     protected byte[] signWith(final byte[] value, final String algHeaderValue, final Key key) {
-        return EncodingUtils.signJws(key, value, algHeaderValue, this.customHeaders);
+        val headers = new LinkedHashMap<>(commonHeaders);
+        headers.putAll(getSigningOpHeaders());
+
+        return JsonWebTokenSigner.builder()
+            .key(key)
+            .headers(headers)
+            .algorithm(algHeaderValue)
+            .build()
+            .sign(value);
     }
 
     /**
@@ -145,31 +166,19 @@ public abstract class AbstractCipherExecutor<T, R> implements CipherExecutor<T, 
         }
     }
 
-    /**
-     * Configure signing key from private key resource.
-     *
-     * @param signingSecretKey the signing secret key
-     */
     protected void configureSigningKeyFromPrivateKeyResource(final String signingSecretKey) {
         val object = extractPrivateKeyFromResource(signingSecretKey);
         LOGGER.trace("Located signing key resource [{}]", signingSecretKey);
         setSigningKey(object);
     }
 
-    /**
-     * Verify signature.
-     *
-     * @param value            the value
-     * @param activeSigningKey the active signing key
-     * @return the value associated with the signature, which may have to be decoded, or null.
-     */
-    protected byte[] verifySignature(final byte[] value, final Key activeSigningKey) {
-        if (activeSigningKey == null) {
+    protected byte[] verifySignature(final byte[] value, final Key givenKey) {
+        if (givenKey == null) {
             return value;
         }
         try {
-            if (activeSigningKey instanceof RSAPrivateKey) {
-                val privKey = RSAPrivateKey.class.cast(activeSigningKey);
+            val activeSigningKey = givenKey instanceof final IdentifiableKey idk ? idk.getKey() : givenKey;
+            if (activeSigningKey instanceof final RSAPrivateKey privKey) {
                 val keySpec = new RSAPublicKeySpec(privKey.getModulus(), RSA_PUBLIC_KEY_EXPONENT);
                 val pubKey = KeyFactory.getInstance("RSA").generatePublic(keySpec);
                 return EncodingUtils.verifyJwsSignature(pubKey, value);
@@ -187,8 +196,9 @@ public abstract class AbstractCipherExecutor<T, R> implements CipherExecutor<T, 
      * @return the signing algorithm for
      */
     protected String getSigningAlgorithmFor(final Key signingKey) {
-        return "RSA".equalsIgnoreCase(signingKey.getAlgorithm())
-            ? AlgorithmIdentifiers.RSA_USING_SHA512
-            : AlgorithmIdentifiers.HMAC_SHA512;
+        return Optional.ofNullable(signingAlgorithm)
+            .orElseGet(() -> "RSA".equalsIgnoreCase(signingKey.getAlgorithm())
+                ? AlgorithmIdentifiers.RSA_USING_SHA512
+                : AlgorithmIdentifiers.HMAC_SHA512);
     }
 }

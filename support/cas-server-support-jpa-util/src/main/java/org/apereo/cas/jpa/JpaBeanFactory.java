@@ -5,11 +5,12 @@ import org.apereo.cas.configuration.model.support.jpa.DatabaseProperties;
 import org.apereo.cas.configuration.model.support.jpa.JpaConfigurationContext;
 
 import lombok.val;
+import org.springframework.beans.factory.FactoryBean;
 import org.springframework.orm.jpa.JpaVendorAdapter;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
-import javax.persistence.TypedQuery;
-import javax.persistence.spi.PersistenceProvider;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Query;
+import jakarta.persistence.spi.PersistenceProvider;
 import java.io.Serializable;
 import java.util.stream.Stream;
 
@@ -47,14 +48,14 @@ public interface JpaBeanFactory {
     }
 
     /**
-     * New entity manager factory bean local container entity manager factory bean.
+     * New entity manager factory bean.
      *
      * @param config        the config
      * @param jpaProperties the jpa properties
      * @return the local container entity manager factory bean
      */
-    LocalContainerEntityManagerFactoryBean newEntityManagerFactoryBean(JpaConfigurationContext config,
-                                                                       AbstractJpaProperties jpaProperties);
+    FactoryBean<EntityManagerFactory> newEntityManagerFactoryBean(JpaConfigurationContext config,
+                                                                  AbstractJpaProperties jpaProperties);
 
     /**
      * New persistence provider.
@@ -70,5 +71,5 @@ public interface JpaBeanFactory {
      * @param query the query
      * @return the stream
      */
-    Stream<? extends Serializable> streamQuery(TypedQuery<? extends Serializable> query);
+    Stream<? extends Serializable> streamQuery(Query query);
 }

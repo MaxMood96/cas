@@ -24,22 +24,22 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@Tag("Groovy")
-public class RegisteredServiceScriptedAttributeFilterTests {
+@Tag("GroovyServices")
+class RegisteredServiceScriptedAttributeFilterTests {
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
     private Map<String, List<Object>> givenAttributesMap;
 
     @BeforeEach
-    public void initialize() {
+    void initialize() {
         this.givenAttributesMap = new HashMap<>();
         this.givenAttributesMap.put("employeeId", List.of("E1234"));
         this.givenAttributesMap.put("memberOf", Arrays.asList("math101", "science", "chemistry", "marathon101"));
     }
 
     @Test
-    public void verifyScriptedAttributeFilter() throws Exception {
+    void verifyScriptedAttributeFilter() throws Throwable {
         val f = File.createTempFile("attr", ".groovy");
         val stream = new ClassPathResource("groovy-attr-filter.groovy").getInputStream();
         FileUtils.copyInputStreamToFile(stream, f);
@@ -53,7 +53,7 @@ public class RegisteredServiceScriptedAttributeFilterTests {
     }
 
     @Test
-    public void verifyScriptedAttributeFilterInlined() throws Exception {
+    void verifyScriptedAttributeFilterInlined() throws Throwable {
         val filter = new RegisteredServiceScriptedAttributeFilter(0, "groovy {logger.debug('exec'); return attributes;}");
         val results = filter.filter(this.givenAttributesMap);
         assertEquals(2, results.size());

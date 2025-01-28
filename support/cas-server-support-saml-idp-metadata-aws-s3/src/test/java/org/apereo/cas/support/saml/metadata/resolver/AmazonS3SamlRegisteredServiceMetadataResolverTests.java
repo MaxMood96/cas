@@ -1,26 +1,23 @@
 package org.apereo.cas.support.saml.metadata.resolver;
 
-import org.apereo.cas.config.AmazonS3SamlIdPMetadataConfiguration;
-import org.apereo.cas.config.AmazonS3SamlMetadataConfiguration;
-import org.apereo.cas.config.SamlIdPAmazonS3RegisteredServiceMetadataConfiguration;
+import org.apereo.cas.config.CasAmazonS3SamlMetadataAutoConfiguration;
 import org.apereo.cas.support.saml.BaseSamlIdPMetadataTests;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.SamlMetadataDocument;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.resolver.SamlRegisteredServiceMetadataResolver;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.RandomUtils;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import lombok.val;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
-
 import java.nio.charset.StandardCharsets;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -30,12 +27,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.3.0
  */
 @SpringBootTest(classes = {
-    AmazonS3SamlMetadataConfiguration.class,
-    AmazonS3SamlIdPMetadataConfiguration.class,
-    SamlIdPAmazonS3RegisteredServiceMetadataConfiguration.class,
+    CasAmazonS3SamlMetadataAutoConfiguration.class,
     BaseSamlIdPMetadataTests.SharedTestConfiguration.class
 }, properties = {
-    "cas.authn.saml-idp.metadata.file-system.location=${#systemProperties['java.io.tmpdir']}/saml",
+    "cas.authn.saml-idp.metadata.file-system.location=${#systemProperties['java.io.tmpdir']}/saml22",
     
     "cas.authn.saml-idp.metadata.amazon-s3.bucket-name=cassamlmetadata",
     "cas.authn.saml-idp.metadata.amazon-s3.endpoint=http://127.0.0.1:4566",
@@ -44,15 +39,16 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.saml-idp.metadata.amazon-s3.credential-secret-key=test",
     "cas.authn.saml-idp.metadata.amazon-s3.crypto.enabled=false"
 })
-@EnabledIfPortOpen(port = 4566)
+@EnabledIfListeningOnPort(port = 4566)
 @Tag("AmazonWebServices")
-public class AmazonS3SamlRegisteredServiceMetadataResolverTests {
+@ExtendWith(CasTestExtension.class)
+class AmazonS3SamlRegisteredServiceMetadataResolverTests {
     @Autowired
     @Qualifier("amazonS3SamlRegisteredServiceMetadataResolver")
     private SamlRegisteredServiceMetadataResolver amazonS3SamlRegisteredServiceMetadataResolver;
 
     @Test
-    public void verifyAction() throws Exception {
+    void verifyAction() throws Throwable {
         val service = new SamlRegisteredService();
         service.setName("SAML");
         service.setId(100);

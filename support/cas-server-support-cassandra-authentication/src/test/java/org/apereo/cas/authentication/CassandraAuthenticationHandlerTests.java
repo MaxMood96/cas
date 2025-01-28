@@ -1,38 +1,33 @@
 package org.apereo.cas.authentication;
 
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
+import org.apereo.cas.authentication.principal.Service;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.CassandraAuthenticationConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
+import org.apereo.cas.config.CassandraAuthenticationAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import javax.security.auth.login.AccountNotFoundException;
 import javax.security.auth.login.FailedLoginException;
-
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * This is {@link CassandraAuthenticationHandlerTests}.
@@ -40,25 +35,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreServicesConfiguration.class,
+    CasCoreNotificationsAutoConfiguration.class,
+    CasCoreServicesAutoConfiguration.class,
     CasPersonDirectoryTestConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCoreConfiguration.class,
-    CassandraAuthenticationConfiguration.class
+    CasCoreAuthenticationAutoConfiguration.class,
+    CasCoreTicketsAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class,
+    CasCoreLogoutAutoConfiguration.class,
+    CasCoreAutoConfiguration.class,
+    CassandraAuthenticationAutoConfiguration.class
 }, properties = {
     "cas.authn.cassandra.table-name=users_table",
     "cas.authn.cassandra.local-dc=datacenter1",
@@ -66,32 +55,35 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.cassandra.password-attribute=pwd_attr",
     "cas.authn.cassandra.keyspace=cas",
     "cas.authn.cassandra.username=casuser",
-    "cas.authn.cassandra.password=password"
+    "cas.authn.cassandra.password=password",
+    "cas.authn.cassandra.ssl-protocols=TLSv1.2",
+    "cas.http-client.host-name-verifier=none"
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("Cassandra")
-@EnabledIfPortOpen(port = 9042)
-public class CassandraAuthenticationHandlerTests {
+@ExtendWith(CasTestExtension.class)
+@EnabledIfListeningOnPort(port = 9042)
+class CassandraAuthenticationHandlerTests {
     @Autowired
     @Qualifier("cassandraAuthenticationHandler")
     private AuthenticationHandler cassandraAuthenticationHandler;
 
     @Test
-    public void verifyUserNotFound() {
+    void verifyUserNotFound() {
         val c = CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword("baduser", "Mellon");
-        assertThrows(AccountNotFoundException.class, () -> cassandraAuthenticationHandler.authenticate(c));
+        assertThrows(AccountNotFoundException.class, () -> cassandraAuthenticationHandler.authenticate(c, mock(Service.class)));
     }
 
     @Test
-    public void verifyUserBadPassword() {
+    void verifyUserBadPassword() {
         val c = CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword("casuser", "bad");
-        assertThrows(FailedLoginException.class, () -> cassandraAuthenticationHandler.authenticate(c));
+        assertThrows(FailedLoginException.class, () -> cassandraAuthenticationHandler.authenticate(c, mock(Service.class)));
     }
 
     @Test
-    public void verifyUser() throws Exception {
+    void verifyUser() throws Throwable {
         val c = CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword("casuser", "Mellon");
-        val result = cassandraAuthenticationHandler.authenticate(c);
+        val result = cassandraAuthenticationHandler.authenticate(c, mock(Service.class));
         assertNotNull(result);
         assertEquals("casuser", result.getPrincipal().getId());
     }

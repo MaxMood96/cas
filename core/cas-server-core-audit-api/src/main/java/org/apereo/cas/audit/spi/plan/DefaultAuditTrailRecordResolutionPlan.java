@@ -1,6 +1,7 @@
 package org.apereo.cas.audit.spi.plan;
 
 import org.apereo.cas.audit.AuditTrailRecordResolutionPlan;
+import org.apereo.cas.util.spring.beans.BeanSupplier;
 
 import lombok.Getter;
 import org.apereo.inspektr.audit.spi.AuditActionResolver;
@@ -19,31 +20,29 @@ import java.util.Map;
 @Getter
 public class DefaultAuditTrailRecordResolutionPlan implements AuditTrailRecordResolutionPlan {
     private final Map<String, AuditResourceResolver> auditResourceResolvers = new LinkedHashMap<>();
+
     private final Map<String, AuditActionResolver> auditActionResolvers = new LinkedHashMap<>();
+
     private final Map<String, PrincipalResolver> auditPrincipalResolvers = new LinkedHashMap<>();
 
     @Override
     public void registerAuditResourceResolver(final String key, final AuditResourceResolver resolver) {
-        this.auditResourceResolvers.put(key, resolver);
+        if (BeanSupplier.isNotProxy(resolver)) {
+            this.auditResourceResolvers.putIfAbsent(key, resolver);
+        }
     }
 
     @Override
     public void registerAuditPrincipalResolver(final String key, final PrincipalResolver resolver) {
-        this.auditPrincipalResolvers.put(key, resolver);
+        if (BeanSupplier.isNotProxy(resolver)) {
+            this.auditPrincipalResolvers.putIfAbsent(key, resolver);
+        }
     }
 
     @Override
     public void registerAuditActionResolver(final String key, final AuditActionResolver resolver) {
-        this.auditActionResolvers.put(key, resolver);
-    }
-
-    @Override
-    public void registerAuditActionResolvers(final Map<String, AuditActionResolver> resolvers) {
-        this.auditActionResolvers.putAll(resolvers);
-    }
-
-    @Override
-    public void registerAuditResourceResolvers(final Map<String, AuditResourceResolver> resolvers) {
-        this.auditResourceResolvers.putAll(resolvers);
+        if (BeanSupplier.isNotProxy(resolver)) {
+            this.auditActionResolvers.putIfAbsent(key, resolver);
+        }
     }
 }

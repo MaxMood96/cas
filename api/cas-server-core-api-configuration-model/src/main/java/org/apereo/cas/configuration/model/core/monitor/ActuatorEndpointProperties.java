@@ -1,17 +1,17 @@
 package org.apereo.cas.configuration.model.core.monitor;
 
+import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -25,9 +25,11 @@ import java.util.stream.Stream;
 @Setter
 @ToString
 @Accessors(chain = true)
-@JsonFilter("ActuatorEndpointProperties")
+
 public class ActuatorEndpointProperties implements Serializable {
+    @Serial
     private static final long serialVersionUID = -2463521198550485506L;
+
     /**
      * Required user roles.
      */
@@ -39,14 +41,15 @@ public class ActuatorEndpointProperties implements Serializable {
     private List<String> requiredAuthorities = new ArrayList<>(0);
 
     /**
-     * Required ip addresses.
+     * Required IP addresses. CIDR ranges are accepted.
      */
+    @RegularExpressionCapable
     private List<String> requiredIpAddresses = new ArrayList<>(0);
 
     /**
      * Define the security access level of the endpoint.
      */
-    private List<EndpointAccessLevel> access = Stream.of(EndpointAccessLevel.DENY).collect(Collectors.toList());
+    private List<EndpointAccessLevel> access = Stream.of(EndpointAccessLevel.DENY).toList();
 
     /**
      * Define the security access level for the endpoint.

@@ -1,13 +1,11 @@
 package org.apereo.cas.util.junit;
 
 import org.apereo.cas.util.SocketUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.platform.commons.support.AnnotationSupport;
-
 import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
 
@@ -22,7 +20,7 @@ public class EnabledIfPortOpenCondition implements ExecutionCondition {
 
     private static final String IGNORE_PORT_CHECK = "IGNORE_PORT_CHECK";
 
-    private static ConditionEvaluationResult enableIfOpen(final EnabledIfPortOpen annotation, final AnnotatedElement element) {
+    private static ConditionEvaluationResult enableIfOpen(final EnabledIfListeningOnPort annotation, final AnnotatedElement element) {
         val ports = annotation.port();
         if (ports.length == 0) {
             throw new IllegalArgumentException("At least one port must be defined");
@@ -32,10 +30,8 @@ public class EnabledIfPortOpenCondition implements ExecutionCondition {
                 String.format("%s is enabled because %s environment variable is set", element, IGNORE_PORT_CHECK));
         }
         for (val port : ports) {
-            if (port > 0) {
-                if (SocketUtils.isTcpPortAvailable(port)) {
-                    return ConditionEvaluationResult.disabled(String.format("%s is disabled because %s is not in use", element, port));
-                }
+            if (port > 0 && SocketUtils.isTcpPortAvailable(port)) {
+                return ConditionEvaluationResult.disabled(String.format("%s is disabled because %s is not in use", element, port));
             }
         }
         return ConditionEvaluationResult.enabled(
@@ -57,7 +53,7 @@ public class EnabledIfPortOpenCondition implements ExecutionCondition {
         val element = extensionContext
             .getElement()
             .orElseThrow(IllegalStateException::new);
-        return AnnotationSupport.findAnnotation(element, EnabledIfPortOpen.class)
+        return AnnotationSupport.findAnnotation(element, EnabledIfListeningOnPort.class)
             .map(annotation -> enableIfOpen(annotation, element))
             .orElse(ENABLED_BY_DEFAULT);
     }

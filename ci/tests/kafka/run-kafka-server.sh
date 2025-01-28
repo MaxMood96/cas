@@ -5,13 +5,14 @@
 echo "Building Kafka image..."
 COMPOSE_FILE=./ci/tests/kafka/docker-compose.yml
 test -f $COMPOSE_FILE || COMPOSE_FILE=docker-compose.yml
-docker-compose -f $COMPOSE_FILE up -d
-sleep 5
+docker compose -f $COMPOSE_FILE up -d
+docker compose -f $COMPOSE_FILE logs &
+sleep 10
 docker ps
-COUNT_KAFKA=$(docker ps | grep "kafka_"| wc -l)
+COUNT_KAFKA=$(docker ps --format "{{.ID}}: {{.Names}}" | grep -c "kafka")
 if [[ ${COUNT_KAFKA} -eq 2 ]]; then
-    echo "Kafka docker images are running."
+    echo "Kafka docker containers are running."
 else
-    echo "Kafka docker images failed to start."
+    echo "Kafka docker containers failed to start."
     exit 1
 fi

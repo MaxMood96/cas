@@ -12,6 +12,7 @@ import lombok.Setter;
 import lombok.val;
 import org.springframework.util.StringUtils;
 
+import java.io.Serial;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +29,7 @@ import java.util.Map;
 @Setter
 public class WebApplicationServiceResponseBuilder extends AbstractWebApplicationServiceResponseBuilder {
 
+    @Serial
     private static final long serialVersionUID = -851233878780818494L;
 
     private int order = Integer.MAX_VALUE;
@@ -57,17 +59,11 @@ public class WebApplicationServiceResponseBuilder extends AbstractWebApplication
             return buildHeader(finalService, parameters);
         }
 
-        throw new IllegalArgumentException("Response type is valid. Only " + Arrays.toString(ResponseType.values()) + " are supported");
+        throw new IllegalArgumentException("Response type is invalid. Only " + Arrays.toString(ResponseType.values()) + " are supported");
     }
 
-    /**
-     * Build internal service.
-     *
-     * @param service    the service
-     * @param parameters the parameters
-     * @return the service
-     */
-    protected WebApplicationService buildInternal(final WebApplicationService service, final Map<String, String> parameters) {
+    protected WebApplicationService buildInternal(final WebApplicationService service,
+                                                  final Map<String, String> parameters) {
         return service;
     }
 }

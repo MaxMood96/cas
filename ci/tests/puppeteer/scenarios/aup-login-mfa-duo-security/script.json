@@ -1,16 +1,20 @@
 {
-  "dependencies": "aup-webflow,duo",
+  "dependencies": "aup-webflow,duo,reports",
+  "conditions": {
+    "env": "DUO_SECURITY_UNIVERSAL_PROMPT_SKEY,DUO_SECURITY_UNIVERSAL_PROMPT_IKEY,DUO_SECURITY_API_HOST"
+  },
   "properties": [
+    "--cas.monitor.endpoints.endpoint.defaults.access=ANONYMOUS",
+    "--management.endpoints.web.exposure.include=*",
+    "--management.endpoints.access.default=UNRESTRICTED",
+    
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
-    "--cas.audit.engine.enabled=false",
     
     "--cas.service-registry.core.init-from-json=true",
     "--cas.authn.accept.users=duobypass::Mellon",
 
     "--cas.authn.mfa.triggers.global.global-provider-id=mfa-duo",
-
-    "--logging.level.org.apereo.cas=debug",
 
     "--cas.authn.mfa.duo[0].duo-secret-key=${#environmentVars['DUO_SECURITY_UNIVERSAL_PROMPT_SKEY']}",
     "--cas.authn.mfa.duo[0].duo-integration-key=${#environmentVars['DUO_SECURITY_UNIVERSAL_PROMPT_IKEY']}",

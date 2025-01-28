@@ -1,50 +1,37 @@
 package org.apereo.cas.aup;
 
-import org.apereo.cas.audit.spi.config.CasCoreAuditConfiguration;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.CasAcceptableUsagePolicyJdbcConfiguration;
-import org.apereo.cas.config.CasAcceptableUsagePolicyWebflowConfiguration;
+import org.apereo.cas.config.CasAcceptableUsagePolicyJdbcAutoConfiguration;
+import org.apereo.cas.config.CasAcceptableUsagePolicyWebflowAutoConfiguration;
 import org.apereo.cas.config.CasAuthenticationEventExecutionPlanTestConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasDefaultServiceTicketIdGeneratorsConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
 import org.apereo.cas.config.CasRegisteredServicesTestConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
-import org.apereo.cas.web.config.CasCookieConfiguration;
-import org.apereo.cas.web.flow.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasWebflowContextConfiguration;
+import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.Getter;
 import lombok.val;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.test.MockRequestContext;
-
+import org.springframework.transaction.support.TransactionOperations;
 import javax.sql.DataSource;
 import java.util.List;
 import java.util.Map;
@@ -55,44 +42,36 @@ import java.util.Map;
  * @author Martin Böhmer
  * @since 5.3.8
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCookieConfiguration.class,
+    CasCoreWebAutoConfiguration.class,
+    CasCoreCookieAutoConfiguration.class,
     CasRegisteredServicesTestConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
+    CasCoreServicesAutoConfiguration.class,
     CasAuthenticationEventExecutionPlanTestConfiguration.class,
-    CasDefaultServiceTicketIdGeneratorsConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasAcceptableUsagePolicyJdbcConfiguration.class,
-    CasAcceptableUsagePolicyWebflowConfiguration.class,
+    CasCoreTicketsAutoConfiguration.class,
+    CasCoreAuthenticationAutoConfiguration.class,
+    CasAcceptableUsagePolicyJdbcAutoConfiguration.class,
+    CasAcceptableUsagePolicyWebflowAutoConfiguration.class,
     CasPersonDirectoryTestConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasWebflowContextConfiguration.class,
-    CasCoreWebflowConfiguration.class,
-    CasCoreMultifactorAuthenticationConfiguration.class,
-    CasMultifactorAuthenticationWebflowConfiguration.class,
-    CasCoreConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreAuditConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class,
+    CasCoreWebflowAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+    CasCoreAutoConfiguration.class,
+    CasCoreLogoutAutoConfiguration.class,
+    CasCoreNotificationsAutoConfiguration.class,
+    CasCoreAuditAutoConfiguration.class
 })
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseJdbcAcceptableUsagePolicyRepositoryTests extends BaseAcceptableUsagePolicyRepositoryTests {
     @Autowired
     @Qualifier("acceptableUsagePolicyDataSource")
     protected DataSource acceptableUsagePolicyDataSource;
 
     @Autowired
-    @Qualifier("acceptableUsagePolicyRepository")
+    @Qualifier(AcceptableUsagePolicyRepository.BEAN_NAME)
     @Getter
     protected AcceptableUsagePolicyRepository acceptableUsagePolicyRepository;
 
@@ -102,25 +81,24 @@ public abstract class BaseJdbcAcceptableUsagePolicyRepositoryTests extends BaseA
 
     @Autowired
     @Qualifier("jdbcAcceptableUsagePolicyTransactionTemplate")
-    protected TransactionTemplate jdbcAcceptableUsagePolicyTransactionTemplate;
-    
-    protected String determinePrincipalId(final String actualPrincipalId, final Map<String, List<Object>> profileAttributes) {
+    protected TransactionOperations jdbcAcceptableUsagePolicyTransactionTemplate;
+
+    protected String determinePrincipalId(final String actualPrincipalId,
+                                          final Map<String, List<Object>> profileAttributes) throws Exception {
         val aupProperties = casProperties.getAcceptableUsagePolicy();
         val jdbcAupRepository = new JdbcAcceptableUsagePolicyRepository(
             ticketRegistrySupport,
             aupProperties, acceptableUsagePolicyDataSource,
             jdbcAcceptableUsagePolicyTransactionTemplate);
 
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, new MockHttpServletResponse()));
+        val context = MockRequestContext.create();
         val c = CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword(actualPrincipalId);
         val principal = CoreAuthenticationTestUtils.getPrincipal(c.getId(), profileAttributes);
         val auth = CoreAuthenticationTestUtils.getAuthentication(principal);
         WebUtils.putAuthentication(auth, context);
         return jdbcAupRepository.determinePrincipalId(principal);
     }
-    
+
     @Override
     public boolean hasLiveUpdates() {
         return false;

@@ -1,27 +1,27 @@
 package org.apereo.cas.services.replication;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.services.CasRegisteredService;
 import org.apereo.cas.services.InMemoryServiceRegistry;
-import org.apereo.cas.services.RegexRegisteredService;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.support.events.service.CasRegisteredServiceDeletedEvent;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.PublisherIdentifier;
 import org.apereo.cas.util.cache.DistributedCacheManager;
 import org.apereo.cas.util.cache.DistributedCacheObject;
-
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.support.StaticApplicationContext;
-
 import java.util.Map;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -31,16 +31,27 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@SpringBootTest(classes = RefreshAutoConfiguration.class, properties = "cas.service-registry.stream.replication-mode=ACTIVE_ACTIVE")
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = RefreshAutoConfiguration.class, properties = "cas.service-registry.stream.core.replication-mode=ACTIVE")
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("RegisteredService")
-public class DefaultRegisteredServiceReplicationStrategyTests {
+@ExtendWith(CasTestExtension.class)
+class DefaultRegisteredServiceReplicationStrategyTests {
 
     @Autowired
     private CasConfigurationProperties casProperties;
 
+    private static RegisteredService newService(final String name) {
+        val service = new CasRegisteredService();
+        service.setServiceId("^https?://.*");
+        service.setName(name);
+        service.setId(1000L);
+        service.setDescription("Test description");
+        return service;
+    }
+
     @Test
-    public void verifySetInCache() {
+    void verifySetInCache() {
         val id = new PublisherIdentifier();
         val appCtx = new StaticApplicationContext();
         appCtx.refresh();
@@ -57,7 +68,7 @@ public class DefaultRegisteredServiceReplicationStrategyTests {
     }
 
     @Test
-    public void verifyGetInCacheAndRemove() {
+    void verifyGetInCacheAndRemove() {
         val id = new PublisherIdentifier();
         val appCtx = new StaticApplicationContext();
         appCtx.refresh();
@@ -77,11 +88,11 @@ public class DefaultRegisteredServiceReplicationStrategyTests {
 
         val svc = strategy.getRegisteredServiceFromCacheIfAny(service, 1000, serviceRegistry);
         assertNotNull(svc);
-        assertEquals(serviceRegistry.size(), 0);
+        assertEquals(0, serviceRegistry.size());
     }
 
     @Test
-    public void verifyGetInCacheAndSave() {
+    void verifyGetInCacheAndSave() {
         val id = new PublisherIdentifier();
         val appCtx = new StaticApplicationContext();
         appCtx.refresh();
@@ -99,11 +110,11 @@ public class DefaultRegisteredServiceReplicationStrategyTests {
 
         val svc = strategy.getRegisteredServiceFromCacheIfAny(null, 1000, serviceRegistry);
         assertNotNull(svc);
-        assertEquals(serviceRegistry.size(), 1);
+        assertEquals(1, serviceRegistry.size());
     }
 
     @Test
-    public void verifyGetInCacheAndUpdate() {
+    void verifyGetInCacheAndUpdate() {
         val id = new PublisherIdentifier();
         val appCtx = new StaticApplicationContext();
         appCtx.refresh();
@@ -122,13 +133,13 @@ public class DefaultRegisteredServiceReplicationStrategyTests {
 
         var svc = strategy.getRegisteredServiceFromCacheIfAny(service, 1000, serviceRegistry);
         assertNotNull(svc);
-        assertEquals(serviceRegistry.size(), 1);
+        assertEquals(1, serviceRegistry.size());
         svc = serviceRegistry.findServiceById(1000);
         assertEquals("Test1", svc.getName());
     }
 
     @Test
-    public void verifyGetInCacheAndMatch() {
+    void verifyGetInCacheAndMatch() {
         val id = new PublisherIdentifier();
         val appCtx = new StaticApplicationContext();
         appCtx.refresh();
@@ -147,11 +158,11 @@ public class DefaultRegisteredServiceReplicationStrategyTests {
 
         var svc = strategy.getRegisteredServiceFromCacheIfAny(service, 1000, serviceRegistry);
         assertNotNull(svc);
-        assertEquals(serviceRegistry.size(), 0);
+        assertEquals(0, serviceRegistry.size());
     }
 
     @Test
-    public void verifyUpdateWithMatch() {
+    void verifyUpdateWithMatch() {
         val id = new PublisherIdentifier();
         val appCtx = new StaticApplicationContext();
         appCtx.refresh();
@@ -177,7 +188,7 @@ public class DefaultRegisteredServiceReplicationStrategyTests {
     }
 
     @Test
-    public void verifyUpdateWithNoMatch() {
+    void verifyUpdateWithNoMatch() {
         val id = new PublisherIdentifier();
         val appCtx = new StaticApplicationContext();
         appCtx.refresh();
@@ -200,14 +211,5 @@ public class DefaultRegisteredServiceReplicationStrategyTests {
         val results = strategy.updateLoadedRegisteredServicesFromCache(CollectionUtils.wrapList(service), serviceRegistry);
         assertFalse(results.isEmpty());
         assertEquals(2, results.size());
-    }
-
-    private static RegisteredService newService(final String name) {
-        val service = new RegexRegisteredService();
-        service.setServiceId("^https?://.*");
-        service.setName(name);
-        service.setId(1000L);
-        service.setDescription("Test description");
-        return service;
     }
 }

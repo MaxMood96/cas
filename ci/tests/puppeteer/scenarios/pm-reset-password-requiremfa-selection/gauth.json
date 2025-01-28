@@ -1,0 +1,36 @@
+{
+  "@class": "java.util.HashMap",
+  "casuser": [
+    "java.util.ArrayList",
+    [
+      {
+        "@class": "org.apereo.cas.gauth.credential.GoogleAuthenticatorAccount",
+        "scratchCodes": [
+          "java.util.ArrayList",
+          [
+            20207703,
+            20207711,
+            20207712,
+            62216084,
+            20207700,
+            20207701,
+            20207704,
+            20207705,
+            20207706,
+            20207707,
+            20207708,
+            20207709,
+            20207710
+          ]
+        ],
+        "id": 1,
+        "secretKey": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.ZXlKNmFYQWlPaUpFUlVZaUxDSmhiR2NpT2lKa2FYSWlMQ0psYm1NaU9pSkJNVEk0UTBKRExVaFRNalUySWl3aVkzUjVJam9pU2xkVUlpd2lkSGx3SWpvaVNsZFVJbjAuLlVwbEdMWll0emdLa1lGMVVpdkxtYlEuYzRVTVgzcXNhQkZoQlpNajlOeGJlZy5NTVFELWRYVUUteWJuN1FTcFQ4em1R.OIl6RACaRxgwwslnAAIAFaOKlf5iPuHhhTtjEQ-Odhz0p6XEf1YnMgYEf64cm8chaOZrcYej6cAS6DynHmXQOQ",
+        "validationCode": 999666,
+        "username": "casuser",
+        "name": "RecordName",
+        "registrationDate": "2020-12-13T07:07:17.905141Z",
+        "source": "Google Authenticator"
+      }
+    ]
+  ]
+}

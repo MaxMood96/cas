@@ -6,18 +6,14 @@ import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
-import org.apereo.cas.support.oauth.web.response.accesstoken.ext.AccessTokenRequestDataHolder;
-
+import org.apereo.cas.support.oauth.web.response.accesstoken.ext.AccessTokenRequestContext;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.jasig.cas.client.util.URIBuilder;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.pac4j.core.context.JEEContext;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.core.Ordered;
+import org.springframework.web.servlet.view.AbstractUrlBasedView;
 import org.springframework.web.servlet.view.RedirectView;
-
 import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,7 +23,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -37,8 +32,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.1.3
  */
 @Tag("OAuth")
-public class OAuth20TokenAuthorizationResponseBuilderTests extends AbstractOAuth20Tests {
-    private static final String STATE = "%123=";
+class OAuth20TokenAuthorizationResponseBuilderTests extends AbstractOAuth20Tests {
+    private static final String STATE = "{\"d\":\"value\"}";
 
     private static final String NONCE = "%123=";
 
@@ -52,7 +47,7 @@ public class OAuth20TokenAuthorizationResponseBuilderTests extends AbstractOAuth
         assertEquals(expectedParamValue,
             params
                 .get(paramName)
-                .get(0),
+                .getFirst(),
             () -> "Expected unchanged " + paramName + "  param");
     }
 
@@ -75,7 +70,9 @@ public class OAuth20TokenAuthorizationResponseBuilderTests extends AbstractOAuth
     }
 
     @Test
-    public void verifyUnchangedStateAndNonceParameter() {
+    void verifyUnchangedStateAndNonceParameter() throws Throwable {
+        assertEquals(Ordered.LOWEST_PRECEDENCE, oauthAuthorizationCodeResponseBuilder.getOrder());
+
         val registeredService = getRegisteredService("example", CLIENT_SECRET, new LinkedHashSet<>());
         registeredService.setJwtAccessToken(true);
         servicesManager.save(registeredService);
@@ -85,7 +82,7 @@ public class OAuth20TokenAuthorizationResponseBuilderTests extends AbstractOAuth
         attributes.put(OAuth20Constants.STATE, Collections.singletonList(STATE));
         attributes.put(OAuth20Constants.NONCE, Collections.singletonList(NONCE));
 
-        val holder = AccessTokenRequestDataHolder
+        val holder = AccessTokenRequestContext
             .builder()
             .clientId(registeredService.getClientId())
             .service(service)
@@ -95,14 +92,14 @@ public class OAuth20TokenAuthorizationResponseBuilderTests extends AbstractOAuth
             .responseType(OAuth20ResponseTypes.TOKEN)
             .ticketGrantingTicket(new MockTicketGrantingTicket(ID))
             .generateRefreshToken(true)
+            .redirectUri("https://oauth.example.org")
             .build();
-        val context = new JEEContext(new MockHttpServletRequest(), new MockHttpServletResponse());
-        val modelAndView = oauthTokenResponseBuilder.build(context, CLIENT_ID, holder);
-        assertTrue(modelAndView.getView() instanceof RedirectView, "Expected RedirectView");
+        val modelAndView = oauthTokenResponseBuilder.build(holder);
+        assertInstanceOf(RedirectView.class, modelAndView.getView(), "Expected RedirectView");
         assertTrue(modelAndView.getModel().isEmpty());
 
-        val redirectUrl = ((RedirectView) modelAndView.getView()).getUrl();
-        val params = splitQuery(new URIBuilder(redirectUrl).getFragment());
+        val redirectUrl = ((AbstractUrlBasedView) modelAndView.getView()).getUrl();
+        val params = splitQuery(redirectUrl.substring(redirectUrl.indexOf('#') + 1));
 
         verifyParam(params, OAuth20Constants.STATE, STATE);
         verifyParam(params, OAuth20Constants.NONCE, NONCE);

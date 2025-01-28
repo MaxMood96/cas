@@ -1,9 +1,11 @@
 package org.apereo.cas.aup;
 
+import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.services.DefaultRegisteredServiceAcceptableUsagePolicy;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.val;
@@ -11,12 +13,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.test.MockRequestContext;
+
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -41,12 +39,12 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.acceptable-usage-policy.jdbc.sql-update=UPDATE %s SET %s=TRUE WHERE lower(%s)=lower(?)"
 })
 @Tag("JDBC")
-public class JdbcAcceptableUsagePolicyRepositoryAdvancedTests extends BaseJdbcAcceptableUsagePolicyRepositoryTests {
+class JdbcAcceptableUsagePolicyRepositoryAdvancedTests extends BaseJdbcAcceptableUsagePolicyRepositoryTests {
     @BeforeEach
-    public void initialize() throws SQLException {
-        try (val c = this.acceptableUsagePolicyDataSource.getConnection()) {
-            try (val s = c.createStatement()) {
-                c.setAutoCommit(true);
+    void initialize() throws SQLException {
+        try (val connection = this.acceptableUsagePolicyDataSource.getConnection()) {
+            try (val s = connection.createStatement()) {
+                connection.setAutoCommit(true);
                 s.execute("CREATE TABLE users_table (id int primary key, username varchar(255), mail varchar(255), aup boolean)");
                 s.execute("INSERT INTO users_table (id, username, mail, aup) values (100, 'casuser', 'casuser@example.org', false);");
             }
@@ -64,21 +62,21 @@ public class JdbcAcceptableUsagePolicyRepositoryAdvancedTests extends BaseJdbcAc
     }
 
     @Test
-    public void verifyRepositoryActionWithAdvancedConfig() {
+    void verifyRepositoryActionWithAdvancedConfig() throws Throwable {
         verifyRepositoryAction("casuser",
             CollectionUtils.wrap("aupAccepted", List.of("false"), "email", List.of("casuser@example.org")));
     }
 
     @Test
-    public void verifySubmitWithoutAuthn() {
+    void verifySubmitWithoutAuthn() throws Throwable {
         val c = getCredential("casuser");
         val context = getRequestContext("casuser", Map.of(), c);
-        WebUtils.putAuthentication(null, context);
+        WebUtils.putAuthentication((Authentication) null, context);
         assertFalse(getAcceptableUsagePolicyRepository().submit(context));
     }
 
     @Test
-    public void verifyRepositoryPolicyText() {
+    void verifyRepositoryPolicyText() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService();
         val policy = new DefaultRegisteredServiceAcceptableUsagePolicy();
         policy.setMessageCode("aup.code");
@@ -88,27 +86,27 @@ public class JdbcAcceptableUsagePolicyRepositoryAdvancedTests extends BaseJdbcAc
     }
 
     @Test
-    public void verifyRepositoryPolicyNoService() {
+    void verifyRepositoryPolicyNoService() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService();
         verifyFetchingPolicy(service, RegisteredServiceTestUtils.getAuthentication(), false);
     }
 
     @Test
-    public void verifyRepositoryPolicyNoServiceViaAttr() {
+    void verifyRepositoryPolicyNoServiceViaAttr() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService();
         val principal = RegisteredServiceTestUtils.getPrincipal("casuser");
         verifyFetchingPolicy(service, RegisteredServiceTestUtils.getAuthentication(principal), false);
     }
 
     @Test
-    public void determinePrincipalIdWithAdvancedConfig() {
+    void determinePrincipalIdWithAdvancedConfig() throws Throwable {
         val principalId = determinePrincipalId("casuser",
             CollectionUtils.wrap("aupAccepted", List.of("false"), "email", List.of("CASuser@example.org")));
         assertEquals("CASuser@example.org", principalId);
     }
 
     @Test
-    public void raiseMissingPrincipalAttributeError() {
+    void raiseMissingPrincipalAttributeError() {
         val exception = assertThrows(IllegalStateException.class,
             () -> raiseException(CollectionUtils.wrap("aupAccepted", List.of("false"), "wrong-attribute",
                 List.of("CASuser@example.org"))));
@@ -116,7 +114,7 @@ public class JdbcAcceptableUsagePolicyRepositoryAdvancedTests extends BaseJdbcAc
     }
 
     @Test
-    public void raiseEmptyPrincipalAttributeError() {
+    void raiseEmptyPrincipalAttributeError() {
         val exception = assertThrows(IllegalStateException.class,
             () -> raiseException(CollectionUtils.wrap("aupAccepted", List.of("false"), "email", new ArrayList<>())));
         assertTrue(exception.getMessage().contains("empty or multi-valued with an empty element"));
@@ -127,19 +125,17 @@ public class JdbcAcceptableUsagePolicyRepositoryAdvancedTests extends BaseJdbcAc
         return true;
     }
 
-    private void raiseException(final Map<String, List<Object>> profileAttributes) {
+    private void raiseException(final Map<String, List<Object>> profileAttributes) throws Exception {
         val aupProperties = casProperties.getAcceptableUsagePolicy();
         val jdbcAupRepository = new JdbcAcceptableUsagePolicyRepository(ticketRegistrySupport,
             aupProperties,
             acceptableUsagePolicyDataSource,
             jdbcAcceptableUsagePolicyTransactionTemplate);
 
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, new MockHttpServletResponse()));
+        val context = MockRequestContext.create();
 
-        val c = CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword("casuser");
-        val principal = CoreAuthenticationTestUtils.getPrincipal(c.getId(), profileAttributes);
+        val credentials = CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword("casuser");
+        val principal = CoreAuthenticationTestUtils.getPrincipal(credentials.getId(), profileAttributes);
         val auth = CoreAuthenticationTestUtils.getAuthentication(principal);
         WebUtils.putAuthentication(auth, context);
         assertNotNull(jdbcAupRepository.determinePrincipalId(principal));

@@ -1,5 +1,6 @@
 package org.apereo.cas.oidc.discovery.webfinger;
 
+import org.apereo.cas.util.NamedObject;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -9,7 +10,11 @@ import java.util.Map;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-public interface OidcWebFingerUserInfoRepository {
+public interface OidcWebFingerUserInfoRepository extends NamedObject {
+    /**
+     * Default bean name.
+     */
+    String BEAN_NAME = "oidcWebFingerUserInfoRepository";
 
     /**
      * Find by email address.
@@ -17,7 +22,7 @@ public interface OidcWebFingerUserInfoRepository {
      * @param email the email
      * @return the map
      */
-    default Map<String, Object> findByEmailAddress(final String email) {
+    default Map<String, Object> findByEmailAddress(final String email) throws Throwable {
         return new HashMap<>(0);
     }
 
@@ -27,16 +32,7 @@ public interface OidcWebFingerUserInfoRepository {
      * @param username the username
      * @return the map
      */
-    default Map<String, Object> findByUsername(final String username) {
+    default Map<String, Object> findByUsername(final String username) throws Throwable {
         return new HashMap<>(0);
-    }
-
-    /**
-     * Gets name.
-     *
-     * @return the name
-     */
-    default String getName() {
-        return getClass().getSimpleName();
     }
 }

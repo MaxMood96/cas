@@ -3,11 +3,12 @@ package org.apereo.cas.configuration.model.support.mfa.gauth;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -20,9 +21,10 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("CoreGoogleAuthenticatorMultifactorProperties")
+
 public class CoreGoogleAuthenticatorMultifactorProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -7451748853833491119L;
 
     /**
@@ -67,4 +69,11 @@ public class CoreGoogleAuthenticatorMultifactorProperties implements Serializabl
      * Indicates whether this provider should support trusted devices.
      */
     private boolean trustedDeviceEnabled;
+
+    /**
+     * Scratch code settings.
+     */
+    @NestedConfigurationProperty
+    private GoogleAuthenticatorMultifactorScratchCodeProperties scratchCodes =
+        new GoogleAuthenticatorMultifactorScratchCodeProperties();
 }

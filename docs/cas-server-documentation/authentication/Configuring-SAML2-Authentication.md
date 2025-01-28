@@ -11,7 +11,7 @@ CAS can act as a SAML2 identity provider accepting authentication requests and p
 
 If you intend to allow CAS to delegate authentication to an external SAML2 identity provider, you need to [review this guide](../integration/Delegate-Authentication.html).
 
-<div class="alert alert-info"><strong>SAML Specification</strong><p>This document solely focuses on what one might do to turn on SAML2 
+<div class="alert alert-info">:information_source: <strong>SAML Specification</strong><p>This document solely focuses on what one might do to turn on SAML2 
 support inside CAS. It is not to describe/explain the numerous characteristics of the SAML2 protocol itself. If you are unsure 
 about the concepts referred to on this page, please start with reviewing 
 the <a href="http://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0.html">SAML2 Specification</a>.</p></div>
@@ -30,8 +30,6 @@ The following CAS endpoints respond to supported SAML2 profiles:
 - `/idp/profile/SAML2/Redirect/SSO`
 - `/idp/profile/SAML2/POST/SSO`
 - `/idp/profile/SAML2/POST-SimpleSign/SSO`
-- `/idp/profile/SAML2/POST/SLO`
-- `/idp/profile/SAML2/Redirect/SLO`
 - `/idp/profile/SAML2/Unsolicited/SSO`
 - `/idp/profile/SAML2/SOAP/ECP`
 - `/idp/profile/SAML2/SOAP/AttributeQuery`
@@ -55,12 +53,12 @@ your CAS overlay to be able to resolve dependencies:
 repositories {
     maven { 
         mavenContent { releasesOnly() }
-        url "https://build.shibboleth.net/nexus/content/repositories/releases" 
+        url "https://build.shibboleth.net/maven/releases/" 
     }
 }
 ```
 
-{% include_cached casproperties.html properties="cas.authn.saml-idp.core,cas.session-replication" %}
+{% include_cached casproperties.html properties="cas.authn.saml-idp.core" %}
 
 ### Actuator Endpoints
 
@@ -77,6 +75,11 @@ about how to configure SAML2 service providers.
 
 Please [see this guide](../installation/Configuring-SAML2-Security.html) to learn more
 about how to configure SAML2 security configuration.
+ 
+### Logout & SLO
+
+Please [see this guide](../installation/Configuring-SAML2-Logout.html) to learn more
+about how to configure SAML2 logout operations and settings.
 
 ### Attribute Release
 
@@ -89,31 +92,18 @@ about how to configure SAML2 security configuration.
   
 ## Unsolicited SSO
 
-SAML2 IdP `Unsolicited/SSO` profile supports the following parameters:
-
-| Parameter    | Description                                                    |
-|--------------|----------------------------------------------------------------|
-| `providerId` | Required. Entity ID of the service provider.                   |
-| `shire`      | Optional. Response location (ACS URL) of the service provider. |
-| `target`     | Optional. Relay state.                                         |
-| `time`       | Optional. Skew the authentication request.                     |
+Please see [this guide](../authentication/Configuring-SAML2-Authentication-Unsolicited.html) for more details.
 
 ## Attribute Queries
 
 Please see [this guide](../installation/Configuring-SAML2-AttributeQuery.html) for more details.
 
-
 ## Client Libraries
 
 For Java-based applications, the following frameworks may be used to integrate your application with CAS acting as a SAML2 identity provider:
 
-- [Spring Security SAML](http://projects.spring.io/spring-security-saml/)
+- [Spring Security SAML](https://docs.spring.io/spring-security/reference)
 - [Pac4j](http://www.pac4j.org/docs/clients/saml.html)
-
-## Sample Client Applications
-
-- [Spring Security SAML Sample Webapp](https://github.com/apereo/saml2-sample-java-webapp)
-- [Okta](https://developer.okta.com/standards/SAML/setting_up_a_saml_application_in_okta)
 
 ## Troubleshooting
 
@@ -121,11 +111,11 @@ To enable additional logging, modify the logging configuration file to add the f
 
 ```xml
 <Logger name="org.opensaml" level="debug" additivity="false">
-    <AppenderRef ref="console"/>
-    <AppenderRef ref="file"/>
+    <AppenderRef ref="casConsole"/>
+    <AppenderRef ref="casFile"/>
 </Logger>
 <Logger name="PROTOCOL_MESSAGE" level="debug" additivity="false">
-    <AppenderRef ref="console"/>
-    <AppenderRef ref="file"/>
+    <AppenderRef ref="casConsole"/>
+    <AppenderRef ref="casFile"/>
 </Logger>
 ```

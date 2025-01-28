@@ -1,19 +1,23 @@
 package org.apereo.cas.authentication.attribute;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.util.scripting.GroovyScriptResourceCacheManager;
-import org.apereo.cas.util.scripting.ScriptResourceCacheManager;
-import org.apereo.cas.util.spring.ApplicationContextProvider;
-
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.RandomUtils;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
-import org.apereo.services.persondir.util.CaseCanonicalizationMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.support.StaticApplicationContext;
-
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.SpringBootTest;
 import java.util.List;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -23,140 +27,127 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @Tag("Authentication")
-public class DefaultAttributeDefinitionTests {
+@ExtendWith(CasTestExtension.class)
+@ResourceLock(value = "attributeDefinitionStore", mode = ResourceAccessMode.READ_WRITE)
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = {
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class
+})
+@EnableConfigurationProperties(CasConfigurationProperties.class)
+class DefaultAttributeDefinitionTests {
+
+    private static AttributeDefinitionResolutionContext getAttributeDefinitionResolutionContext() {
+        return AttributeDefinitionResolutionContext.builder()
+            .attributeValues(List.of("v1", "v2"))
+            .scope("example.org")
+            .principal(CoreAuthenticationTestUtils.getPrincipal())
+            .registeredService(CoreAuthenticationTestUtils.getRegisteredService())
+            .service(CoreAuthenticationTestUtils.getService())
+            .build();
+    }
 
     @Test
-    public void verifyCaseCanonicalizationMode() {
-        val applicationContext = new StaticApplicationContext();
-        applicationContext.registerSingleton(ScriptResourceCacheManager.BEAN_NAME, GroovyScriptResourceCacheManager.class);
-        applicationContext.refresh();
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
+    void verifyCaseCanonicalizationMode() throws Throwable {
+        val key = "computedAttribute-%s".formatted(RandomUtils.randomAlphabetic(6));
         val defn = DefaultAttributeDefinition.builder()
-            .key("computedAttribute")
+            .key(key)
             .canonicalizationMode(CaseCanonicalizationMode.UPPER.name())
             .script("groovy { return ['value1', 'value2'] }")
             .build();
-        val values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
+
+        val context = getAttributeDefinitionResolutionContext();
+
+        val values = defn.resolveAttributeValues(context);
         assertTrue(values.contains("VALUE1"));
         assertTrue(values.contains("VALUE2"));
     }
 
     @Test
-    public void verifyNoCacheEmbeddedScriptOperation() {
-        val applicationContext = new StaticApplicationContext();
-        applicationContext.refresh();
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
+    void verifyNoCacheEmbeddedScriptOperation() throws Throwable {
+        val key = "computedAttribute-%s".formatted(RandomUtils.randomAlphabetic(6));
         val defn = DefaultAttributeDefinition.builder()
-            .key("computedAttribute")
+            .key(key)
             .script("groovy { return ['hello world'] }")
             .build();
-        val values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
-        assertTrue(values.isEmpty());
+        val context = getAttributeDefinitionResolutionContext();
+        val values = defn.resolveAttributeValues(context);
+        assertFalse(values.isEmpty());
     }
 
     @Test
-    public void verifyBadScript() {
-        val applicationContext = new StaticApplicationContext();
-        applicationContext.refresh();
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
+    void verifyBadScript() throws Throwable {
+        val key = "computedAttribute-%s".formatted(RandomUtils.randomAlphabetic(6));
         val defn = DefaultAttributeDefinition.builder()
-            .key("computedAttribute")
+            .key(key)
             .script("badformat ()")
             .build();
-        val values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
+        val context = getAttributeDefinitionResolutionContext();
+        val values = defn.resolveAttributeValues(context);
         assertTrue(values.isEmpty());
     }
 
     @Test
-    public void verifyCachedEmbeddedScriptOperation() {
-        val applicationContext = new StaticApplicationContext();
-        applicationContext.registerSingleton(ScriptResourceCacheManager.BEAN_NAME, GroovyScriptResourceCacheManager.class);
-        applicationContext.refresh();
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
+    void verifyCachedEmbeddedScriptOperation() throws Throwable {
+        val key = "computedAttribute-%s".formatted(RandomUtils.randomAlphabetic(6));
         val defn = DefaultAttributeDefinition.builder()
-            .key("computedAttribute")
+            .key(key)
             .script("groovy { return ['hello world'] }")
             .build();
-        var values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
+        val context = getAttributeDefinitionResolutionContext();
+        var values = defn.resolveAttributeValues(context);
         assertFalse(values.isEmpty());
-        values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
+        values = defn.resolveAttributeValues(context);
         assertFalse(values.isEmpty());
     }
 
     @Test
-    public void verifyNoCachedExternalScriptOperation() {
-        val applicationContext = new StaticApplicationContext();
-        applicationContext.refresh();
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
+    void verifyCachedExternalScriptOperation() throws Throwable {
+        val key = "computedAttribute-%s".formatted(RandomUtils.randomAlphabetic(6));
         val defn = DefaultAttributeDefinition.builder()
-            .key("computedAttribute")
+            .key(key)
             .script("classpath:ComputedAttributeDefinition.groovy")
             .build();
-        val values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
-        assertTrue(values.isEmpty());
-    }
-
-    @Test
-    public void verifyCachedExternalScriptOperation() {
-        val applicationContext = new StaticApplicationContext();
-        applicationContext.registerSingleton(ScriptResourceCacheManager.BEAN_NAME, GroovyScriptResourceCacheManager.class);
-        applicationContext.refresh();
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
-        val defn = DefaultAttributeDefinition.builder()
-            .key("computedAttribute")
-            .script("classpath:ComputedAttributeDefinition.groovy")
-            .build();
-        var values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
+        val context = getAttributeDefinitionResolutionContext();
+        var values = defn.resolveAttributeValues(context);
         assertFalse(values.isEmpty());
-        values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
+        values = defn.resolveAttributeValues(context);
         assertFalse(values.isEmpty());
     }
 
     @Test
-    public void verifyBadExternalScriptOperation() {
-        val applicationContext = new StaticApplicationContext();
-        applicationContext.registerSingleton(ScriptResourceCacheManager.BEAN_NAME, GroovyScriptResourceCacheManager.class);
-        applicationContext.refresh();
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
+    void verifyBadExternalScriptOperation() throws Throwable {
+        val key = "computedAttribute-%s".formatted(RandomUtils.randomAlphabetic(6));
         val defn = DefaultAttributeDefinition.builder()
-            .key("computedAttribute")
+            .key(key)
             .script("classpath:BadScript.groovy")
             .build();
-        val values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
+        val context = getAttributeDefinitionResolutionContext();
+        val values = defn.resolveAttributeValues(context);
         assertTrue(values.isEmpty());
     }
 
     @Test
-    public void verifyBadEmbeddedScriptOperation() {
-        val applicationContext = new StaticApplicationContext();
-        applicationContext.registerSingleton(ScriptResourceCacheManager.BEAN_NAME, GroovyScriptResourceCacheManager.class);
-        applicationContext.refresh();
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
+    void verifyBadEmbeddedScriptOperation() throws Throwable {
+        val key = "computedAttribute-%s".formatted(RandomUtils.randomAlphabetic(6));
         val defn = DefaultAttributeDefinition.builder()
-            .key("computedAttribute")
+            .key(key)
             .script("groovy {xyz}")
             .build();
-        val values = defn.resolveAttributeValues(List.of("v1", "v2"), "example.org",
-            CoreAuthenticationTestUtils.getRegisteredService(), Map.of());
-        assertNull(values);
+        val context = getAttributeDefinitionResolutionContext();
+        val values = defn.resolveAttributeValues(context);
+        assertTrue(values.isEmpty());
     }
 
-
+    @ParameterizedTest
+    @ValueSource(strings = {"MD5", "SHA1", "SHA256", "SHA512", "BASE64", "UNKNOWN"})
+    void verifyHashingFunction(final String hashingStrategy) throws Throwable {
+        val defn = DefaultAttributeDefinition.builder()
+            .key("givenName")
+            .hashingStrategy(hashingStrategy)
+            .build();
+        val context = getAttributeDefinitionResolutionContext();
+        val values = defn.resolveAttributeValues(context);
+        assertFalse(values.isEmpty());
+    }
 }

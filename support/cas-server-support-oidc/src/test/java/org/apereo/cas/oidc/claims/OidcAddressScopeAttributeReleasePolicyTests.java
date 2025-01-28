@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -22,19 +23,20 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@Tag("OIDC")
-public class OidcAddressScopeAttributeReleasePolicyTests extends AbstractOidcTests {
+@Tag("OIDCAttributes")
+class OidcAddressScopeAttributeReleasePolicyTests extends AbstractOidcTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val policy = new OidcAddressScopeAttributeReleasePolicy();
         assertEquals(OidcConstants.StandardScopes.ADDRESS.getScope(), policy.getScopeType());
         assertNotNull(policy.getAllowedAttributes());
-        val principal = CoreAuthenticationTestUtils.getPrincipal(
+        val principal = CoreAuthenticationTestUtils.getPrincipal(UUID.randomUUID().toString(),
             CollectionUtils.wrap("name", List.of("cas"), "address", List.of("Main St")));
         val releasePolicyContext = RegisteredServiceAttributeReleasePolicyContext.builder()
             .registeredService(CoreAuthenticationTestUtils.getRegisteredService())
             .service(CoreAuthenticationTestUtils.getService())
             .principal(principal)
+            .applicationContext(applicationContext)
             .build();
         val attrs = policy.getAttributes(releasePolicyContext);
         assertTrue(policy.getAllowedAttributes().stream().allMatch(attrs::containsKey));
@@ -42,13 +44,13 @@ public class OidcAddressScopeAttributeReleasePolicyTests extends AbstractOidcTes
     }
 
     @Test
-    public void verifySerialization() {
+    void verifySerialization() {
         val policy = new OidcAddressScopeAttributeReleasePolicy();
         val chain = new ChainingAttributeReleasePolicy();
-        chain.addPolicy(policy);
+        chain.addPolicies(policy);
         val service = getOidcRegisteredService();
         service.setAttributeReleasePolicy(chain);
-        val serializer = new RegisteredServiceJsonSerializer();
+        val serializer = new RegisteredServiceJsonSerializer(applicationContext);
         val json = serializer.toString(service);
         assertNotNull(json);
         assertNotNull(serializer.from(json));

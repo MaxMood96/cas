@@ -1,21 +1,20 @@
 package org.apereo.cas.support.saml.util;
 
-import org.apereo.cas.config.CoreSamlConfigurationTests;
+import org.apereo.cas.config.BaseSamlConfigurationTests;
 import org.apereo.cas.support.saml.OpenSamlConfigBean;
 import org.apereo.cas.support.saml.authentication.principal.SamlService;
-
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.opensaml.saml.saml2.core.StatusCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -24,15 +23,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("SAML")
-@SpringBootTest(classes = CoreSamlConfigurationTests.SharedTestConfiguration.class)
-public class Saml10ObjectBuilderTests {
+@Tag("SAML1")
+@ExtendWith(CasTestExtension.class)
+@SpringBootTest(classes = BaseSamlConfigurationTests.SharedTestConfiguration.class)
+class Saml10ObjectBuilderTests {
     @Autowired
     @Qualifier(OpenSamlConfigBean.DEFAULT_BEAN_NAME)
     private OpenSamlConfigBean openSamlConfigBean;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val saml10ObjectBuilder = new Saml10ObjectBuilder(this.openSamlConfigBean);
         var result = saml10ObjectBuilder.newStatus(StatusCode.DEFAULT_ELEMENT_NAME);
         assertNotNull(result);

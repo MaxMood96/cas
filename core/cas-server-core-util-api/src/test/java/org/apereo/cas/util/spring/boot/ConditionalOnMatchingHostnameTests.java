@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.StandardEnvironment;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * This is {@link ConditionalOnMatchingHostnameTests}.
@@ -25,24 +25,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @since 6.4.0
  */
 @Tag("Simple")
-public class ConditionalOnMatchingHostnameTests {
+class ConditionalOnMatchingHostnameTests {
 
     private static String HOSTNAME;
 
+    private final ConfigurableEnvironment environment = new StandardEnvironment();
+
     private ConfigurableApplicationContext context;
 
-    private ConfigurableEnvironment environment = new StandardEnvironment();
-
     @BeforeAll
-    static void setup() {
+    public static void setup() {
         HOSTNAME = InetAddressUtils.getCasServerHostName();
-    }
-
-    @AfterEach
-    void tearDown() {
-        if (this.context != null) {
-            this.context.close();
-        }
     }
 
     @Test
@@ -71,7 +64,7 @@ public class ConditionalOnMatchingHostnameTests {
 
     @Test
     void doesNotMatch2() {
-        load(ConfigurationBeansDependOnHost.class, "hostname="+ HOSTNAME + "2");
+        load(ConfigurationBeansDependOnHost.class, "hostname=" + HOSTNAME + '2');
         assertThat(this.context.containsBean("foo")).isFalse();
     }
 
@@ -93,20 +86,23 @@ public class ConditionalOnMatchingHostnameTests {
         assertThat(this.context.containsBean("bar")).isTrue();
     }
 
+    private void load(final Class<?> config, final String... environment) {
+        TestPropertyValues.of(environment).applyTo(this.environment);
+        this.context = new SpringApplicationBuilder(config).environment(this.environment).web(WebApplicationType.NONE)
+            .run();
+    }
 
     @TestConfiguration(value = "ConfigurationBeansDependOnHost", proxyBeanMethods = false)
     @ConditionalOnMatchingHostname(name = "hostname")
     static class ConfigurationBeansDependOnHost {
-
         @Bean
         public String foo() {
             return "foo";
         }
-
     }
 
     @TestConfiguration(value = "ConfigurationBeansDependOnHostAndProperty", proxyBeanMethods = false)
-    @ConditionalOnProperty(name = "someproperty", havingValue="true")
+    @ConditionalOnProperty(name = "someproperty", havingValue = "true")
     @ConditionalOnMatchingHostname(name = "hostname")
     static class ConfigurationBeansDependOnHostAndProperty {
 
@@ -117,9 +113,10 @@ public class ConditionalOnMatchingHostnameTests {
 
     }
 
-    private void load(final Class<?> config, final String... environment) {
-        TestPropertyValues.of(environment).applyTo(this.environment);
-        this.context = new SpringApplicationBuilder(config).environment(this.environment).web(WebApplicationType.NONE)
-            .run();
+    @AfterEach
+    void tearDown() {
+        if (this.context != null) {
+            this.context.close();
+        }
     }
 }

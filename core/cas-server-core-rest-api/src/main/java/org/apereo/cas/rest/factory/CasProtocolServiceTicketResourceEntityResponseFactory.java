@@ -27,25 +27,9 @@ public class CasProtocolServiceTicketResourceEntityResponseFactory implements Se
 
     @Override
     public ResponseEntity<String> build(final String ticketGrantingTicket, final WebApplicationService webApplicationService,
-                                        final AuthenticationResult authenticationResult) {
+                                        final AuthenticationResult authenticationResult) throws Throwable {
         val serviceTicketId = grantServiceTicket(ticketGrantingTicket, webApplicationService, authenticationResult);
         return new ResponseEntity<>(serviceTicketId, HttpStatus.OK);
-    }
-
-    /**
-     * Grant service ticket service ticket.
-     *
-     * @param ticketGrantingTicket the ticket granting ticket
-     * @param service              the service
-     * @param authenticationResult the authentication result
-     * @return the service ticket
-     */
-    protected String grantServiceTicket(final String ticketGrantingTicket, final WebApplicationService service,
-                                        final AuthenticationResult authenticationResult) {
-        val ticket = centralAuthenticationService.grantServiceTicket(ticketGrantingTicket, service, authenticationResult);
-
-        LOGGER.debug("Generated service ticket [{}]", ticket.getId());
-        return ticket.getId();
     }
 
     @Override
@@ -56,5 +40,13 @@ public class CasProtocolServiceTicketResourceEntityResponseFactory implements Se
     @Override
     public int getOrder() {
         return Integer.MAX_VALUE;
+    }
+
+    protected String grantServiceTicket(final String ticketGrantingTicket, final WebApplicationService service,
+                                        final AuthenticationResult authenticationResult) throws Throwable {
+        val ticket = centralAuthenticationService.grantServiceTicket(ticketGrantingTicket, service, authenticationResult);
+
+        LOGGER.debug("Generated service ticket [{}]", ticket.getId());
+        return ticket.getId();
     }
 }

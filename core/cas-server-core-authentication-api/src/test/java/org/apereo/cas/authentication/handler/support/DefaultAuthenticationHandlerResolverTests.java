@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.Ordered;
 
-import java.util.Set;
-
+import static java.util.Set.*;
+import static org.apereo.cas.authentication.AuthenticationHandlerResolver.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -21,17 +21,23 @@ import static org.mockito.Mockito.*;
  * @since 6.4.0
  */
 @Tag("AuthenticationHandler")
-public class DefaultAuthenticationHandlerResolverTests {
+class DefaultAuthenticationHandlerResolverTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val h1 = new SimpleTestUsernamePasswordAuthenticationHandler("h1");
         val h2 = new SimpleTestUsernamePasswordAuthenticationHandler("h2");
         h2.setState(AuthenticationHandlerStates.STANDBY);
         val resolver = new DefaultAuthenticationHandlerResolver();
-        assertTrue(resolver.supports(Set.of(h1, h2), mock(AuthenticationTransaction.class)));
-        val result = resolver.resolve(Set.of(h1, h2), mock(AuthenticationTransaction.class));
+        assertTrue(resolver.supports(of(h1, h2), mock(AuthenticationTransaction.class)));
+        val result = resolver.resolve(of(h1, h2), mock(AuthenticationTransaction.class));
         assertTrue(result.contains(h1));
         assertFalse(result.contains(h2));
         assertEquals(Ordered.LOWEST_PRECEDENCE, resolver.getOrder());
+    }
+
+    @Test
+    void verifyNoOp() throws Throwable {
+        assertFalse(noOp().supports(of(), mock(AuthenticationTransaction.class)));
+        assertTrue(noOp().resolve(of(), mock(AuthenticationTransaction.class)).isEmpty());
     }
 }

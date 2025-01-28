@@ -2,6 +2,7 @@ description = "Apereo CAS Support for Pac4j"
 dependencies {
     implementation project(":core:cas-server-core-authentication-api")
     implementation project(":core:cas-server-core-services-api")
+    implementation project(":core:cas-server-core-audit-api")
     implementation project(":core:cas-server-core-util-api")
     implementation project(":core:cas-server-core-configuration-api")
     implementation project(":core:cas-server-core-tickets-api")
@@ -10,18 +11,19 @@ dependencies {
     implementation project(":core:cas-server-core-webflow-api")
     implementation project(":core:cas-server-core-logout-api")
     implementation project(":core:cas-server-core-services-authentication")
-
+    
+    implementation project(":support:cas-server-support-pac4j-core-clients")
     implementation project(":support:cas-server-support-pac4j-api")
 
     compileOnly project(":support:cas-server-support-scim-core")
-
-    implementation libraries.pac4joidcoauth
-    implementation libraries.pac4jsaml
+    compileOnly project(":support:cas-server-support-ldap-core")
+    
     implementation libraries.pac4jcore
     implementation libraries.pac4jcas
-    implementation libraries.opensaml
-    implementation libraries.shibutiljavasupport
     implementation libraries.nimbus
+
+    testImplementation libraries.casclient
+    testImplementation libraries.ldaptive
 
     testImplementation project(path: ":core:cas-server-core-authentication", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")
@@ -34,7 +36,13 @@ dependencies {
     testImplementation project(":core:cas-server-core-util")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-audit")
-    testImplementation project(":core:cas-server-core-audit-api")
+    testImplementation project(":core:cas-server-core-web")
+    testImplementation project(":core:cas-server-core-tickets")
+    testImplementation project(":core:cas-server-core-logout")
+    testImplementation project(":core:cas-server-core-scripting")
+    testImplementation project(":core:cas-server-core-notifications")
+    testImplementation project(":core:cas-server-core-authentication")
     testImplementation project(":core:cas-server-core-services-registry")
+    testImplementation project(":core:cas-server-core-multitenancy")
     testImplementation project(":support:cas-server-support-scim-core")
 }

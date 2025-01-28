@@ -1,18 +1,18 @@
 package org.apereo.cas.acct.webflow;
 
-import org.apereo.cas.CentralAuthenticationService;
 import org.apereo.cas.acct.AccountRegistrationService;
 import org.apereo.cas.acct.AccountRegistrationUtils;
 import org.apereo.cas.authentication.RootCasException;
-import org.apereo.cas.ticket.TicketState;
 import org.apereo.cas.ticket.TransientSessionTicket;
+import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.web.flow.CasWebflowConstants;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
+import org.apereo.cas.web.support.WebUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -24,21 +24,20 @@ import org.springframework.webflow.execution.RequestContext;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class ValidateAccountRegistrationTokenAction extends AbstractAction {
-    private final CentralAuthenticationService centralAuthenticationService;
+public class ValidateAccountRegistrationTokenAction extends BaseCasWebflowAction {
+    private final TicketRegistry ticketRegistry;
 
     private final AccountRegistrationService accountRegistrationService;
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
+    protected Event doExecuteInternal(final RequestContext requestContext) throws Exception {
         var accountRegTicket = (TransientSessionTicket) null;
         try {
-            val activationToken = requestContext.getRequestParameters()
-                .getRequired(AccountRegistrationUtils.REQUEST_PARAMETER_ACCOUNT_REGISTRATION_ACTIVATION_TOKEN);
-            accountRegTicket = centralAuthenticationService.getTicket(activationToken, TransientSessionTicket.class);
+            val activationToken = WebUtils.getRequestParameterOrAttribute(requestContext, AccountRegistrationUtils.REQUEST_PARAMETER_ACCOUNT_REGISTRATION_ACTIVATION_TOKEN).orElseThrow();
+            accountRegTicket = ticketRegistry.getTicket(activationToken, TransientSessionTicket.class);
             val token = accountRegTicket.getProperty(AccountRegistrationUtils.PROPERTY_ACCOUNT_REGISTRATION_ACTIVATION_TOKEN, String.class);
             val registrationRequest = accountRegistrationService.validateToken(token);
-            ((TicketState) accountRegTicket).update();
+            accountRegTicket.update();
 
             val username = accountRegistrationService.getAccountRegistrationUsernameBuilder().build(registrationRequest);
             AccountRegistrationUtils.putAccountRegistrationRequest(requestContext, registrationRequest);
@@ -52,7 +51,7 @@ public class ValidateAccountRegistrationTokenAction extends AbstractAction {
             return error(e);
         } finally {
             if (accountRegTicket != null && accountRegTicket.isExpired()) {
-                centralAuthenticationService.deleteTicket(accountRegTicket);
+                ticketRegistry.deleteTicket(accountRegTicket);
             }
         }
     }

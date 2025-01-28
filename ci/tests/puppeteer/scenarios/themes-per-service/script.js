@@ -1,41 +1,40 @@
-const puppeteer = require('puppeteer');
-const assert = require('assert');
 
-const cas = require('../../cas.js');
+const assert = require("assert");
+const cas = require("../../cas.js");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
-    await page.goto("https://localhost:8443/cas/login?service=https://github.com/apereo/cas");
-    await page.waitForTimeout(1000)
+    const service = "https://localhost:9859/anything/cas";
+    await cas.gotoLogin(page, service);
+    await cas.sleep(1000);
 
-    await cas.assertVisibility(page, '#twitter-link')
-    await cas.assertVisibility(page, '#youtube-link')
+    await cas.assertVisibility(page, "#twitter-link");
+    await cas.assertVisibility(page, "#youtube-link");
 
-    const imgs = await page.$$eval('#cas-logo',
-        imgs => imgs.map(img => img.getAttribute('src')));
-    let logo = imgs.pop();
-    console.log(logo)
-    assert(logo === "/cas/themes/example/images/logo.png")
+    const imgs = await page.$$eval("#cas-logo", (imgs) => imgs.map((img) => img.getAttribute("src")));
+    const logo = imgs.pop();
+    await cas.log(logo);
+    await cas.assertTextMatches(logo, /\/cas\/themes\/example\/images\/logo-.*.png/);
 
-    console.log("Logging out...")
-    await page.goto("https://localhost:8443/cas/logout?service=https://github.com/apereo/cas");
-    await page.waitForTimeout(1000)
+    await cas.log("Logging out...");
+    await cas.goto(page, `https://localhost:8443/cas/logout?service=${service}`);
+    await cas.sleep(1000);
 
-    await cas.assertVisibility(page, '#twitter-link')
-    await cas.assertVisibility(page, '#youtube-link')
+    await cas.assertVisibility(page, "#twitter-link");
+    await cas.assertVisibility(page, "#youtube-link");
     
-    await cas.assertVisibility(page, '#logoutButton')
+    await cas.assertVisibility(page, "#logoutButton");
     await cas.submitForm(page, "#fm1");
 
-    await page.waitForTimeout(1000)
-    const url = await page.url()
-    console.log(`Page url: ${url}`)
-    assert(url.toString().startsWith("https://localhost:8443/cas/logout"))
-    await cas.assertNoTicketGrantingCookie(page);
+    await cas.sleep(1000);
+    const url = await page.url();
+    await cas.logPage(page);
+    assert(url.toString().startsWith("https://localhost:8443/cas/logout"));
+    await cas.assertCookie(page, false);
 
-    await cas.assertVisibility(page, '#twitter-link')
-    await cas.assertVisibility(page, '#youtube-link')
+    await cas.assertVisibility(page, "#twitter-link");
+    await cas.assertVisibility(page, "#youtube-link");
     
     await browser.close();
 })();

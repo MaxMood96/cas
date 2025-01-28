@@ -1,14 +1,14 @@
 package org.apereo.cas.support.inwebo.service;
 
 import org.apereo.cas.support.inwebo.config.BaseInweboConfiguration;
-
+import org.apereo.cas.test.CasTestExtension;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.ws.client.WebServiceTransportException;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -18,19 +18,25 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.4.0
  */
 @Tag("MFAProvider")
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = BaseInweboConfiguration.SharedTestConfiguration.class,
     properties = {
         "cas.authn.mfa.inwebo.client-certificate.certificate.location=classpath:clientcert.p12",
         "cas.authn.mfa.inwebo.client-certificate.passphrase=password",
         "cas.authn.mfa.inwebo.service-id=7046"
     })
-public class InweboConsoleAdminTests {
+class InweboConsoleAdminTests {
     @Autowired
     @Qualifier("inweboConsoleAdmin")
     private InweboConsoleAdmin inweboConsoleAdmin;
 
     @Test
-    public void verifyOperation() {
+    void verifyLoginSearch() {
         assertThrows(WebServiceTransportException.class, () -> inweboConsoleAdmin.loginSearch("casuser"));
+    }
+
+    @Test
+    void verifyLoginQuery() {
+        assertThrows(WebServiceTransportException.class, () -> inweboConsoleAdmin.loginQuery(1L));
     }
 }

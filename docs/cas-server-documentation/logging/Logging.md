@@ -19,7 +19,7 @@ The cas-overlay comes with an external log42.xml in etc/cas/config and a propert
 By default logging is set to `INFO` for all functionality related to `org.apereo.cas` code.
 For debugging and diagnostic purposes you may want to set these levels to `DEBUG` or `TRACE`.
 
-<div class="alert alert-warning"><strong>Production</strong><p>You should always run everything under
+<div class="alert alert-warning">:warning: <strong>Production</strong><p>You should always run everything under
 <code>WARN</code>. In production warnings and errors are things you care about. Everything else is just diagnostics. Only
 turn up <code>DEBUG</code> or <code>INFO</code> if you need to research a particular issue.</p></div>
 
@@ -29,13 +29,27 @@ The following endpoints are provided:
 
 {% include_cached actuators.html endpoints="loggingConfig,loggers,logfile" %}
 
-## CAS Custom Log4j2 plugins
+## CAS Plugins
 
-The log4j2.xml file use by CAS includes custom Log4j2 plugins:
+The `log4j2.xml` file use by CAS includes custom Log4j2 plugins:
 
 - `CasAppender`: The CasAppender wraps another regular appender and removes sensitive values from the log entries
-such as Ticket Granting Tickets or Proxy Granting Tickets.
-  
+such as Ticket Granting Tickets or Proxy Granting Tickets. It may be used via the following Log4j2 configuration template:
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<Configuration monitorInterval="2" packages="org.apereo.cas.logging">
+  <!-- Wrap the console appender inside -->
+  <CasAppender name="casConsole" maxEntries="50">
+      <AppenderRef ref="console" />
+  </CasAppender>
+</Configuration>
+```
+                                           
+The `maxEntries` attribute indicates the maximum number of latest log entries to keep in an in-memory cache. 
+When the cache is full, the oldest entries are removed. By default, nothing is kept in the cache. This ability
+is useful when you want to stream the latest log entries via actuator endpoints, etc.
+
 - `ExceptionOnlyFilter`: In order to allow CAS to freely log unexpected errors at WARN and ERROR without obscuring everything 
   with stacktraces, exceptions in the logs are disabled by default but there are log4j2.xml properties that can
   turn them back on. By default, all exceptions are written to a dedicated stacktrace rolling log file
@@ -48,14 +62,14 @@ of the `log4j2.xml` file, in a property file called `log4j2.component.properties
 properties. If setting properties in a `log4j2.component.properties`, be sure to include:
 
 ```properties
-Log4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector
+log4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector
 ```
 
 in order to keep using asynchronous logging which CAS sets by default. 
 To turn off asynchronous logging, include the following in `log4j2.component.properites` or as a system property:
 
 ```properties
-Log4jContextSelector=org.apache.logging.log4j.core.selector.BasicContextSelector
+log4j2.contextSelector=org.apache.logging.log4j.core.selector.BasicContextSelector
 ```
 
 ## Configuration
@@ -112,7 +126,7 @@ The following `Appender` elements are only a partial collection of available opt
 | `JPAAppender`         | Writes log events to a relational database table using the Java Persistence API `2.1`.                                                                                                          |
 | `HttpAppender`        | Sends log events over HTTP. A Layout must be provided to format the log event.                                                                                                                  |
 | `KafkaAppender`       | Logs events to an Apache Kafka topic. Each log event is sent as a Kafka record.                                                                                                                 |
-| `NoSQLAppender`       | Writes log events to a NoSQL database; Provider implementations currently exist for MongoDB and Apache CouchDB.                                                                                 |
+| `NoSQLAppender`       | Writes log events to a NoSQL database; Provider implementations exist for MongoDB and Apache CouchDB.                                                                                           |
 | `RoutingAppender`     | Evaluates log events and then routes them to a subordinate `Appender`.                                                                                                                          |
 | `SMTPAppender`        | Sends an e-mail when a specific logging event occurs, typically on errors or fatal errors.                                                                                                      |
 | `JeroMQ`              | The ZeroMQ appender uses the JeroMQ library to send log events to one or more ZeroMQ endpoints.                                                                                                 |
@@ -151,7 +165,7 @@ JVM starts, when the log size reaches `10` megabytes, and when the current date 
 
 ```xml
 <RollingFile name="file" fileName="${baseDir}/cas.log" append="true"
-                    filePattern="${baseDir}/cas-%d{yyyy-MM-dd-HH}-%i.log">
+             filePattern="${baseDir}/cas-%d{yyyy-MM-dd-HH}-%i.log.gz">
     ...
     <Policies>
         <OnStartupTriggeringPolicy />
@@ -179,11 +193,11 @@ directory that match the `*/*.log` glob and are `7` days old or older.
 
 ```xml
 <RollingFile name="file" fileName="${baseDir}/cas.log" append="true"
-             filePattern="${baseDir}/cas-%d{yyyy-MM-dd-HH}-%i.log">
+             filePattern="${baseDir}/cas-%d{yyyy-MM-dd-HH}-%i.log.gz">
     ...
-    <DefaultRolloverStrategy max="5">
+    <DefaultRolloverStrategy max="5" compressionLevel="9">
         <Delete basePath="${baseDir}" maxDepth="2">
-            <IfFileName glob="*/*.log" />
+            <IfFileName glob="*/*.log.gz" />
             <IfLastModified age="7d" />
         </Delete>
     </DefaultRolloverStrategy>
@@ -212,3 +226,21 @@ SERVER IP ADDRESS: ...
 
 Certain number of characters are left at the trailing end of the ticket id to assist with troubleshooting and diagnostics.
 
+      
+## Log Message Summaries
+
+By default, logged stacktraces are summarized and only the first few lines of the stacktrace
+are displayed in the output to reduce noise. If you wish to see the full stacktrace and disable the summary mode, you can consider changing the log level
+for the appropriate package to `DEBUG`. This behavior can be replaced and customized via your implementation of the `LogMessageSummarizer`, 
+that should be registered with CAS using the Java ServiceLoader API. In doing so and at a minimum, you need to 
+create a `src/main/resources/META-INF/services/org.apereo.cas.util.LogMessageSummarizer` file with the following contents:
+
+```
+org.sso.example.MyLogMessageSummarizer
+```
+ 
+If you need to disable summary mode altogether, the following contents should be used instead in the above file:
+
+```bash
+org.apereo.cas.util.logging.DisabledLogMessageSummarizer
+```

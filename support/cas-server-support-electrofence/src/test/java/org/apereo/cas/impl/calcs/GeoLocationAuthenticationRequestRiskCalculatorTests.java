@@ -36,32 +36,32 @@ import static org.mockito.Mockito.*;
     "cas.authn.adaptive.risk.geo-location.enabled=true",
     "cas.google-maps.ip-stack-api-access-key=6bde37c76ad15c8a5c828fafad8b0bc4"
 })
-@Tag("Authentication")
-public class GeoLocationAuthenticationRequestRiskCalculatorTests extends BaseAuthenticationRequestRiskCalculatorTests {
+@Tag("GeoLocation")
+class GeoLocationAuthenticationRequestRiskCalculatorTests extends BaseAuthenticationRequestRiskCalculatorTests {
     
     @Test
-    public void verifyTestWhenNoAuthnEventsFoundForUser() {
+    void verifyTestWhenNoAuthnEventsFoundForUser() {
         val authentication = CoreAuthenticationTestUtils.getAuthentication("geoperson");
         val service = RegisteredServiceTestUtils.getRegisteredService("test");
         val request = new MockHttpServletRequest();
-        val score = authenticationRiskEvaluator.eval(authentication, service, request);
+        val score = authenticationRiskEvaluator.evaluate(authentication, service, ClientInfo.from(request));
         assertTrue(score.isHighestRisk());
     }
 
     @Test
-    public void verifyTestWithGeoLoc() {
+    void verifyTestWithGeoLoc() throws Throwable {
         val id = UUID.randomUUID().toString();
         MockTicketGrantingTicketCreatedEventProducer.createEvent(id, casEventRepository);
         val authentication = CoreAuthenticationTestUtils.getAuthentication(id);
         val service = RegisteredServiceTestUtils.getRegisteredService("test");
         val request = new MockHttpServletRequest();
         request.setParameter("geolocation", "40,70,1000,100");
-        val score = authenticationRiskEvaluator.eval(authentication, service, request);
+        val score = authenticationRiskEvaluator.evaluate(authentication, service, ClientInfo.from(request));
         assertTrue(score.isHighestRisk());
     }
 
     @Test
-    public void verifyTestWhenAuthnEventsFoundForUser() {
+    void verifyTestWhenAuthnEventsFoundForUser() {
         HttpsURLConnection.setDefaultHostnameVerifier(CasSSLContext.disabled().getHostnameVerifier());
         HttpsURLConnection.setDefaultSSLSocketFactory(CasSSLContext.disabled().getSslContext().getSocketFactory());
 
@@ -70,15 +70,15 @@ public class GeoLocationAuthenticationRequestRiskCalculatorTests extends BaseAut
         val request = new MockHttpServletRequest();
         request.setRemoteAddr("172.217.11.174");
         request.setLocalAddr("127.0.0.1");
-        ClientInfoHolder.setClientInfo(new ClientInfo(request));
-        val score = authenticationRiskEvaluator.eval(authentication, service, request);
+        ClientInfoHolder.setClientInfo(ClientInfo.from(request));
+        val score = authenticationRiskEvaluator.evaluate(authentication, service, ClientInfo.from(request));
         assertTrue(score.isHighestRisk());
     }
 
     @TestConfiguration(value = "GeoLocationServiceTestConfiguration", proxyBeanMethods = false)
-    public static class GeoLocationServiceTestConfiguration {
+    static class GeoLocationServiceTestConfiguration {
         @Bean
-        public GeoLocationService geoLocationService() {
+        public GeoLocationService geoLocationService() throws Throwable {
             val service = mock(GeoLocationService.class);
             val response = new GeoLocationResponse();
             response.addAddress("MSIE");

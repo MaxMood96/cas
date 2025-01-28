@@ -1,11 +1,10 @@
 package org.apereo.cas.support.saml.web.idp.delegation;
 
-import org.apereo.cas.config.SamlIdPDelegatedAuthenticationConfiguration;
 import org.apereo.cas.pac4j.client.DelegatedClientAuthenticationRequestCustomizer;
 import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
+import org.apereo.cas.support.saml.SamlIdPConstants;
 import org.apereo.cas.support.saml.SamlIdPTestUtils;
-import org.apereo.cas.support.saml.SamlIdPUtils;
-
+import org.apereo.cas.support.saml.idp.SamlIdPSessionManager;
 import lombok.val;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Tag;
@@ -15,16 +14,14 @@ import org.opensaml.saml.common.SAMLObjectBuilder;
 import org.opensaml.saml.saml2.core.AuthnContextClassRef;
 import org.opensaml.saml.saml2.core.AuthnContextComparisonTypeEnumeration;
 import org.opensaml.saml.saml2.core.RequestedAuthnContext;
-import org.pac4j.core.context.JEEContext;
 import org.pac4j.core.redirect.RedirectionActionBuilder;
+import org.pac4j.jee.context.JEEContext;
 import org.pac4j.saml.client.SAML2Client;
 import org.pac4j.saml.context.SAML2ConfigurationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -34,15 +31,14 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("SAML")
-@Import(SamlIdPDelegatedAuthenticationConfiguration.class)
-public class SamlIdPDelegatedAuthenticationConfigurationTests extends BaseSamlIdPConfigurationTests {
+@Tag("SAML2")
+class SamlIdPDelegatedAuthenticationConfigurationTests extends BaseSamlIdPConfigurationTests {
     @Autowired
     @Qualifier("saml2DelegatedClientAuthenticationRequestCustomizer")
     private DelegatedClientAuthenticationRequestCustomizer customizer;
 
     @Test
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val service = getSamlRegisteredServiceFor("https://cassp.example.org");
         service.setId(2000);
         val authnRequest = SamlIdPTestUtils.getAuthnRequest(openSamlConfigBean, service);
@@ -63,13 +59,15 @@ public class SamlIdPDelegatedAuthenticationConfigurationTests extends BaseSamlId
         authnRequest.setRequestedAuthnContext(reqCtx);
 
         val request = new MockHttpServletRequest();
+        request.addParameter(SamlIdPConstants.AUTHN_REQUEST_ID, authnRequest.getID());
+
         val response = new MockHttpServletResponse();
         val webContext = new JEEContext(request, response);
 
         val messageContext = new MessageContext();
         messageContext.setMessage(authnRequest);
         val context = Pair.of(authnRequest, messageContext);
-        SamlIdPUtils.storeSamlRequest(webContext, openSamlConfigBean, samlIdPDistributedSessionStore, context);
+        SamlIdPSessionManager.of(openSamlConfigBean, samlIdPDistributedSessionStore).store(webContext, context);
 
         val saml2Client = mock(SAML2Client.class);
         assertTrue(customizer.supports(saml2Client, webContext));

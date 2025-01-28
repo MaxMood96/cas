@@ -2,20 +2,30 @@ package org.apereo.cas.web.flow.login;
 
 import org.apereo.cas.CentralAuthenticationService;
 import org.apereo.cas.authentication.AuthenticationException;
+import org.apereo.cas.authentication.AuthenticationResult;
 import org.apereo.cas.authentication.AuthenticationSystemSupport;
-import org.apereo.cas.authentication.PrincipalElectionStrategy;
+import org.apereo.cas.authentication.Credential;
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.ticket.InvalidTicketException;
+import org.apereo.cas.ticket.ServiceTicketGeneratorAuthority;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.flow.CasWebflowConstants;
+import org.apereo.cas.web.flow.CasWebflowCredentialProvider;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.val;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.webflow.action.AbstractAction;
+import org.jooq.lambda.Unchecked;
+import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
+
+import java.util.List;
 
 /**
  * This is {@link ServiceWarningAction}. Populates the view
@@ -26,7 +36,7 @@ import org.springframework.webflow.execution.RequestContext;
  * @since 5.0.0
  */
 @RequiredArgsConstructor
-public class ServiceWarningAction extends AbstractAction {
+public class ServiceWarningAction extends BaseCasWebflowAction {
 
     /**
      * Parameter name indicating that warning should be ignored and removed.
@@ -41,37 +51,46 @@ public class ServiceWarningAction extends AbstractAction {
 
     private final CasCookieBuilder warnCookieGenerator;
 
-    private final PrincipalElectionStrategy principalElectionStrategy;
+    private final List<ServiceTicketGeneratorAuthority> serviceTicketAuthorities;
+
+    private final CasWebflowCredentialProvider casWebflowCredentialProvider;
 
     @Override
-    protected Event doExecute(final RequestContext context) {
-        val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(context);
+    protected Event doExecuteInternal(final RequestContext requestContext) throws Throwable {
+        val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
+        val service = WebUtils.getService(requestContext);
+        val ticketGrantingTicket = WebUtils.getTicketGrantingTicketId(requestContext);
+        FunctionUtils.throwIf(StringUtils.isBlank(ticketGrantingTicket),
+            () -> new InvalidTicketException(new AuthenticationException("No ticket-granting ticket could be found in the context"), ticketGrantingTicket));
+        val authentication = ticketRegistrySupport.getAuthenticationFrom(ticketGrantingTicket);
+        FunctionUtils.throwIfNull(authentication,
+            () -> new InvalidTicketException(new AuthenticationException("No authentication found for ticket " + ticketGrantingTicket), ticketGrantingTicket));
+        val credentials = casWebflowCredentialProvider.extract(requestContext);
+        val authenticationResultBuilder = authenticationSystemSupport.establishAuthenticationContextFromInitial(
+            authentication, credentials.toArray(credentials.toArray(Credential.EMPTY_CREDENTIALS_ARRAY)));
+        val authenticationResult = FunctionUtils.doUnchecked(() -> authenticationResultBuilder.build(service));
+        grantServiceTicket(authenticationResult, service, requestContext);
 
-        val service = WebUtils.getService(context);
-        val ticketGrantingTicket = WebUtils.getTicketGrantingTicketId(context);
-        if (StringUtils.isBlank(ticketGrantingTicket)) {
-            throw new InvalidTicketException(new AuthenticationException("No ticket-granting ticket could be found in the context"), ticketGrantingTicket);
-        }
-
-        val authentication = this.ticketRegistrySupport.getAuthenticationFrom(ticketGrantingTicket);
-        if (authentication == null) {
-            throw new InvalidTicketException(new AuthenticationException("No authentication found for ticket " + ticketGrantingTicket), ticketGrantingTicket);
-        }
-
-        val credential = WebUtils.getCredential(context);
-        val authenticationResultBuilder =
-            authenticationSystemSupport.establishAuthenticationContextFromInitial(authentication, credential);
-        val authenticationResult = authenticationResultBuilder.build(principalElectionStrategy, service);
-
-        val serviceTicketId = this.centralAuthenticationService.grantServiceTicket(ticketGrantingTicket, service, authenticationResult);
-        WebUtils.putServiceTicketInRequestScope(context, serviceTicketId);
-
-        if (request.getParameterMap().containsKey(PARAMETER_NAME_IGNORE_WARNING)) {
-            if (Boolean.parseBoolean(request.getParameter(PARAMETER_NAME_IGNORE_WARNING))) {
-                val response = WebUtils.getHttpServletResponseFromExternalWebflowContext(context);
-                this.warnCookieGenerator.removeCookie(response);
-            }
+        if (request.getParameterMap().containsKey(PARAMETER_NAME_IGNORE_WARNING)
+            && BooleanUtils.toBoolean(request.getParameter(PARAMETER_NAME_IGNORE_WARNING))) {
+            val response = WebUtils.getHttpServletResponseFromExternalWebflowContext(requestContext);
+            warnCookieGenerator.removeCookie(response);
         }
         return new Event(this, CasWebflowConstants.STATE_ID_REDIRECT);
+    }
+
+    private void grantServiceTicket(final AuthenticationResult authenticationResult,
+                                    final Service service,
+                                    final RequestContext requestContext) {
+        serviceTicketAuthorities
+            .stream()
+            .sorted(AnnotationAwareOrderComparator.INSTANCE)
+            .filter(auth -> auth.supports(authenticationResult, service))
+            .findFirst()
+            .ifPresent(Unchecked.consumer(auth -> {
+                val ticketGrantingTicket = WebUtils.getTicketGrantingTicketId(requestContext);
+                val serviceTicketId = centralAuthenticationService.grantServiceTicket(ticketGrantingTicket, service, authenticationResult);
+                WebUtils.putServiceTicketInRequestScope(requestContext, serviceTicketId);
+            }));
     }
 }

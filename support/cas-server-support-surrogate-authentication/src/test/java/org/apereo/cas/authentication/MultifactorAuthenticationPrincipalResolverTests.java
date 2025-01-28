@@ -1,22 +1,23 @@
 package org.apereo.cas.authentication;
 
+import org.apereo.cas.authentication.attribute.AttributeRepositoryResolver;
 import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.surrogate.BaseSurrogateAuthenticationServiceTests;
 import org.apereo.cas.authentication.surrogate.SimpleSurrogateAuthenticationService;
+import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.ServicesManager;
-
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.Ordered;
-
 import java.util.List;
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -29,16 +30,27 @@ import static org.mockito.Mockito.*;
 @SpringBootTest(classes = BaseSurrogateAuthenticationServiceTests.SharedTestConfiguration.class,
     properties = "cas.authn.surrogate.simple.surrogates.casuser=cassurrogate")
 @Tag("Authentication")
-public class MultifactorAuthenticationPrincipalResolverTests {
+@ExtendWith(CasTestExtension.class)
+class MultifactorAuthenticationPrincipalResolverTests {
     @Autowired
     @Qualifier("surrogateMultifactorAuthenticationPrincipalResolver")
     private MultifactorAuthenticationPrincipalResolver surrogateMultifactorAuthenticationPrincipalResolver;
 
+    @Autowired
+    private CasConfigurationProperties casProperties;
+
+    @Autowired
+    @Qualifier(AttributeRepositoryResolver.BEAN_NAME)
+    private AttributeRepositoryResolver attributeRepositoryResolver;
+
+
+    @Autowired
+    @Qualifier(ServicesManager.BEAN_NAME)
+    private ServicesManager servicesManager;
+    
     @Test
-    public void verifyOperation() {
-        val surrogatePrincipalBuilder = new SurrogatePrincipalBuilder(
-            PrincipalFactoryUtils.newPrincipalFactory(), CoreAuthenticationTestUtils.getAttributeRepository(),
-            new SimpleSurrogateAuthenticationService(Map.of("test", List.of("surrogate")), mock(ServicesManager.class)));
+    void verifyOperation() throws Throwable {
+        val surrogatePrincipalBuilder = getBuilder();
         val primary = CoreAuthenticationTestUtils.getPrincipal();
         val principal = surrogatePrincipalBuilder.buildSurrogatePrincipal("surrogate", primary);
         assertEquals(0, surrogateMultifactorAuthenticationPrincipalResolver.getOrder());
@@ -48,7 +60,7 @@ public class MultifactorAuthenticationPrincipalResolverTests {
     }
 
     @Test
-    public void verifyDefaultOperation() {
+    void verifyDefaultOperation() {
         val resolver = MultifactorAuthenticationPrincipalResolver.identical();
         assertEquals(Ordered.LOWEST_PRECEDENCE, resolver.getOrder());
 
@@ -57,5 +69,16 @@ public class MultifactorAuthenticationPrincipalResolverTests {
         when(principal.getAttributes()).thenReturn(Map.of());
         assertTrue(resolver.supports(principal));
         assertEquals(principal, resolver.resolve(principal));
+    }
+
+    private SurrogateAuthenticationPrincipalBuilder getBuilder() {
+        val surrogateAuthenticationService = new SimpleSurrogateAuthenticationService(Map.of("test", List.of("surrogate")),
+            servicesManager, casProperties);
+        return new DefaultSurrogateAuthenticationPrincipalBuilder(
+            PrincipalFactoryUtils.newPrincipalFactory(),
+            CoreAuthenticationTestUtils.getAttributeRepository(),
+            surrogateAuthenticationService,
+            attributeRepositoryResolver,
+            casProperties);
     }
 }

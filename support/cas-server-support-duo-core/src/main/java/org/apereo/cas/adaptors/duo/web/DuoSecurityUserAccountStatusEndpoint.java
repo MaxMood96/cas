@@ -4,12 +4,14 @@ import org.apereo.cas.adaptors.duo.authn.DuoSecurityMultifactorAuthenticationPro
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
+import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.web.BaseCasActuatorEndpoint;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.boot.actuate.endpoint.Access;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 import org.springframework.boot.actuate.endpoint.annotation.Selector;
@@ -27,7 +29,7 @@ import java.util.Objects;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@Endpoint(id = "duoAccountStatus", enableByDefault = false)
+@Endpoint(id = "duoAccountStatus", defaultAccess = Access.NONE)
 public class DuoSecurityUserAccountStatusEndpoint extends BaseCasActuatorEndpoint {
     private final ApplicationContext applicationContext;
 
@@ -46,8 +48,8 @@ public class DuoSecurityUserAccountStatusEndpoint extends BaseCasActuatorEndpoin
      */
     @ReadOperation(produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Fetch Duo Security user account status", parameters = {
-        @Parameter(name = "username", required = true),
-        @Parameter(name = "providerId")
+        @Parameter(name = "username", required = true, description = "The username to fetch"),
+        @Parameter(name = "providerId", description = "The multifactor authentication provider id defined in CAS settings")
     })
     public Map<?, ?> fetchAccountStatus(@Selector final String username, @Nullable final String providerId) {
         val resolver = SpringExpressionLanguageValueResolver.getInstance();
@@ -56,18 +58,18 @@ public class DuoSecurityUserAccountStatusEndpoint extends BaseCasActuatorEndpoin
         providers
             .stream()
             .filter(Objects::nonNull)
-            .map(DuoSecurityMultifactorAuthenticationProvider.class::cast)
+            .filter(BeanSupplier::isNotProxy)
+            .map(duoSecurityMultifactorAuthenticationProvider -> duoSecurityMultifactorAuthenticationProvider)
             .filter(provider -> StringUtils.isBlank(providerId) || provider.matches(providerId))
-            .forEach(p -> {
-                val duoService = p.getDuoAuthenticationService();
+            .forEach(provider -> {
+                val duoService = provider.getDuoAuthenticationService();
                 val accountStatus = duoService.getUserAccount(username);
-                results.put(p.getId(),
+                results.put(provider.getId(),
                     CollectionUtils.wrap("duoApiHost", resolver.resolve(duoService.getProperties().getDuoApiHost()),
-                        "name", p.getFriendlyName(),
+                        "name", provider.getFriendlyName(),
                         "accountStatus", accountStatus
                     ));
             });
         return results;
-
     }
 }

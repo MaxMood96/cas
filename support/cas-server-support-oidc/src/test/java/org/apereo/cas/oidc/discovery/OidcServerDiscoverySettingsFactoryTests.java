@@ -20,10 +20,10 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @Tag("OIDC")
 @Import(OidcServerDiscoverySettingsFactoryTests.OidcAuthenticationContextTestConfiguration.class)
-public class OidcServerDiscoverySettingsFactoryTests extends AbstractOidcTests {
+class OidcServerDiscoverySettingsFactoryTests extends AbstractOidcTests {
 
     @TestConfiguration(value = "OidcAuthenticationContextTestConfiguration", proxyBeanMethods = false)
-    public static class OidcAuthenticationContextTestConfiguration {
+    static class OidcAuthenticationContextTestConfiguration {
         @Bean
         public MultifactorAuthenticationProvider dummyProvider() {
             return new TestMultifactorAuthenticationProvider();
@@ -31,7 +31,7 @@ public class OidcServerDiscoverySettingsFactoryTests extends AbstractOidcTests {
     }
 
     @Test
-    public void verifyAction() {
+    void verifyAction() {
         assertTrue(oidcServerDiscoverySettings.isRequestParameterSupported());
         assertTrue(oidcServerDiscoverySettings.isClaimsParameterSupported());
         
@@ -42,6 +42,7 @@ public class OidcServerDiscoverySettingsFactoryTests extends AbstractOidcTests {
         assertFalse(oidcServerDiscoverySettings.getIdTokenSigningAlgValuesSupported().isEmpty());
         assertFalse(oidcServerDiscoverySettings.getSubjectTypesSupported().isEmpty());
         assertFalse(oidcServerDiscoverySettings.getAcrValuesSupported().isEmpty());
+        assertFalse(oidcServerDiscoverySettings.getDPopSigningAlgValuesSupported().isEmpty());
 
         assertFalse(oidcServerDiscoverySettings.getResponseTypesSupported().isEmpty());
         assertFalse(oidcServerDiscoverySettings.getScopesSupported().isEmpty());

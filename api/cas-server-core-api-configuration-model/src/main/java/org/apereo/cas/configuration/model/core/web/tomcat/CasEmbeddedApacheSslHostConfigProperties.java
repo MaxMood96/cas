@@ -3,11 +3,11 @@ package org.apereo.cas.configuration.model.core.web.tomcat;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,9 +22,10 @@ import java.util.List;
 @Getter
 @Accessors(chain = true)
 @Setter
-@JsonFilter("CasEmbeddedApacheSslHostConfigProperties")
+
 public class CasEmbeddedApacheSslHostConfigProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -32143821503580896L;
 
     /**
@@ -72,7 +73,7 @@ public class CasEmbeddedApacheSslHostConfigProperties implements Serializable {
      * algorithm when creating an SSLContext instance
      */
     private String sslProtocol = "TLS";
-    
+
     /**
      * OpenSSL only.
      * Configures if insecure renegotiation is allowed. The default is false.
@@ -103,21 +104,21 @@ public class CasEmbeddedApacheSslHostConfigProperties implements Serializable {
      * Each token in the list can be prefixed with a plus sign ("+") or a minus sign ("-").
      * A plus sign adds the protocol, a minus sign removes it form the current list.
      * The list is built starting from an empty list.
-     *
+     * <p>
      * The token all is an alias for SSLv2Hello,TLSv1,TLSv1.1,TLSv1.2,TLSv1.3.
-     *
+     * <p>
      * Note that TLSv1.3 is only supported for JSSE when using a JVM that implements TLSv1.3.
-     *
+     * <p>
      * Note that SSLv2Hello will be ignored for OpenSSL based secure connectors. If more
      * than one protocol is specified for an OpenSSL based secure connector it will always
      * support SSLv2Hello. If a single protocol is specified it will not support SSLv2Hello.
-     *
+     * <p>
      * Note that SSLv2 and SSLv3 are inherently unsafe.
-     *
+     * <p>
      * If not specified, the default value of all will be used.
      */
     private String protocols = "all";
-    
+
     /**
      * List of certificates managed by the ssl host config.
      */

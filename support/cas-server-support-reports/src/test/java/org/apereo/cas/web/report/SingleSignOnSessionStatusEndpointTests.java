@@ -26,16 +26,16 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestPropertySource(properties = {
     "cas.tgc.crypto.enabled=false",
-    "management.endpoint.sso.enabled=true"
+    "management.endpoint.sso.access=UNRESTRICTED"
 })
 @Tag("ActuatorEndpoint")
-public class SingleSignOnSessionStatusEndpointTests extends AbstractCasEndpointTests {
+class SingleSignOnSessionStatusEndpointTests extends AbstractCasEndpointTests {
     @Autowired
     @Qualifier("singleSignOnSessionStatusEndpoint")
     private SingleSignOnSessionStatusEndpoint singleSignOnSessionStatusEndpoint;
 
     @Autowired
-    @Qualifier("ticketGrantingTicketCookieGenerator")
+    @Qualifier(CasCookieBuilder.BEAN_NAME_TICKET_GRANTING_COOKIE_BUILDER)
     private CasCookieBuilder ticketGrantingTicketCookieGenerator;
 
     @Autowired
@@ -43,17 +43,26 @@ public class SingleSignOnSessionStatusEndpointTests extends AbstractCasEndpointT
     private TicketRegistry ticketRegistry;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperationByValue() throws Throwable {
+        val request = new MockHttpServletRequest();
+        val tgt = new MockTicketGrantingTicket("casuser");
+        ticketRegistry.addTicket(tgt);
+        val entity = singleSignOnSessionStatusEndpoint.ssoStatus(tgt.getId(), request);
+        assertTrue(entity.getStatusCode().is2xxSuccessful());
+    }
+
+    @Test
+    void verifyOperation() throws Throwable {
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
 
         val tgt = new MockTicketGrantingTicket("casuser");
         ticketRegistry.addTicket(tgt);
-        ticketGrantingTicketCookieGenerator.addCookie(response, tgt.getId());
+        ticketGrantingTicketCookieGenerator.addCookie(request, response, tgt.getId());
         request.setCookies(response.getCookies());
-        val entity = singleSignOnSessionStatusEndpoint.ssoStatus(request);
+        val entity = singleSignOnSessionStatusEndpoint.ssoStatus(null, request);
         assertTrue(entity.getStatusCode().is2xxSuccessful());
-        val body = Objects.requireNonNull(Map.class.cast(entity.getBody()));
+        val body = Objects.requireNonNull((Map) entity.getBody());
         assertTrue(body.containsKey("principal"));
         assertTrue(body.containsKey("authenticationDate"));
         assertTrue(body.containsKey("ticketGrantingTicketCreationTime"));
@@ -62,14 +71,13 @@ public class SingleSignOnSessionStatusEndpointTests extends AbstractCasEndpointT
     }
 
     @Test
-    public void verifyNoTicket() {
+    void verifyNoTicket() {
         val request = new MockHttpServletRequest();
-        assertTrue(singleSignOnSessionStatusEndpoint.ssoStatus(request).getStatusCode().is4xxClientError());
-
+        assertTrue(singleSignOnSessionStatusEndpoint.ssoStatus(null, request).getStatusCode().is4xxClientError());
         val response = new MockHttpServletResponse();
         val tgt = new MockTicketGrantingTicket("casuser");
-        ticketGrantingTicketCookieGenerator.addCookie(response, tgt.getId());
+        ticketGrantingTicketCookieGenerator.addCookie(request, response, tgt.getId());
         request.setCookies(response.getCookies());
-        assertTrue(singleSignOnSessionStatusEndpoint.ssoStatus(request).getStatusCode().is4xxClientError());
+        assertTrue(singleSignOnSessionStatusEndpoint.ssoStatus(null, request).getStatusCode().is4xxClientError());
     }
 }

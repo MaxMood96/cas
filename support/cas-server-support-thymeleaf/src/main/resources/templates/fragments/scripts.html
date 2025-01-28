@@ -1,6 +1,9 @@
 <script type="text/javascript" th:src="@{#{webjars.jquery.js}}"></script>
+<script type="text/javascript" th:src="@{#{webjars.dataTables.js}}"></script>
+<script type="text/javascript" th:src="@{#{webjars.clientjs.js}}"></script>
+
 <span th:remove="tag" th:if="${'true' == #strings.defaultString(#themes.code('cas.js.core.enabled'), 'true')}">
-    <span th:replace="fragments/includes :: javascript">
+    <span th:replace="~{fragments/includes :: javascript}">
         <a href="fragments/includes.html">Theme</a> fragment will go here
     </span>
 </span>
@@ -9,14 +12,14 @@
     <script type="text/javascript" th:src="@{${file}}"></script>
 </span>
 
-
 <script th:inline="javascript">
     if (typeof resourceLoadedSuccessfully === "function") {
         resourceLoadedSuccessfully();
     }
-    $(function() {
+    $(() => {
         typeof cssVars === "function" && cssVars({onlyLegacy: true});
-    })
+    });
+    let trackGeoLocation = /*[[${trackGeoLocation}]]*/ === "true";
 </script>
 
-<script th:replace="fragments/googleanalytics :: ga"></script>
+<script th:replace="~{fragments/googleanalytics :: ga}"></script>

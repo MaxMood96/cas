@@ -1,31 +1,33 @@
-const puppeteer = require('puppeteer');
 
-const cas = require('../../cas.js');
+const cas = require("../../cas.js");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
-    await page.goto("https://localhost:8443/cas/login?authn_method=mfa-simple");
-    await cas.loginWith(page, "casuser", "Mellon");
-    await page.waitForTimeout(1000)
-    await cas.assertVisibility(page, '#token')
+    await cas.gotoLoginWithAuthnMethod(page, undefined, "mfa-simple", "en");
+    await cas.loginWith(page);
+    await cas.sleep(1000);
+    await cas.assertVisibility(page, "#token");
+    await cas.attributeValue(page, "html", "lang", "en");
 
-    const page2 = await browser.newPage();
-    await page2.goto("http://localhost:8282");
-    await page2.waitForTimeout(1000)
-    await cas.click(page2, "table tbody td a")
-    await page2.waitForTimeout(1000)
-    let code = await cas.textContent(page2, "div[name=bodyPlainText] .well");
-    await page2.close();
+    const code = await cas.extractFromEmail(browser);
 
     await page.bringToFront();
+    await cas.attributeValue(page, "html", "lang", "en");
+    await cas.type(page, "#token", "unknownCode");
+    await cas.submitForm(page, "#fm1");
+    await cas.sleep(1000);
+    await cas.assertTextContentStartsWith(page, "div .banner-danger p", "Multifactor authentication attempt has failed");
+
     await cas.type(page, "#token", code);
     await cas.submitForm(page, "#fm1");
-    await page2.waitForTimeout(1000);
+    await cas.sleep(3000);
+
     await cas.submitForm(page, "#registerform");
-    await page2.waitForTimeout(1000);
-    await cas.assertInnerText(page, '#content div h2', "Log In Successful");
-    await cas.assertTicketGrantingCookie(page);
+    await cas.sleep(3000);
+
+    await cas.assertInnerText(page, "#content div h2", "Log In Successful");
+    await cas.assertCookie(page);
 
     await browser.close();
 })();

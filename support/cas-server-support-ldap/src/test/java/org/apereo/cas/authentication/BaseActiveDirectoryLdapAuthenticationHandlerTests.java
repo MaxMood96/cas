@@ -7,9 +7,9 @@ package org.apereo.cas.authentication;
  * @author Hal Deadman
  * @since 6.1.0
  */
-public abstract class BaseActiveDirectoryLdapAuthenticationHandlerTests extends BaseLdapAuthenticationHandlerTests{
+public abstract class BaseActiveDirectoryLdapAuthenticationHandlerTests extends BaseLdapAuthenticationHandlerTests {
 
-    public static final String AD_TRUST_STORE = "file:/tmp/adcacerts.jks";
+    public static final String AD_TRUST_STORE = "file:${#systemProperties['java.io.tmpdir']}/adcacerts.jks";
 
     public static final String AD_ADMIN_PASSWORD = "M3110nM3110n#1";
 

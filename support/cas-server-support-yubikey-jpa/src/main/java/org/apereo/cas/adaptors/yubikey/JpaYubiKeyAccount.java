@@ -2,17 +2,19 @@ package org.apereo.cas.adaptors.yubikey;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.GenericGenerator;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
+import java.io.Serial;
 import java.util.List;
 
 /**
@@ -27,7 +29,9 @@ import java.util.List;
 @Table(name = "YubiKeyAccount")
 @SuperBuilder
 @Accessors(chain = true)
+@NoArgsConstructor
 public class JpaYubiKeyAccount extends YubiKeyAccount {
+    @Serial
     private static final long serialVersionUID = 8996204730235225057L;
 
     @Id
@@ -35,10 +39,6 @@ public class JpaYubiKeyAccount extends YubiKeyAccount {
     @GenericGenerator(name = "native", strategy = "native")
     @Builder.Default
     private long id = -1;
-
-    public JpaYubiKeyAccount() {
-        this.id = System.currentTimeMillis();
-    }
 
     public JpaYubiKeyAccount(final long id,
                              final List<YubiKeyRegisteredDevice> deviceIdentifiers,

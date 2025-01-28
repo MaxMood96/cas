@@ -1,4 +1,11 @@
 description = "Apereo CAS LDAP Monitor Support"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "Monitoring",
+            title: "Apereo CAS LDAP & Active Directory Monitoring"
+    ]
+}
 dependencies {
     implementation libraries.ldaptive
     
@@ -12,6 +19,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-logout-api")
     testImplementation project(":core:cas-server-core-services")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-configuration")
     
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")

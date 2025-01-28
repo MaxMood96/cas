@@ -7,7 +7,8 @@ import org.apereo.cas.validation.Assertion;
 import org.apereo.cas.validation.AuthenticationContextValidationResult;
 import org.apereo.cas.validation.RequestedAuthenticationContextValidator;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * This is {@link MockRequestedAuthenticationContextValidator}.
@@ -17,12 +18,14 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class MockRequestedAuthenticationContextValidator implements RequestedAuthenticationContextValidator {
     @Override
-    public AuthenticationContextValidationResult validateAuthenticationContext(final Assertion assertion, final HttpServletRequest request) {
+    public AuthenticationContextValidationResult validateAuthenticationContext(final Assertion assertion, final HttpServletRequest request,
+                                                                               final HttpServletResponse response) {
         return AuthenticationContextValidationResult.builder().success(true).build();
     }
 
     @Override
     public AuthenticationContextValidationResult validateAuthenticationContext(final HttpServletRequest request,
+                                                                               final HttpServletResponse response,
                                                                                final RegisteredService registeredService,
                                                                                final Authentication authentication,
                                                                                final Service service) {

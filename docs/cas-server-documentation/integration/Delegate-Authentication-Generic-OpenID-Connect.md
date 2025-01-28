@@ -10,6 +10,12 @@ category: Authentication
 
 For an overview of the delegated authentication flow, please [see this guide](Delegate-Authentication.html).
 
+Support is enabled by including the following dependency in the WAR overlay:
+
+{% include_cached casmodule.html group="org.apereo.cas" module="cas-server-support-pac4j-oidc" %}
+
+## Configuration
+
 {% include_cached casproperties.html properties="cas.authn.pac4j.oidc[].generic" %}
 
 ## Per Service Customizations
@@ -25,7 +31,7 @@ A sample JSON file follows:
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "^https://app.example.org",
   "name" : "Example",
   "id" : 1,

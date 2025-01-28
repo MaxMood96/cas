@@ -2,7 +2,7 @@ package org.apereo.cas.adaptors.duo;
 
 import org.apereo.cas.adaptors.duo.authn.DuoSecurityAuthenticationService;
 import org.apereo.cas.adaptors.duo.authn.DuoSecurityMultifactorAuthenticationProvider;
-import org.apereo.cas.configuration.model.support.mfa.DuoSecurityMultifactorAuthenticationProperties;
+import org.apereo.cas.configuration.model.support.mfa.duo.DuoSecurityMultifactorAuthenticationProperties;
 import org.apereo.cas.util.spring.ApplicationContextProvider;
 
 import lombok.val;
@@ -20,11 +20,11 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@Tag("MFAProvider")
-public class DuoSecurityHealthIndicatorTests {
+@Tag("DuoSecurity")
+class DuoSecurityHealthIndicatorTests {
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
         ApplicationContextProvider.holdApplicationContext(applicationContext);
@@ -43,7 +43,7 @@ public class DuoSecurityHealthIndicatorTests {
         val indicator = new DuoSecurityHealthIndicator(applicationContext);
         val health = indicator.health();
         assertNotNull(health);
-        assertEquals(health.getStatus(), Status.UP);
+        assertEquals(Status.UP, health.getStatus());
         assertTrue(health.getDetails().containsKey("duoApiHost"));
     }
 }

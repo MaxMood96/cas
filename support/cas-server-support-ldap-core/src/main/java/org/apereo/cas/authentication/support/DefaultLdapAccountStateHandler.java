@@ -12,9 +12,9 @@ import org.apereo.cas.authentication.support.password.PasswordPolicyContext;
 import org.apereo.cas.util.DateTimeUtils;
 
 import lombok.Setter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.jooq.lambda.Unchecked;
 import org.ldaptive.auth.AccountState;
 import org.ldaptive.auth.AuthenticationResponse;
 import org.ldaptive.auth.ext.ActiveDirectoryAccountState;
@@ -30,6 +30,7 @@ import javax.security.auth.login.AccountNotFoundException;
 import javax.security.auth.login.CredentialExpiredException;
 import javax.security.auth.login.FailedLoginException;
 import javax.security.auth.login.LoginException;
+
 import java.io.Serializable;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -52,7 +53,7 @@ public class DefaultLdapAccountStateHandler implements AuthenticationAccountStat
     /**
      * Map of account state error to CAS authentication exception.
      */
-    protected Map<AccountState.Error, LoginException> errorMap;
+    protected final Map<AccountState.Error, LoginException> errorMap;
 
     @Setter
     private Map<String, Class<? extends LoginException>> attributesToErrorMap = new LinkedCaseInsensitiveMap<>(DEFAULT_ERROR_COUNT);
@@ -167,8 +168,6 @@ public class DefaultLdapAccountStateHandler implements AuthenticationAccountStat
      */
     protected void handleWarning(final AccountState.Warning warning, final AuthenticationResponse response,
                                  final PasswordPolicyContext configuration, final List<MessageDescriptor> messages) {
-
-
         LOGGER.debug("Handling account state warning [{}]", warning);
         if (warning == null) {
             LOGGER.debug("Account state warning not defined");
@@ -179,9 +178,8 @@ public class DefaultLdapAccountStateHandler implements AuthenticationAccountStat
             val expDate = DateTimeUtils.zonedDateTimeOf(warning.getExpiration());
             val ttl = ZonedDateTime.now(ZoneOffset.UTC).until(expDate, ChronoUnit.DAYS);
             LOGGER.debug("Password expires in [{}] days. Expiration warning threshold is [{}] days.",
-                ttl,
-                configuration.getPasswordWarningNumberOfDays());
-            if (configuration.isAlwaysDisplayPasswordExpirationWarning() || ttl < configuration.getPasswordWarningNumberOfDays()) {
+                ttl, configuration.getPasswordWarningNumberOfDays());
+            if (configuration.isAlwaysDisplayPasswordExpirationWarning() || (ttl >= 0 && ttl < configuration.getPasswordWarningNumberOfDays())) {
                 messages.add(new PasswordExpiringWarningMessageDescriptor("Password expires in {0} days.", ttl));
             }
         } else {
@@ -202,14 +200,14 @@ public class DefaultLdapAccountStateHandler implements AuthenticationAccountStat
      * This handles ad-hoc password policies.
      *
      * @param response the authentication response.
+     * @throws LoginException the login exception
      */
-    @SneakyThrows
-    protected void handlePolicyAttributes(final AuthenticationResponse response) {
+    protected void handlePolicyAttributes(final AuthenticationResponse response) throws LoginException {
         val attributes = response.getLdapEntry().getAttributes();
         for (val attr : attributes) {
             if (this.attributesToErrorMap.containsKey(attr.getName()) && Boolean.parseBoolean(attr.getStringValue())) {
                 val clazz = this.attributesToErrorMap.get(attr.getName());
-                throw clazz.getDeclaredConstructor().newInstance();
+                throw Unchecked.supplier(() -> clazz.getDeclaredConstructor().newInstance()).get();
             }
         }
     }

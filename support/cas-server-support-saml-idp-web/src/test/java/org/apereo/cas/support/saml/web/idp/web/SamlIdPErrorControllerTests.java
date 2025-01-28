@@ -12,10 +12,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.5.0
  */
-@Tag("SAML")
-public class SamlIdPErrorControllerTests {
+@Tag("SAML2Web")
+class SamlIdPErrorControllerTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val ctrl = new SamlIdPErrorController();
         assertNotNull(ctrl.handleRequest());
     }

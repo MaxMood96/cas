@@ -6,20 +6,19 @@ import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.mfa.simple.ticket.CasSimpleMultifactorAuthenticationTicket;
 import org.apereo.cas.mfa.simple.ticket.CasSimpleMultifactorAuthenticationTicketFactory;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.ticket.ExpirationPolicy;
 import org.apereo.cas.ticket.expiration.HardTimeoutExpirationPolicy;
 import org.apereo.cas.util.CollectionUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import java.util.HashMap;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -31,13 +30,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(classes = BaseCasSimpleMultifactorAuthenticationTests.SharedTestConfiguration.class)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("MFAProvider")
-public class CasSimpleMultifactorAuthenticationTicketFactoryTests extends BaseAbstractMultifactorAuthenticationProviderTests {
+@ExtendWith(CasTestExtension.class)
+class CasSimpleMultifactorAuthenticationTicketFactoryTests extends BaseAbstractMultifactorAuthenticationProviderTests {
     @Autowired
     @Qualifier("casSimpleMultifactorAuthenticationTicketFactory")
     private CasSimpleMultifactorAuthenticationTicketFactory ticketFactory;
 
     @Test
-    public void verifyExpirationPolicy() {
+    void verifyExpirationPolicy() throws Throwable {
         val factory = (CasSimpleMultifactorAuthenticationTicketFactory) this.ticketFactory.get(CasSimpleMultifactorAuthenticationTicket.class);
         val ticket = factory.create(RegisteredServiceTestUtils.getService("example"), new HashMap<>(0));
         assertNotNull(ticket);
@@ -45,7 +45,7 @@ public class CasSimpleMultifactorAuthenticationTicketFactoryTests extends BaseAb
     }
 
     @Test
-    public void verifyCustomExpirationPolicy() {
+    void verifyCustomExpirationPolicy() throws Throwable {
         val factory = (CasSimpleMultifactorAuthenticationTicketFactory) this.ticketFactory.get(CasSimpleMultifactorAuthenticationTicket.class);
         val ticket = factory.create(RegisteredServiceTestUtils.getService("example"),
             CollectionUtils.wrap(ExpirationPolicy.class.getName(),

@@ -5,25 +5,32 @@ import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.authorization.EndpointLdapAuthenticationProvider;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.configuration.model.core.monitor.LdapSecurityActuatorEndpointsMonitorProperties;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.LdapUtils;
-import org.apereo.cas.util.spring.BeanContainer;
-
+import org.apereo.cas.util.function.FunctionUtils;
+import org.apereo.cas.util.spring.beans.BeanContainer;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
+import org.apereo.cas.web.CasWebSecurityConfigurer;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.config.SetFactoryBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
-
-import java.util.HashSet;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import java.util.stream.Collectors;
 
 /**
  * This is {@link LdapAuthenticationConfiguration} that attempts to create
@@ -35,48 +42,50 @@ import java.util.HashSet;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Slf4j
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.LDAP, module = "authentication")
 @Configuration(value = "LdapAuthenticationConfiguration", proxyBeanMethods = false)
-public class LdapAuthenticationConfiguration {
+class LdapAuthenticationConfiguration {
 
-    @ConditionalOnMissingBean(name = "ldapPrincipalFactory")
-    @Bean
-    @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-    public PrincipalFactory ldapPrincipalFactory() {
-        return PrincipalFactoryUtils.newPrincipalFactory();
-    }
-
-    @Bean
-    public SetFactoryBean ldapAuthenticationHandlerSetFactoryBean() {
-        return LdapUtils.createLdapAuthenticationFactoryBean();
+    @Configuration(value = "LdapCoreAuthenticationConfiguration", proxyBeanMethods = false)
+    @EnableConfigurationProperties(CasConfigurationProperties.class)
+    static class LdapCoreAuthenticationConfiguration {
+        @ConditionalOnMissingBean(name = "ldapPrincipalFactory")
+        @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public PrincipalFactory ldapPrincipalFactory() {
+            return PrincipalFactoryUtils.newPrincipalFactory();
+        }
     }
 
     @Configuration(value = "LdapAuthenticationPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class LdapAuthenticationPlanConfiguration {
+    static class LdapAuthenticationPlanConfiguration {
         @Bean
+        @ConditionalOnMissingBean(name = "ldapAuthenticationHandlers")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public BeanContainer<AuthenticationHandler> ldapAuthenticationHandlers(
-            @Qualifier("ldapAuthenticationHandlerSetFactoryBean")
-            final SetFactoryBean ldapAuthenticationHandlerSetFactoryBean,
             final CasConfigurationProperties casProperties,
             final ConfigurableApplicationContext applicationContext,
             @Qualifier("ldapPrincipalFactory")
             final PrincipalFactory ldapPrincipalFactory,
             @Qualifier(ServicesManager.BEAN_NAME)
-            final ServicesManager servicesManager) throws Exception {
-            val handlers = new HashSet<AuthenticationHandler>();
-            casProperties.getAuthn().getLdap().stream().filter(l -> {
-                if (l.getType() == null || StringUtils.isBlank(l.getLdapUrl())) {
-                    LOGGER.warn("Skipping LDAP authentication entry since no type or LDAP url is defined");
-                    return false;
-                }
-                return true;
-            }).forEach(l -> {
-                val handler = LdapUtils.createLdapAuthenticationHandler(l, applicationContext, servicesManager, ldapPrincipalFactory);
-                handler.setState(l.getState());
-                handlers.add(handler);
-            });
-            ldapAuthenticationHandlerSetFactoryBean.getObject().addAll(handlers);
+            final ServicesManager servicesManager) {
+            val handlers = casProperties.getAuthn().getLdap()
+                .stream()
+                .filter(prop -> {
+                    if (prop.getType() == null || StringUtils.isBlank(prop.getLdapUrl())) {
+                        LOGGER.warn("Skipping LDAP authentication entry since no type or LDAP url is defined");
+                        return false;
+                    }
+                    return true;
+                }).map(prop -> {
+                    val handler = LdapUtils.createLdapAuthenticationHandler(prop,
+                        applicationContext, servicesManager, ldapPrincipalFactory);
+                    handler.setState(prop.getState());
+                    return handler;
+                })
+                .collect(Collectors.toList());
+
             return BeanContainer.of(handlers);
         }
 
@@ -87,11 +96,70 @@ public class LdapAuthenticationConfiguration {
             @Qualifier("ldapAuthenticationHandlers")
             final BeanContainer<AuthenticationHandler> ldapAuthenticationHandlers,
             @Qualifier(PrincipalResolver.BEAN_NAME_PRINCIPAL_RESOLVER)
-            final PrincipalResolver defaultPrincipalResolver) throws Exception {
+            final PrincipalResolver defaultPrincipalResolver) {
             return plan -> ldapAuthenticationHandlers.toList().forEach(handler -> {
                 LOGGER.info("Registering LDAP authentication for [{}]", handler.getName());
                 plan.registerAuthenticationHandlerWithPrincipalResolver(handler, defaultPrincipalResolver);
             });
+        }
+    }
+
+
+    @Configuration(value = "LdapSpringSecurityAuthenticationConfiguration", proxyBeanMethods = false)
+    @EnableConfigurationProperties(CasConfigurationProperties.class)
+    static class LdapSpringSecurityAuthenticationConfiguration {
+        @Bean
+        @ConditionalOnMissingBean(name = "ldapHttpWebSecurityConfigurer")
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public CasWebSecurityConfigurer<HttpSecurity> ldapHttpWebSecurityConfigurer(
+            final SecurityProperties securityProperties,
+            final CasConfigurationProperties casProperties) {
+            return new LdapHttpSecurityCasWebSecurityConfigurer(casProperties, securityProperties);
+        }
+
+        @RequiredArgsConstructor
+        private static final class LdapHttpSecurityCasWebSecurityConfigurer implements CasWebSecurityConfigurer<HttpSecurity> {
+            private final CasConfigurationProperties casProperties;
+            private final SecurityProperties securityProperties;
+
+            private EndpointLdapAuthenticationProvider endpointLdapAuthenticationProvider;
+
+            @Override
+            public void destroy() {
+                FunctionUtils.doIfNotNull(endpointLdapAuthenticationProvider, EndpointLdapAuthenticationProvider::destroy);
+            }
+
+            @Override
+            @CanIgnoreReturnValue
+            public CasWebSecurityConfigurer<HttpSecurity> configure(final HttpSecurity http) {
+                val ldap = casProperties.getMonitor().getEndpoints().getLdap();
+                if (StringUtils.isNotBlank(ldap.getLdapUrl()) && StringUtils.isNotBlank(ldap.getSearchFilter())) {
+                    configureLdapAuthenticationProvider(http, ldap);
+                } else {
+                    LOGGER.trace("No LDAP url or search filter is defined to enable LDAP authentication");
+                }
+                return this;
+            }
+
+            private void configureLdapAuthenticationProvider(final HttpSecurity http,
+                                                             final LdapSecurityActuatorEndpointsMonitorProperties ldap) {
+                if (isLdapAuthorizationActive()) {
+                    val connectionFactory = LdapUtils.newLdaptiveConnectionFactory(ldap);
+                    val authenticator = LdapUtils.newLdaptiveAuthenticator(ldap);
+                    this.endpointLdapAuthenticationProvider = new EndpointLdapAuthenticationProvider(ldap,
+                        securityProperties, connectionFactory, authenticator);
+                    http.authenticationProvider(endpointLdapAuthenticationProvider);
+                }
+            }
+
+            private boolean isLdapAuthorizationActive() {
+                val ldap = casProperties.getMonitor().getEndpoints().getLdap();
+                return StringUtils.isNotBlank(ldap.getBaseDn())
+                    && StringUtils.isNotBlank(ldap.getLdapUrl())
+                    && StringUtils.isNotBlank(ldap.getSearchFilter())
+                    && (StringUtils.isNotBlank(ldap.getLdapAuthz().getRoleAttribute())
+                    || StringUtils.isNotBlank(ldap.getLdapAuthz().getGroupAttribute()));
+            }
         }
     }
 }

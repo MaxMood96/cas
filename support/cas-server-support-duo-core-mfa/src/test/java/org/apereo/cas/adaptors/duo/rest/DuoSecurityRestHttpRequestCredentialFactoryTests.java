@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("MFAProvider")
-public class DuoSecurityRestHttpRequestCredentialFactoryTests {
+@Tag("DuoSecurity")
+class DuoSecurityRestHttpRequestCredentialFactoryTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val factory = new DuoSecurityRestHttpRequestCredentialFactory();
         val request = new MockHttpServletRequest();
 
@@ -39,12 +39,12 @@ public class DuoSecurityRestHttpRequestCredentialFactoryTests {
         body.put(DuoSecurityRestHttpRequestCredentialFactory.PARAMETER_NAME_PROVIDER, List.of("custom-duo"));
         var credentials = factory.fromRequest(request, body);
         assertFalse(credentials.isEmpty());
-        var credential = (DuoSecurityPasscodeCredential) credentials.get(0);
-        assertEquals(credential.getProviderId(), "custom-duo");
+        var credential = (DuoSecurityPasscodeCredential) credentials.getFirst();
+        assertEquals("custom-duo", credential.getProviderId());
 
         credentials = factory.fromAuthentication(request, body, CoreAuthenticationTestUtils.getAuthentication(),
             new TestMultifactorAuthenticationProvider());
-        val directCredential = (DuoSecurityDirectCredential) credentials.get(0);
+        val directCredential = (DuoSecurityDirectCredential) credentials.getFirst();
         assertEquals(TestMultifactorAuthenticationProvider.ID, directCredential.getProviderId());
         assertNotNull(directCredential.getPrincipal());
     }

@@ -2,13 +2,13 @@ package org.apereo.cas.support.inwebo.config;
 
 import org.apereo.cas.authentication.bypass.MultifactorAuthenticationProviderBypassEvaluator;
 import org.apereo.cas.support.inwebo.service.InweboService;
-
+import org.apereo.cas.test.CasTestExtension;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -30,7 +30,8 @@ import static org.junit.jupiter.api.Assertions.*;
         "cas.authn.mfa.inwebo.bypass.rest.url=http://localhost:8080/bypass"
     })
 @Tag("MFAProvider")
-public class InweboConfigurationTests {
+@ExtendWith(CasTestExtension.class)
+class InweboConfigurationTests {
      @Autowired
      @Qualifier("inweboService")
      private InweboService inweboService;
@@ -40,7 +41,7 @@ public class InweboConfigurationTests {
     private MultifactorAuthenticationProviderBypassEvaluator inweboBypassEvaluator;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(inweboBypassEvaluator);
         assertNotNull(inweboService);
     }

@@ -2,17 +2,16 @@ package org.apereo.cas.support.saml;
 
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.util.RandomUtils;
-
 import lombok.experimental.UtilityClass;
 import lombok.val;
 import org.opensaml.saml.common.SAMLObjectBuilder;
 import org.opensaml.saml.saml2.core.AuthnRequest;
 import org.opensaml.saml.saml2.core.Issuer;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
 import java.util.Objects;
 
 /**
@@ -48,6 +47,7 @@ public class SamlIdPTestUtils {
 
         val request = new MockHttpServletRequest();
         request.addParameter(SamlProtocolConstants.PARAMETER_ENTITY_ID, registeredService.getServiceId());
+        request.addHeader(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; WOW64)");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request, new MockHttpServletResponse()));
         return registeredService;
     }
@@ -64,6 +64,7 @@ public class SamlIdPTestUtils {
         var builder = (SAMLObjectBuilder) openSamlConfigBean.getBuilderFactory()
             .getBuilder(AuthnRequest.DEFAULT_ELEMENT_NAME);
         var authnRequest = (AuthnRequest) Objects.requireNonNull(builder).buildObject();
+        authnRequest.setID("abcdefg1234567890");
         builder = (SAMLObjectBuilder) openSamlConfigBean.getBuilderFactory()
             .getBuilder(Issuer.DEFAULT_ELEMENT_NAME);
         val issuer = (Issuer) Objects.requireNonNull(builder).buildObject();

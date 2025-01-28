@@ -3,18 +3,22 @@ package org.apereo.cas.config;
 import org.apereo.cas.authentication.CasSSLContext;
 import org.apereo.cas.authentication.DefaultCasSSLContext;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.support.Beans;
+import org.apereo.cas.util.http.HttpClient;
 import org.apereo.cas.util.http.SimpleHttpClient;
 import org.apereo.cas.util.http.SimpleHttpClientFactoryBean;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.conn.ssl.DefaultHostnameVerifier;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.message.BasicHeader;
+import org.apache.hc.client5.http.socket.LayeredConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.DefaultHostnameVerifier;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.message.BasicHeader;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -27,6 +31,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 
 import javax.net.ssl.HostnameVerifier;
+
 import java.util.ArrayList;
 
 /**
@@ -35,34 +40,33 @@ import java.util.ArrayList;
  * @author Misagh Moayyed
  * @since 5.1.0
  */
-@Configuration(value = "CasCoreHttpConfiguration", proxyBeanMethods = false)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-@Order(value = Ordered.HIGHEST_PRECEDENCE)
-public class CasCoreHttpConfiguration {
+@Order(Ordered.HIGHEST_PRECEDENCE)
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.Core)
+@Configuration(value = "CasCoreHttpConfiguration", proxyBeanMethods = false)
+class CasCoreHttpConfiguration {
 
     @Configuration(value = "CasCoreHttpSslFactoryConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreHttpSslFactoryConfiguration {
+    static class CasCoreHttpSslFactoryConfiguration {
         @ConditionalOnMissingBean(name = "trustStoreSslSocketFactory")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public SSLConnectionSocketFactory trustStoreSslSocketFactory(
-            @Qualifier(CasSSLContext.BEAN_NAME)
-            final CasSSLContext casSslContext,
-            @Qualifier("hostnameVerifier")
-            final HostnameVerifier hostnameVerifier) {
+        public LayeredConnectionSocketFactory trustStoreSslSocketFactory(
+            @Qualifier(CasSSLContext.BEAN_NAME) final CasSSLContext casSslContext,
+            @Qualifier("hostnameVerifier") final HostnameVerifier hostnameVerifier) {
             return new SSLConnectionSocketFactory(casSslContext.getSslContext(), hostnameVerifier);
         }
     }
 
     @Configuration(value = "CasCoreHttpHostnameConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreHttpHostnameConfiguration {
+    static class CasCoreHttpHostnameConfiguration {
         @ConditionalOnMissingBean(name = "hostnameVerifier")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public HostnameVerifier hostnameVerifier(final CasConfigurationProperties casProperties) {
-            if (casProperties.getHttpClient().getHostNameVerifier().equalsIgnoreCase("none")) {
+            if ("none".equalsIgnoreCase(casProperties.getHttpClient().getHostNameVerifier())) {
                 return NoopHostnameVerifier.INSTANCE;
             }
             return new DefaultHostnameVerifier();
@@ -71,20 +75,19 @@ public class CasCoreHttpConfiguration {
 
     @Configuration(value = "CasCoreHttpTlsConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreHttpTlsConfiguration {
+    static class CasCoreHttpTlsConfiguration {
         @ConditionalOnMissingBean(name = CasSSLContext.BEAN_NAME)
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public CasSSLContext casSslContext(
-            @Qualifier("hostnameVerifier")
-            final HostnameVerifier hostnameVerifier,
+            @Qualifier("hostnameVerifier") final HostnameVerifier hostnameVerifier,
             final CasConfigurationProperties casProperties) throws Exception {
             val client = casProperties.getHttpClient().getTruststore();
             if (client.getFile() != null && client.getFile().exists() && StringUtils.isNotBlank(client.getPsw())) {
                 return new DefaultCasSSLContext(client.getFile(), client.getPsw(),
                     client.getType(), casProperties.getHttpClient(), hostnameVerifier);
             }
-            if (casProperties.getHttpClient().getHostNameVerifier().equalsIgnoreCase("none")) {
+            if ("none".equalsIgnoreCase(casProperties.getHttpClient().getHostNameVerifier())) {
                 return CasSSLContext.disabled();
             }
             return CasSSLContext.system();
@@ -93,86 +96,70 @@ public class CasCoreHttpConfiguration {
 
     @Configuration(value = "CasCoreHttpClientConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreHttpClientConfiguration {
+    static class CasCoreHttpClientConfiguration {
         private static SimpleHttpClientFactoryBean buildHttpClientFactoryBean(
             final CasSSLContext casSslContext,
-            final HostnameVerifier hostnameVerifier,
-            final SSLConnectionSocketFactory trustStoreSslSocketFactory,
+            final LayeredConnectionSocketFactory trustStoreSslSocketFactory,
             final CasConfigurationProperties casProperties) {
-            val c = new SimpleHttpClientFactoryBean.DefaultHttpClient();
+            val client = new SimpleHttpClientFactoryBean.DefaultHttpClient();
 
             val httpClient = casProperties.getHttpClient();
-            c.setConnectionTimeout(Beans.newDuration(httpClient.getConnectionTimeout()).toMillis());
-            c.setReadTimeout((int) Beans.newDuration(httpClient.getReadTimeout()).toMillis());
+            client.setConnectionTimeout(Beans.newDuration(httpClient.getConnectionTimeout()).toMillis());
+            client.setSocketTimeout(Beans.newDuration(httpClient.getSocketTimeout()).toMillis());
+            client.setResponseTimeout(Beans.newDuration(httpClient.getResponseTimeout()).toMillis());
 
             if (StringUtils.isNotBlank(httpClient.getProxyHost()) && httpClient.getProxyPort() > 0) {
-                c.setProxy(new HttpHost(httpClient.getProxyHost(), httpClient.getProxyPort()));
+                client.setProxy(new HttpHost(httpClient.getProxyHost(), httpClient.getProxyPort()));
             }
-            c.setSslSocketFactory(trustStoreSslSocketFactory);
-            c.setHostnameVerifier(hostnameVerifier);
-            c.setSslContext(casSslContext.getSslContext());
-            c.setTrustManagers(casSslContext.getTrustManagers());
+            client.setSslContext(casSslContext.getSslContext());
+            client.setSslSocketFactory(trustStoreSslSocketFactory);
+            client.setTrustManagers(casSslContext.getTrustManagers());
+
             val defaultHeaders = new ArrayList<Header>();
             httpClient.getDefaultHeaders().forEach((name, value) -> defaultHeaders.add(new BasicHeader(name, value)));
-            c.setDefaultHeaders(defaultHeaders);
+            client.setDefaultHeaders(defaultHeaders);
 
-            return c;
+            return client;
         }
 
         private static SimpleHttpClient getHttpClient(final boolean redirectEnabled,
-                                                final CasSSLContext casSslContext,
-                                                final HostnameVerifier hostnameVerifier,
-                                                final SSLConnectionSocketFactory trustStoreSslSocketFactory,
-                                                final CasConfigurationProperties casProperties) throws Exception {
-            val c = buildHttpClientFactoryBean(casSslContext, hostnameVerifier, trustStoreSslSocketFactory, casProperties);
-            c.setRedirectsEnabled(redirectEnabled);
-            c.setCircularRedirectsAllowed(redirectEnabled);
-            return c.getObject();
+                                                      final CasSSLContext casSslContext,
+                                                      final LayeredConnectionSocketFactory trustStoreSslSocketFactory,
+                                                      final CasConfigurationProperties casProperties) {
+            val factoryBean = buildHttpClientFactoryBean(casSslContext, trustStoreSslSocketFactory, casProperties);
+            factoryBean.setRedirectsEnabled(redirectEnabled);
+            factoryBean.setCircularRedirectsAllowed(redirectEnabled);
+            return factoryBean.getObject();
         }
 
-        @ConditionalOnMissingBean(name = "httpClient")
+        @ConditionalOnMissingBean(name = HttpClient.BEAN_NAME_HTTPCLIENT)
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public FactoryBean<SimpleHttpClient> httpClient(
-            @Qualifier(CasSSLContext.BEAN_NAME)
-            final CasSSLContext casSslContext,
-            @Qualifier("hostnameVerifier")
-            final HostnameVerifier hostnameVerifier,
-            @Qualifier("trustStoreSslSocketFactory")
-            final SSLConnectionSocketFactory trustStoreSslSocketFactory,
-            final CasConfigurationProperties casProperties) throws Exception {
-            return buildHttpClientFactoryBean(casSslContext, hostnameVerifier,
-                trustStoreSslSocketFactory, casProperties);
+            @Qualifier(CasSSLContext.BEAN_NAME) final CasSSLContext casSslContext,
+            @Qualifier("trustStoreSslSocketFactory") final LayeredConnectionSocketFactory trustStoreSslSocketFactory,
+            final CasConfigurationProperties casProperties) {
+            return buildHttpClientFactoryBean(casSslContext, trustStoreSslSocketFactory, casProperties);
         }
 
-        @ConditionalOnMissingBean(name = "noRedirectHttpClient")
+        @ConditionalOnMissingBean(name = HttpClient.BEAN_NAME_HTTPCLIENT_NO_REDIRECT)
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public SimpleHttpClient noRedirectHttpClient(
-            @Qualifier(CasSSLContext.BEAN_NAME)
-            final CasSSLContext casSslContext,
-            @Qualifier("hostnameVerifier")
-            final HostnameVerifier hostnameVerifier,
-            @Qualifier("trustStoreSslSocketFactory")
-            final SSLConnectionSocketFactory trustStoreSslSocketFactory,
-            final CasConfigurationProperties casProperties) throws Exception {
-            return getHttpClient(false, casSslContext, hostnameVerifier,
-                trustStoreSslSocketFactory, casProperties);
+        public HttpClient noRedirectHttpClient(
+            @Qualifier(CasSSLContext.BEAN_NAME) final CasSSLContext casSslContext,
+            @Qualifier("trustStoreSslSocketFactory") final LayeredConnectionSocketFactory trustStoreSslSocketFactory,
+            final CasConfigurationProperties casProperties) {
+            return getHttpClient(false, casSslContext, trustStoreSslSocketFactory, casProperties);
         }
 
-        @ConditionalOnMissingBean(name = "supportsTrustStoreSslSocketFactoryHttpClient")
+        @ConditionalOnMissingBean(name = HttpClient.BEAN_NAME_HTTPCLIENT_TRUST_STORE)
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public SimpleHttpClient supportsTrustStoreSslSocketFactoryHttpClient(
-            @Qualifier(CasSSLContext.BEAN_NAME)
-            final CasSSLContext casSslContext,
-            @Qualifier("hostnameVerifier")
-            final HostnameVerifier hostnameVerifier,
-            @Qualifier("trustStoreSslSocketFactory")
-            final SSLConnectionSocketFactory trustStoreSslSocketFactory,
-            final CasConfigurationProperties casProperties) throws Exception {
-            return getHttpClient(true, casSslContext, hostnameVerifier,
-                trustStoreSslSocketFactory, casProperties);
+        public HttpClient supportsTrustStoreSslSocketFactoryHttpClient(
+            @Qualifier(CasSSLContext.BEAN_NAME) final CasSSLContext casSslContext,
+            @Qualifier("trustStoreSslSocketFactory") final LayeredConnectionSocketFactory trustStoreSslSocketFactory,
+            final CasConfigurationProperties casProperties) {
+            return getHttpClient(true, casSslContext, trustStoreSslSocketFactory, casProperties);
         }
     }
 }

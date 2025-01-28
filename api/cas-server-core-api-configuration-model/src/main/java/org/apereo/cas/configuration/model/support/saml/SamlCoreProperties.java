@@ -3,11 +3,11 @@ package org.apereo.cas.configuration.model.support.saml;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -20,9 +20,10 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("SamlCoreProperties")
+
 public class SamlCoreProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -8505851926931247878L;
 
     /**
@@ -34,7 +35,8 @@ public class SamlCoreProperties implements Serializable {
     /**
      * Issue length that controls the validity period of the assertion.
      */
-    private int issueLength = 30;
+    @DurationCapable
+    private String issueLength = "PT30S";
 
     /**
      * Attribute namespace to use when generating SAML1 responses.

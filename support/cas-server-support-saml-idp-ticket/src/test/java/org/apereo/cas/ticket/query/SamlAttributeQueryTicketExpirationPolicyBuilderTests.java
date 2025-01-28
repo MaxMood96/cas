@@ -1,7 +1,7 @@
 package org.apereo.cas.ticket.query;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.ticket.TicketState;
+import org.apereo.cas.ticket.TicketGrantingTicketAwareTicket;
 
 import lombok.val;
 import org.junit.jupiter.api.Tag;
@@ -20,25 +20,27 @@ import static org.mockito.Mockito.*;
  * @since 6.5.0
  */
 @Tag("ExpirationPolicy")
-public class SamlAttributeQueryTicketExpirationPolicyBuilderTests {
+class SamlAttributeQueryTicketExpirationPolicyBuilderTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val properties = new CasConfigurationProperties();
-        properties.getAuthn().getSamlIdp().getTicket().getAttributeQuery().setTimeToKillInSeconds(5);
+        properties.getAuthn().getSamlIdp().getTicket().getAttributeQuery().setTimeToKillInSeconds(15);
         val builder = new SamlAttributeQueryTicketExpirationPolicyBuilder(properties);
-        val ticket = mock(TicketState.class);
+
+        val ticket = mock(TicketGrantingTicketAwareTicket.class);
         when(ticket.getCreationTime()).thenReturn(ZonedDateTime.now(Clock.systemUTC()).plusSeconds(2));
         assertFalse(builder.toTicketExpirationPolicy().isExpired(ticket));
-        when(ticket.getCreationTime()).thenReturn(ZonedDateTime.now(Clock.systemUTC()).minusSeconds(10));
+
+        when(ticket.getCreationTime()).thenReturn(ZonedDateTime.now(Clock.systemUTC()).minusSeconds(30));
         assertTrue(builder.toTicketExpirationPolicy().isExpired(ticket));
     }
 
     @Test
-    public void verifyNeverExpiresOperation() {
+    void verifyNeverExpiresOperation() {
         val properties = new CasConfigurationProperties();
         properties.getAuthn().getSamlIdp().getTicket().getAttributeQuery().setTimeToKillInSeconds(0);
         val builder = new SamlAttributeQueryTicketExpirationPolicyBuilder(properties);
-        val ticket = mock(TicketState.class);
+        val ticket = mock(TicketGrantingTicketAwareTicket.class);
         when(ticket.getCreationTime()).thenReturn(ZonedDateTime.now(Clock.systemUTC()).minusDays(2));
         assertFalse(builder.toTicketExpirationPolicy().isExpired(ticket));
     }

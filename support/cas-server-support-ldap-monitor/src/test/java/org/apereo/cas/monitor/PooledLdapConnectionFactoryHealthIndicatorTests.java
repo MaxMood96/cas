@@ -1,12 +1,14 @@
 package org.apereo.cas.monitor;
 
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.monitor.config.LdapMonitorConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasLdapMonitorAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ListFactoryBean;
@@ -14,10 +16,6 @@ import org.springframework.boot.actuate.health.CompositeHealthContributor;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
-import java.util.stream.Collectors;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -26,18 +24,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Marvin S. Addison
  * @since 4.0.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    LdapMonitorConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    RefreshAutoConfiguration.class
+    CasLdapMonitorAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class
 },
     properties = {
         "cas.monitor.ldap[0].ldap-url=ldap://localhost:10389",
         "cas.monitor.ldap[0].name=LDAP"
     })
 @Tag("Ldap")
-@EnabledIfPortOpen(port = 10389)
-public class PooledLdapConnectionFactoryHealthIndicatorTests {
+@ExtendWith(CasTestExtension.class)
+@EnabledIfListeningOnPort(port = 10389)
+class PooledLdapConnectionFactoryHealthIndicatorTests {
     @Autowired
     @Qualifier("pooledLdapConnectionFactoryHealthIndicator")
     private CompositeHealthContributor monitor;
@@ -47,13 +46,12 @@ public class PooledLdapConnectionFactoryHealthIndicatorTests {
     private ListFactoryBean pooledLdapConnectionFactoryHealthIndicatorListFactoryBean;
 
     @Test
-    public void verifyObserve() throws Exception {
+    void verifyObserve() throws Throwable {
         val results = monitor.stream()
-            .map(it -> HealthIndicator.class.cast(it.getContributor()))
-            .map(it -> it.health().getStatus())
-            .collect(Collectors.toList());
+            .map(it -> (HealthIndicator) it.getContributor())
+            .map(it -> it.health().getStatus()).toList();
         assertFalse(results.isEmpty());
-        assertEquals(Status.UP, results.get(0));
+        assertEquals(Status.UP, results.getFirst());
         pooledLdapConnectionFactoryHealthIndicatorListFactoryBean.destroy();
     }
 }

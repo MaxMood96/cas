@@ -2,12 +2,12 @@ package org.apereo.cas.configuration.model.core.authentication;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,9 +22,10 @@ import java.util.List;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("AuthenticationExceptionsProperties")
+
 public class AuthenticationExceptionsProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -2385347572099983874L;
 
     /**

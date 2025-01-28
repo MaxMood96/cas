@@ -11,6 +11,8 @@ import org.apereo.cas.authentication.audit.SurrogateAuthenticationEligibilityAud
 import org.apereo.cas.authentication.audit.SurrogateEligibilitySelectionAuditResourceResolver;
 import org.apereo.cas.authentication.audit.SurrogateEligibilityVerificationAuditResourceResolver;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -30,13 +32,15 @@ import org.springframework.context.annotation.ScopedProxyMode;
  * @author Dmitriy Kopylenko
  * @since 5.3.0
  */
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.SurrogateAuthentication)
 @Configuration(value = "SurrogateAuthenticationAuditConfiguration", proxyBeanMethods = false)
-public class SurrogateAuthenticationAuditConfiguration {
+class SurrogateAuthenticationAuditConfiguration {
 
     @Configuration(value = "SurrogateAuthenticationAuditPrincipalConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SurrogateAuthenticationAuditPrincipalConfiguration {
+    static class SurrogateAuthenticationAuditPrincipalConfiguration {
         @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "surrogateAuditPrincipalIdProvider")
         public AuditPrincipalIdProvider surrogateAuditPrincipalIdProvider() {
             return new SurrogateAuditPrincipalIdProvider();
@@ -46,7 +50,7 @@ public class SurrogateAuthenticationAuditConfiguration {
 
     @Configuration(value = "SurrogateAuthenticationAuditExecutionConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SurrogateAuthenticationAuditExecutionConfiguration {
+    static class SurrogateAuthenticationAuditExecutionConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "surrogateEligibilityAuditableExecution")
@@ -57,7 +61,7 @@ public class SurrogateAuthenticationAuditConfiguration {
 
     @Configuration(value = "SurrogateAuthenticationAuditResourcesConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SurrogateAuthenticationAuditResourcesConfiguration {
+    static class SurrogateAuthenticationAuditResourcesConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "surrogateEligibilityVerificationAuditResourceResolver")
@@ -66,6 +70,7 @@ public class SurrogateAuthenticationAuditConfiguration {
         }
 
         @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "surrogateEligibilitySelectionAuditResourceResolver")
         public AuditResourceResolver surrogateEligibilitySelectionAuditResourceResolver() {
             return new SurrogateEligibilitySelectionAuditResourceResolver();
@@ -75,8 +80,9 @@ public class SurrogateAuthenticationAuditConfiguration {
 
     @Configuration(value = "SurrogateAuthenticationAuditPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SurrogateAuthenticationAuditPlanConfiguration {
+    static class SurrogateAuthenticationAuditPlanConfiguration {
         @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "surrogateAuditTrailRecordResolutionPlanConfigurer")
         public AuditTrailRecordResolutionPlanConfigurer surrogateAuditTrailRecordResolutionPlanConfigurer(
             @Qualifier("surrogateEligibilityVerificationAuditResourceResolver")

@@ -2,30 +2,31 @@ package org.apereo.cas.adaptors.duo.web.flow.action;
 
 import org.apereo.cas.BaseCasWebflowMultifactorAuthenticationTests;
 import org.apereo.cas.adaptors.duo.BaseDuoSecurityTests;
-import org.apereo.cas.authentication.MultifactorAuthenticationPrincipalResolver;
-import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
+import org.apereo.cas.authentication.MultifactorAuthenticationUtils;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.model.support.mfa.duo.DuoSecurityMultifactorAuthenticationProperties;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
-import org.apereo.cas.util.spring.ApplicationContextProvider;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.web.BrowserStorage;
+import org.apereo.cas.web.flow.CasWebflowConstants;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
-
+import com.nimbusds.jwt.SignedJWT;
 import lombok.val;
+import org.apache.hc.core5.net.URIBuilder;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
-
+import java.util.List;
+import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -34,46 +35,67 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.3.0
  */
-@SpringBootTest(classes = BaseDuoSecurityTests.SharedTestConfiguration.class,
-    properties = {
-        "cas.authn.mfa.duo[0].duo-secret-key=Q2IU2i8BFNd6VYflZT8Evl6lF7oPlj3PM15BmRU7",
-        "cas.authn.mfa.duo[0].duo-integration-key=DIOXVRZD2UMZ8XXMNFQ5",
-        "cas.authn.mfa.duo[0].trusted-device-enabled=true",
-        "cas.authn.mfa.duo[0].duo-api-host=theapi.duosecurity.com"
-    })
-@EnableConfigurationProperties(CasConfigurationProperties.class)
-@Tag("WebflowMfaActions")
-public class DuoSecurityUniversalPromptPrepareLoginActionTests extends BaseCasWebflowMultifactorAuthenticationTests {
-    @Autowired
-    @Qualifier("duoUniversalPromptPrepareLoginAction")
-    private Action duoUniversalPromptPrepareLoginAction;
+@Tag("DuoSecurity")
+@ExtendWith(CasTestExtension.class)
+class DuoSecurityUniversalPromptPrepareLoginActionTests {
 
-    @Autowired
-    private ConfigurableApplicationContext configurableApplicationContext;
-
-    @Test
-    public void verifyOperation() throws Exception {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
-
-        val identifier = casProperties.getAuthn().getMfa().getDuo().get(0).getId();
-        val provider = TestMultifactorAuthenticationProvider
-            .registerProviderIntoApplicationContext(applicationContext, new TestMultifactorAuthenticationProvider(identifier));
-        
-        configurableApplicationContext.getBeansOfType(MultifactorAuthenticationPrincipalResolver.class)
-            .forEach((key, value) -> ApplicationContextProvider.registerBeanIntoApplicationContext(applicationContext, value, key));
-
-        WebUtils.putAuthentication(RegisteredServiceTestUtils.getAuthentication(), context);
-        WebUtils.putRegisteredService(context, RegisteredServiceTestUtils.getRegisteredService());
-        WebUtils.putMultifactorAuthenticationProviderIdIntoFlowScope(context, provider);
-        val result = duoUniversalPromptPrepareLoginAction.execute(context);
-        assertNotNull(result);
-        assertNotNull(result.getAttributes().get("result"));
-        assertTrue(context.getFlowScope().contains("duoUniversalPromptLoginUrl"));
+    @SpringBootTest(classes = BaseDuoSecurityTests.SharedTestConfiguration.class,
+        properties = {
+            "cas.authn.mfa.duo[0].duo-secret-key=Q2IU2i8BFNd6VYflZT8Evl6lF7oPlj3PM15BmRU7",
+            "cas.authn.mfa.duo[0].duo-integration-key=DIOXVRZD2UMZ8XXMNFQ5",
+            "cas.authn.mfa.duo[0].trusted-device-enabled=true",
+            "cas.authn.mfa.duo[0].duo-api-host=theapi.duosecurity.com"
+        })
+    @EnableConfigurationProperties(CasConfigurationProperties.class)
+    private abstract static class BaseDuoSecurityUniversalPromptTests extends BaseCasWebflowMultifactorAuthenticationTests {
+        @Autowired
+        @Qualifier(CasWebflowConstants.ACTION_ID_DUO_UNIVERSAL_PROMPT_PREPARE_LOGIN)
+        protected Action duoUniversalPromptPrepareLoginAction;
     }
 
+    @Nested
+    class DefaultTests extends BaseDuoSecurityUniversalPromptTests {
+        @Test
+        void verifyOperation() throws Throwable {
+            val context = MockRequestContext.create(applicationContext);
+            val authentication = RegisteredServiceTestUtils.getAuthentication();
+            WebUtils.putAuthentication(authentication, context);
+            WebUtils.putAuthenticationResult(RegisteredServiceTestUtils.getAuthenticationResult(authentication.getPrincipal().getId()), context);
+            WebUtils.putRegisteredService(context, RegisteredServiceTestUtils.getRegisteredService());
+            val provider = MultifactorAuthenticationUtils.getMultifactorAuthenticationProviderById(
+                DuoSecurityMultifactorAuthenticationProperties.DEFAULT_IDENTIFIER, applicationContext).orElseThrow();
+            MultifactorAuthenticationWebflowUtils.putMultifactorAuthenticationProvider(context, provider);
+            val result = duoUniversalPromptPrepareLoginAction.execute(context);
+            assertNotNull(result);
+            assertNotNull(result.getAttributes().get("result"));
+            assertTrue(context.getFlowScope().contains("duoUniversalPromptLoginUrl"));
+        }
+    }
+    
+    @Nested
+    @TestPropertySource(properties = "cas.authn.mfa.duo[0].principal-attribute=email")
+    class PrincipalAttributeTests extends BaseDuoSecurityUniversalPromptTests {
+        @Test
+        void verifyOperation() throws Throwable {
+            val context = MockRequestContext.create(applicationContext);
+            val authentication = RegisteredServiceTestUtils.getAuthentication(
+                RegisteredServiceTestUtils.getPrincipal(Map.of("email", List.of("casuser@example.org"))));
+            WebUtils.putAuthentication(authentication, context);
+            WebUtils.putAuthenticationResult(RegisteredServiceTestUtils.getAuthenticationResult(authentication.getPrincipal().getId()), context);
+            WebUtils.putRegisteredService(context, RegisteredServiceTestUtils.getRegisteredService());
+            val provider = MultifactorAuthenticationUtils.getMultifactorAuthenticationProviderById(
+                DuoSecurityMultifactorAuthenticationProperties.DEFAULT_IDENTIFIER, applicationContext).orElseThrow();
+            MultifactorAuthenticationWebflowUtils.putMultifactorAuthenticationProvider(context, provider);
+            val result = duoUniversalPromptPrepareLoginAction.execute(context);
+            assertNotNull(result);
+            val sessionStorage = (BrowserStorage) result.getAttributes().get("result");
+            assertNotNull(sessionStorage);
+
+            val request = new URIBuilder(sessionStorage.getDestinationUrl()).getFirstQueryParam("request").getValue();
+            val duoUsername = SignedJWT.parse(request).getJWTClaimsSet().getStringClaim("duo_uname");
+            assertEquals("casuser@example.org", duoUsername);
+            assertTrue(context.getFlowScope().contains("duoUniversalPromptLoginUrl"));
+        }
+    }
+    
 }

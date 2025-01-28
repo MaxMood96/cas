@@ -1,18 +1,26 @@
 package org.apereo.cas.support.events;
 
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationRequest;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreEventsAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.support.events.dao.CasEvent;
 import org.apereo.cas.support.events.ticket.CasTicketGrantingTicketCreatedEvent;
-
 import lombok.val;
 import org.junit.jupiter.api.Test;
-
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.stream.Collectors;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -24,12 +32,13 @@ import static org.junit.jupiter.api.Assertions.*;
 public abstract class AbstractCasEventRepositoryTests {
 
     @Test
-    public void verifyLoadOps() {
+    protected void verifyLoadOps() throws Throwable {
+        val eventRepository = getEventRepository();
+        eventRepository.removeAll();
+        
         val dto1 = getCasEvent("example1");
 
-        val eventRepository = getEventRepository();
         eventRepository.save(dto1);
-
         val dt = ZonedDateTime.now(ZoneOffset.UTC).minusMonths(12);
         val loaded = eventRepository.load(dt);
         assertTrue(loaded.findAny().isPresent());
@@ -45,20 +54,24 @@ public abstract class AbstractCasEventRepositoryTests {
     }
 
     @Test
-    public void verifySave() {
+    protected void verifySave() throws Throwable {
+        getEventRepository().removeAll();
+        
         val dto1 = getCasEvent("casuser");
         getEventRepository().save(dto1);
 
         val dto2 = getCasEvent("casuser");
         getEventRepository().save(dto2);
 
-        val col = getEventRepository().load().collect(Collectors.toList());
+        val col = getEventRepository().load().toList();
         assertEquals(2, col.size());
 
-        assertNotEquals(dto2.getEventId(), dto1.getEventId(), "Created Event IDs are equal");
+        assertNotEquals(dto2.getEventId(), dto1.getEventId(), "Created event IDs are equal but they should not be");
 
         val load2 = getEventRepository().load();
-        assertEquals(2, load2.map(CasEvent::getEventId).distinct().count(), "Stored event IDs are equal");
+        val loadedEvents = load2.map(CasEvent::getEventId).distinct().toList();
+        assertTrue(loadedEvents.stream().anyMatch(dto1.getEventId()::equals));
+        assertTrue(loadedEvents.stream().anyMatch(dto2.getEventId()::equals));
 
         val load3 = getEventRepository().load();
         load3.forEach(event -> {
@@ -89,8 +102,7 @@ public abstract class AbstractCasEventRepositoryTests {
 
     private CasEvent getCasEvent(final String user) {
         val ticket = new MockTicketGrantingTicket(user);
-        val event = new CasTicketGrantingTicketCreatedEvent(this, ticket);
-
+        val event = new CasTicketGrantingTicketCreatedEvent(this, ticket, null);
         val dto = new CasEvent();
         dto.setType(event.getClass().getCanonicalName());
         dto.putTimestamp(event.getTimestamp());
@@ -105,4 +117,21 @@ public abstract class AbstractCasEventRepositoryTests {
         dto.setPrincipalId(event.getTicketGrantingTicket().getAuthentication().getPrincipal().getId());
         return dto;
     }
+
+    @ImportAutoConfiguration({
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreEventsAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class,
+        RefreshAutoConfiguration.class
+    })
+    @SpringBootConfiguration
+    public static class SharedTestConfiguration {
+    }
+    
 }

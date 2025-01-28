@@ -1,7 +1,7 @@
 package org.apereo.cas.ticket;
 
+import org.apereo.cas.services.RegisteredServiceDefinition;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
 import java.io.Serializable;
 
 /**
@@ -11,6 +11,7 @@ import java.io.Serializable;
  * @see Ticket
  * @since 6.0.0
  */
+@FunctionalInterface
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 public interface ExpirationPolicyBuilder<T extends Ticket> extends Serializable {
 
@@ -43,9 +44,13 @@ public interface ExpirationPolicyBuilder<T extends Ticket> extends Serializable 
     ExpirationPolicy buildTicketExpirationPolicy();
 
     /**
-     * Returns the implementation class of the ticket.
+     * Build ticket expiration policy for service.
      *
-     * @return - class implementing the ticket
+     * @param registeredService the registered service
+     * @return the optional
      */
-    Class<T> getTicketType();
+    default ExpirationPolicy buildTicketExpirationPolicyFor(final RegisteredServiceDefinition registeredService) {
+        return buildTicketExpirationPolicy();
+    }
+
 }

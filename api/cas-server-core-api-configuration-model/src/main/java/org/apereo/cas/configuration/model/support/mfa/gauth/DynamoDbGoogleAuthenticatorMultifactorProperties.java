@@ -3,10 +3,11 @@ package org.apereo.cas.configuration.model.support.mfa.gauth;
 import org.apereo.cas.configuration.model.support.dynamodb.AbstractDynamoDbProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * This is {@link DynamoDbGoogleAuthenticatorMultifactorProperties}.
@@ -18,8 +19,9 @@ import lombok.experimental.Accessors;
 @Setter
 @RequiresModule(name = "cas-server-support-gauth-dynamodb")
 @Accessors(chain = true)
-@JsonFilter("DynamoDbGoogleAuthenticatorMultifactorProperties")
+
 public class DynamoDbGoogleAuthenticatorMultifactorProperties extends AbstractDynamoDbProperties {
+    @Serial
     private static final long serialVersionUID = -1161683393319585262L;
 
     /**

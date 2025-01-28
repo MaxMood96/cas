@@ -9,25 +9,24 @@ import org.apereo.cas.gauth.token.GoogleAuthenticatorToken;
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialValidator;
 import org.apereo.cas.otp.repository.token.OneTimeTokenRepository;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
-
 import com.warrenstrange.googleauth.IGoogleAuthenticator;
 import lombok.Getter;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-
 import javax.security.auth.login.AccountExpiredException;
 import javax.security.auth.login.AccountNotFoundException;
 import java.util.List;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -43,7 +42,8 @@ import static org.mockito.Mockito.*;
 })
 @Getter
 @Tag("MFAProvider")
-public class GoogleAuthenticatorOneTimeTokenCredentialValidatorTests {
+@ExtendWith(CasTestExtension.class)
+class GoogleAuthenticatorOneTimeTokenCredentialValidatorTests {
 
     @Autowired
     @Qualifier("googleAuthenticatorOneTimeTokenCredentialValidator")
@@ -58,33 +58,29 @@ public class GoogleAuthenticatorOneTimeTokenCredentialValidatorTests {
     private OneTimeTokenRepository oneTimeTokenAuthenticatorTokenRepository;
 
     @Test
-    public void verifyTokenAuthz() {
-        val acct = OneTimeTokenAccount.builder()
-            .username("casuser")
-            .name(UUID.randomUUID().toString())
-            .secretKey("secret")
-            .validationCode(123456)
-            .scratchCodes(List.of())
-            .build();
+    void verifyTokenAuthz() {
+        val acct = getOneTimeTokenAccount();
         assertTrue(validator.isTokenAuthorizedFor(123456, acct));
         assertFalse(validator.isTokenAuthorizedFor(987654, acct));
     }
 
     @Test
-    public void verifyStore() {
+    void verifyTokenAuthzWithScratchCode() {
+        val acct = getOneTimeTokenAccount(List.of(223856));
+        googleAuthenticatorAccountRegistry.save(acct);
+        assertTrue(validator.isTokenAuthorizedFor(223856, acct));
+        assertTrue(googleAuthenticatorAccountRegistry.get(acct.getId()).getScratchCodes().isEmpty());
+    }
+
+    @Test
+    void verifyStore() {
         val token = new GoogleAuthenticatorToken(632435, "casuser");
         assertDoesNotThrow(() -> validator.store(token));
     }
 
     @Test
-    public void verifyAcctValidation() throws Exception {
-        val acct = GoogleAuthenticatorAccount.builder()
-            .username("casuser")
-            .name(UUID.randomUUID().toString())
-            .secretKey("secret")
-            .validationCode(123456)
-            .scratchCodes(List.of())
-            .build();
+    void verifyAcctValidation() throws Throwable {
+        val acct = getOneTimeTokenAccount();
         googleAuthenticatorAccountRegistry.save(acct);
 
         val cred = new GoogleAuthenticatorTokenCredential("123456", acct.getId());
@@ -92,14 +88,8 @@ public class GoogleAuthenticatorOneTimeTokenCredentialValidatorTests {
     }
 
     @Test
-    public void verifyAcctValidationScratchCode() throws Exception {
-        val acct = GoogleAuthenticatorAccount.builder()
-            .username("casuser")
-            .name(UUID.randomUUID().toString())
-            .secretKey("secret")
-            .validationCode(123456)
-            .scratchCodes(CollectionUtils.wrapList(834251))
-            .build();
+    void verifyAcctValidationScratchCode() throws Throwable {
+        val acct = getOneTimeTokenAccount(CollectionUtils.wrapList(834251));
         googleAuthenticatorAccountRegistry.save(acct);
 
         val cred = new GoogleAuthenticatorTokenCredential("834251", acct.getId());
@@ -108,14 +98,8 @@ public class GoogleAuthenticatorOneTimeTokenCredentialValidatorTests {
     }
 
     @Test
-    public void verifyTokenReuse() {
-        val acct = GoogleAuthenticatorAccount.builder()
-            .username("casuser")
-            .name(UUID.randomUUID().toString())
-            .secretKey("secret")
-            .validationCode(123456)
-            .scratchCodes(List.of())
-            .build();
+    void verifyTokenReuse() {
+        val acct = getOneTimeTokenAccount();
         googleAuthenticatorAccountRegistry.save(acct);
 
         val otp1 = new OneTimeToken(556644, "casuser");
@@ -126,7 +110,7 @@ public class GoogleAuthenticatorOneTimeTokenCredentialValidatorTests {
     }
 
     @Test
-    public void verifyBadToken() {
+    void verifyBadToken() {
         assertThrows(PreventedException.class,
             () -> validator.validate(CoreAuthenticationTestUtils.getAuthentication("casuser"),
                 new GoogleAuthenticatorTokenCredential("abcdefg", 123456L)));
@@ -136,7 +120,7 @@ public class GoogleAuthenticatorOneTimeTokenCredentialValidatorTests {
     }
 
     @Test
-    public void verifyMultipleAccountsWithNoId() {
+    void verifyMultipleAccountsWithNoId() {
         for (var i = 0; i < 2; i++) {
             val acct = GoogleAuthenticatorAccount.builder()
                 .username("casuser")
@@ -152,8 +136,23 @@ public class GoogleAuthenticatorOneTimeTokenCredentialValidatorTests {
             () -> validator.validate(CoreAuthenticationTestUtils.getAuthentication("casuser"), cred));
     }
 
+    private static OneTimeTokenAccount getOneTimeTokenAccount() {
+        return getOneTimeTokenAccount(List.of());
+    }
+
+    private static OneTimeTokenAccount getOneTimeTokenAccount(final List<Number> scratchCodes) {
+        return GoogleAuthenticatorAccount
+            .builder()
+            .username("casuser")
+            .name(UUID.randomUUID().toString())
+            .secretKey("secret")
+            .validationCode(123456)
+            .scratchCodes(scratchCodes)
+            .build();
+    }
+    
     @TestConfiguration(value = "GoogleAuthenticatorOneTimeTokenCredentialValidatorTestConfiguration", proxyBeanMethods = false)
-    public static class GoogleAuthenticatorOneTimeTokenCredentialValidatorTestConfiguration {
+    static class GoogleAuthenticatorOneTimeTokenCredentialValidatorTestConfiguration {
         @Bean
         public IGoogleAuthenticator googleAuthenticatorInstance() {
             val auth = mock(IGoogleAuthenticator.class);

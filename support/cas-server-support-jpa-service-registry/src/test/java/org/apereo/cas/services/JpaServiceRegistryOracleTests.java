@@ -1,6 +1,6 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 
 import org.junit.jupiter.api.Tag;
 import org.springframework.test.context.TestPropertySource;
@@ -18,9 +18,9 @@ import org.springframework.test.context.TestPropertySource;
     "cas.service-registry.jpa.password=Oradoc_db1",
     "cas.service-registry.jpa.driver-class=oracle.jdbc.driver.OracleDriver",
     "cas.service-registry.jpa.url=jdbc:oracle:thin:@localhost:1521:ORCLCDB",
-    "cas.service-registry.jpa.dialect=org.hibernate.dialect.Oracle12cDialect"
+    "cas.service-registry.jpa.dialect=org.hibernate.dialect.OracleDialect"
 })
-@EnabledIfPortOpen(port = 1521)
+@EnabledIfListeningOnPort(port = 1521)
 @Tag("Oracle")
-public class JpaServiceRegistryOracleTests extends JpaServiceRegistryTests {
+class JpaServiceRegistryOracleTests extends JpaServiceRegistryTests {
 }

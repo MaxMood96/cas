@@ -1,23 +1,20 @@
 package org.apereo.cas.web.flow.logout;
 
-import org.apereo.cas.CentralAuthenticationService;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.logout.LogoutExecutionPlan;
 import org.apereo.cas.logout.LogoutRequestStatus;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.support.ArgumentExtractor;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.jooq.lambda.Unchecked;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.util.Objects;
 
 /**
@@ -33,20 +30,17 @@ import java.util.Objects;
 @Slf4j
 public class LogoutAction extends AbstractLogoutAction {
 
-    public LogoutAction(final CentralAuthenticationService centralAuthenticationService,
+    public LogoutAction(final TicketRegistry ticketRegistry,
                         final CasCookieBuilder ticketGrantingTicketCookieGenerator,
                         final ArgumentExtractor argumentExtractor, final ServicesManager servicesManager,
                         final LogoutExecutionPlan logoutExecutionPlan, final CasConfigurationProperties casProperties) {
-        super(centralAuthenticationService, ticketGrantingTicketCookieGenerator,
+        super(ticketRegistry, ticketGrantingTicketCookieGenerator,
             argumentExtractor, servicesManager, logoutExecutionPlan, casProperties);
     }
 
     @Override
-    protected Event doInternalExecute(final HttpServletRequest request,
-                                      final HttpServletResponse response,
-                                      final RequestContext context) {
-
-        val logoutRequests = WebUtils.getLogoutRequests(context);
+    protected Event doInternalExecute(final RequestContext requestContext) {
+        val logoutRequests = WebUtils.getLogoutRequests(requestContext);
         val needFrontSlo = FunctionUtils.doIf(logoutRequests != null,
                 () -> Objects.requireNonNull(logoutRequests)
                     .stream()
@@ -54,10 +48,22 @@ public class LogoutAction extends AbstractLogoutAction {
                 () -> Boolean.FALSE)
             .get();
 
+        val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
+        val response = WebUtils.getHttpServletResponseFromExternalWebflowContext(requestContext);
         logoutExecutionPlan.getLogoutRedirectionStrategies()
             .stream()
-            .filter(s -> s.supports(context))
-            .forEach(s -> s.handle(context));
+            .filter(strategy -> strategy.supports(request, response))
+            .map(Unchecked.function(strategy -> strategy.handle(request, response)))
+            .filter(Objects::nonNull)
+            .forEach(logoutResponse -> {
+                LOGGER.debug("Logout response is [{}]", logoutResponse);
+                logoutResponse.getService().ifPresent(service -> WebUtils.putServiceIntoFlowScope(requestContext, service));
+                logoutResponse.getLogoutRedirectUrl().ifPresent(url -> WebUtils.putLogoutRedirectUrl(requestContext, url));
+                logoutResponse.getLogoutPostUrl().ifPresent(url -> WebUtils.putLogoutPostUrl(requestContext, url));
+                if (!logoutResponse.getLogoutPostData().isEmpty()) {
+                    WebUtils.putLogoutPostData(requestContext, logoutResponse.getLogoutPostData());
+                }
+            });
 
         if (needFrontSlo) {
             LOGGER.trace("Proceeding forward with front-channel single logout");

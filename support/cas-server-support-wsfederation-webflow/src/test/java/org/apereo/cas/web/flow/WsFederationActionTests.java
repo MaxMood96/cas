@@ -1,21 +1,18 @@
 package org.apereo.cas.web.flow;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.test.MockRequestContext;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -33,18 +30,20 @@ import static org.junit.jupiter.api.Assertions.*;
         "cas.authn.wsfed[0].identity-attribute=upn"
     })
 @Tag("WebflowActions")
-public class WsFederationActionTests {
+@ExtendWith(CasTestExtension.class)
+class WsFederationActionTests {
     @Autowired
-    @Qualifier("wsFederationAction")
+    @Qualifier(CasWebflowConstants.ACTION_ID_WS_FEDERATION)
     protected Action wsFederationAction;
 
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+
     @Test
-    public void verifyRequestOperation() throws Exception {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, new MockHttpServletResponse()));
+    void verifyRequestOperation() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
         WebUtils.putServiceIntoFlowScope(context, CoreAuthenticationTestUtils.getWebApplicationService());
         wsFederationAction.execute(context);
-        assertTrue(context.getFlowScope().contains(WsFederationRequestBuilder.PARAMETER_NAME_WSFED_CLIENTS));
+        assertFalse(WebUtils.getWsFederationDelegatedClients(context, WsFedClient.class).isEmpty());
     }
 }

@@ -1,14 +1,14 @@
-const puppeteer = require('puppeteer');
-const assert = require('assert');
-const cas = require('../../cas.js');
+const assert = require("assert");
+const cas = require("../../cas.js");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
-    await page.goto("https://localhost:8443/cas/login?authn_method=mfa-inwebo");
+    await cas.gotoLoginWithAuthnMethod(page, undefined, "mfa-inwebo");
     await cas.loginWith(page, "testcaspush", "password");
-    await page.waitForTimeout(2000)
-    let form = await page.$('#pendingCheckResultForm');
-    assert(form != null);
+    await cas.sleep(2000);
+    const pendingForm = await page.$("#pendingCheckResultForm");
+    const retryForm = await page.$("#retryForm");
+    assert(retryForm !== null || pendingForm !== null);
     await browser.close();
 })();

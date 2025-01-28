@@ -5,8 +5,8 @@ import org.apereo.cas.logout.slo.SingleLogoutMessageCreator;
 import org.apereo.cas.logout.slo.SingleLogoutRequestContext;
 import org.apereo.cas.oidc.OidcConfigurationContext;
 import org.apereo.cas.oidc.OidcConstants;
-import org.apereo.cas.services.OidcRegisteredService;
 import org.apereo.cas.services.RegisteredServiceLogoutType;
+import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import org.apereo.cas.util.DigestUtils;
 
 import lombok.RequiredArgsConstructor;
@@ -33,7 +33,7 @@ public class OidcSingleLogoutMessageCreator implements SingleLogoutMessageCreato
     private final ObjectProvider<OidcConfigurationContext> configurationProvider;
 
     @Override
-    public SingleLogoutMessage create(final SingleLogoutRequestContext request) {
+    public SingleLogoutMessage create(final SingleLogoutRequestContext request) throws Throwable {
         val configurationContext = configurationProvider.getObject();
 
         val builder = SingleLogoutMessage.builder();
@@ -42,7 +42,7 @@ public class OidcSingleLogoutMessageCreator implements SingleLogoutMessageCreato
 
             val claims = buildJwtClaims(request);
             val logoutToken = configurationContext.getIdTokenSigningAndEncryptionService()
-                .encode((OidcRegisteredService) request.getRegisteredService(), claims);
+                .encode((OAuthRegisteredService) request.getRegisteredService(), claims);
             return builder.payload(logoutToken).build();
         }
         return builder.payload(StringUtils.EMPTY).build();
@@ -59,14 +59,15 @@ public class OidcSingleLogoutMessageCreator implements SingleLogoutMessageCreato
         val claims = new JwtClaims();
         claims.setIssuer(configurationContext.getIssuerService().determineIssuer(Optional.empty()));
         claims.setSubject(request.getExecutionRequest().getTicketGrantingTicket().getAuthentication().getPrincipal().getId());
-        claims.setAudience(((OidcRegisteredService) request.getRegisteredService()).getClientId());
+        claims.setAudience(((OAuthRegisteredService) request.getRegisteredService()).getClientId());
         claims.setIssuedAtToNow();
         claims.setJwtId(UUID.randomUUID().toString());
+        claims.setExpirationTimeMinutesInTheFuture(1);
         val events = new HashMap<String, Object>();
         events.put("http://schemas.openid.net/event/backchannel-logout", new HashMap<>());
         claims.setClaim("events", events);
         claims.setClaim(OidcConstants.CLAIM_SESSION_ID,
-            DigestUtils.sha(request.getExecutionRequest().getTicketGrantingTicket().getId()));
+                DigestUtils.sha(DigestUtils.sha512(request.getExecutionRequest().getTicketGrantingTicket().getId())));
 
         return claims;
     }

@@ -2,7 +2,9 @@ package org.apereo.cas.config;
 
 import org.apereo.cas.authentication.AuthenticationServiceSelectionStrategy;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.CasWebflowExecutionPlanConfigurer;
@@ -27,12 +29,14 @@ import org.springframework.webflow.execution.Action;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@Configuration(value = "CoreWsSecurityIdentityProviderWebflowConfiguration", proxyBeanMethods = false)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-public class CoreWsSecurityIdentityProviderWebflowConfiguration {
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.WsFederationIdentityProvider)
+@Configuration(value = "CoreWsSecurityIdentityProviderWebflowConfiguration", proxyBeanMethods = false)
+class CoreWsSecurityIdentityProviderWebflowConfiguration {
 
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+    @ConditionalOnMissingBean(name = CasWebflowConstants.ACTION_ID_WSFEDERATION_METADATA_UI)
     public Action wsFederationMetadataUIAction(
         @Qualifier(ServicesManager.BEAN_NAME)
         final ServicesManager servicesManager,
@@ -43,6 +47,7 @@ public class CoreWsSecurityIdentityProviderWebflowConfiguration {
 
     @ConditionalOnMissingBean(name = "wsFederationWebflowConfigurer")
     @Bean
+    @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     public CasWebflowConfigurer wsFederationWebflowConfigurer(
         final ConfigurableApplicationContext applicationContext,
         final CasConfigurationProperties casProperties,
@@ -55,6 +60,7 @@ public class CoreWsSecurityIdentityProviderWebflowConfiguration {
     }
 
     @Bean
+    @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = "wsFederationCasWebflowExecutionPlanConfigurer")
     public CasWebflowExecutionPlanConfigurer wsFederationCasWebflowExecutionPlanConfigurer(
         @Qualifier("wsFederationWebflowConfigurer")

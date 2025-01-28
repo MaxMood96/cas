@@ -8,8 +8,8 @@ createConfig() {
   mkdir -p ${configDir}
   cat > ${configDir}/cas.properties <<EOF
 management.endpoints.web.exposure.include=health,info,env,loggers
-management.endpoint.health.enabled=true
-management.endpoint.info.enabled=true
+management.endpoint.health.access=UNRESTRICTED
+management.endpoint.info.access=UNRESTRICTED
 cas.monitor.endpoints.endpoint.defaults.access[0]=IP_ADDRESS
 cas.monitor.endpoints.endpoint.defaults.required-ip-addresses[0]=.*
 management.endpoint.health.show-details=always
@@ -17,9 +17,10 @@ spring.cloud.discovery.client.composite-indicator.enabled=false
 management.health.defaults.enabled=false
 management.health.ping.enabled=true
 management.health.diskSpace.enabled=true
-management.endpoint.env.enabled=true
-management.endpoint.loggers.enabled=true
+management.endpoint.env.access=UNRESTRICTED
+management.endpoint.loggers.access=UNRESTRICTED
 management.health.memoryHealthIndicator.enabled=true
+spring.main.lazy-initialization=false
 EOF
 cat ${configDir}/cas.properties
 }
@@ -62,7 +63,11 @@ testUrl() {
 echo "Building CAS server web application with ${webAppServerType}"
 ./gradlew :webapp:cas-server-webapp-"${webAppServerType}":build \
   -DskipNestedConfigMetadataGen=true -x check -x javadoc \
-  --no-daemon --build-cache --configure-on-demand --parallel
+  --no-configuration-cache --no-daemon --build-cache --configure-on-demand --parallel
+retVal=$?
+if [[ ${retVal} -ne 0 ]]; then
+  exit $retVal
+fi
 
 mv webapp/cas-server-webapp-"${webAppServerType}"/build/libs/cas-server-webapp-"${webAppServerType}"-*-SNAPSHOT.war \
 webapp/cas-server-webapp-"${webAppServerType}"/build/libs/cas.war
@@ -86,7 +91,7 @@ cmd="java -jar webapp/cas-server-webapp-${webAppServerType}/build/libs/cas.war \
 exec $cmd  &
 pid=$!
 echo "Launched CAS with pid ${pid}. Waiting for CAS server to come online..."
-sleep 40
+sleep 60
 echo "Testing status of server with pid ${pid}."
 testUrl "/login" "Username"
 retValLogin=$?

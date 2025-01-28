@@ -1,19 +1,29 @@
 package org.apereo.cas.gauth.web.flow;
 
-import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
+import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
+import org.apereo.cas.gauth.BaseGoogleAuthenticatorTests;
+import org.apereo.cas.gauth.credential.GoogleAuthenticatorAccount;
+import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
+import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.web.flow.CasWebflowConstants;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
-
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.webflow.execution.Action;
+import java.util.List;
+import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -23,22 +33,71 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @Tag("WebflowMfaActions")
-public class GoogleAuthenticatorPrepareLoginActionTests {
+@ExtendWith(CasTestExtension.class)
+@SpringBootTest(classes = {
+    GoogleAuthenticatorPrepareLoginActionTests.TestMultifactorTestConfiguration.class,
+    BaseGoogleAuthenticatorTests.SharedTestConfiguration.class
+},
+    properties = "cas.authn.mfa.gauth.core.multiple-device-registration-enabled=true")
+class GoogleAuthenticatorPrepareLoginActionTests {
+    @Autowired
+    @Qualifier(CasWebflowConstants.ACTION_ID_GOOGLE_PREPARE_LOGIN)
+    private Action action;
+
+    @Autowired
+    @Qualifier("googleAuthenticatorAccountRegistry")
+    private OneTimeTokenCredentialRepository googleAuthenticatorAccountRegistry;
+
+    @Autowired
+    @Qualifier("dummyProvider")
+    private MultifactorAuthenticationProvider dummyProvider;
+
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
 
     @Test
-    public void verifyOperation() throws Exception {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
-
-        val props = new CasConfigurationProperties();
-        props.getAuthn().getMfa().getGauth().getCore().setMultipleDeviceRegistrationEnabled(true);
-        val action = new GoogleAuthenticatorPrepareLoginAction(props);
+    void verifyOperation() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
+        val acct = GoogleAuthenticatorAccount
+            .builder()
+            .username(UUID.randomUUID().toString())
+            .name(UUID.randomUUID().toString())
+            .secretKey(UUID.randomUUID().toString())
+            .validationCode(123456)
+            .scratchCodes(List.of(987345))
+            .build();
+        googleAuthenticatorAccountRegistry.save(acct);
+        WebUtils.putAuthentication(RegisteredServiceTestUtils.getAuthentication(acct.getUsername()), context);
+        MultifactorAuthenticationWebflowUtils.putMultifactorAuthenticationProvider(context, dummyProvider);
         assertNull(action.execute(context));
-        assertTrue(WebUtils.isGoogleAuthenticatorMultipleDeviceRegistrationEnabled(context));
+        assertTrue(MultifactorAuthenticationWebflowUtils.isGoogleAuthenticatorMultipleDeviceRegistrationEnabled(context));
+        assertNotNull(MultifactorAuthenticationWebflowUtils.getOneTimeTokenAccounts(context));
     }
 
+    @Test
+    void verifyRegistrationDisabled() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
+        val acct = GoogleAuthenticatorAccount
+            .builder()
+            .username(UUID.randomUUID().toString())
+            .name(UUID.randomUUID().toString())
+            .secretKey(UUID.randomUUID().toString())
+            .validationCode(123456)
+            .scratchCodes(List.of(987345))
+            .build();
+        googleAuthenticatorAccountRegistry.save(acct);
+        WebUtils.putAuthentication(RegisteredServiceTestUtils.getAuthentication(acct.getUsername()), context);
+        MultifactorAuthenticationWebflowUtils.putMultifactorAuthenticationProvider(context, dummyProvider);
+        MultifactorAuthenticationWebflowUtils.putMultifactorDeviceRegistrationEnabled(context, false);
+        assertNull(action.execute(context));
+        assertFalse(MultifactorAuthenticationWebflowUtils.isGoogleAuthenticatorMultipleDeviceRegistrationEnabled(context));
+    }
+
+    @TestConfiguration(value = "TestMultifactorTestConfiguration", proxyBeanMethods = false)
+    static class TestMultifactorTestConfiguration {
+        @Bean
+        public MultifactorAuthenticationProvider dummyProvider() {
+            return new TestMultifactorAuthenticationProvider();
+        }
+    }
 }

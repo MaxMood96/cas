@@ -1,7 +1,7 @@
 package org.apereo.cas.zookeeper;
 
 import org.apereo.cas.configuration.model.support.hazelcast.HazelcastClusterProperties;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.JoinConfig;
@@ -20,10 +20,10 @@ import static org.mockito.Mockito.*;
  * @since 6.5.0
  */
 @Tag("ZooKeeper")
-@EnabledIfPortOpen(port = 2181)
-public class HazelcastZooKeeperDiscoveryStrategyTests {
+@EnabledIfListeningOnPort(port = 2181)
+class HazelcastZooKeeperDiscoveryStrategyTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val cluster = new HazelcastClusterProperties();
         val zk = cluster.getDiscovery().getZookeeper();
         zk.setUrl("localhost:2181");

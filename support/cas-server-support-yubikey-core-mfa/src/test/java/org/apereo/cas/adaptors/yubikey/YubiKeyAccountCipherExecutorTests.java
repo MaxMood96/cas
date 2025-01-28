@@ -1,11 +1,10 @@
 package org.apereo.cas.adaptors.yubikey;
 
-import org.apereo.cas.util.crypto.CipherExecutor;
-
+import org.apereo.cas.configuration.model.core.util.EncryptionJwtCryptoProperties;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
+import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -14,15 +13,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.3.0
  */
-@Tag("MFAProvider")
-public class YubiKeyAccountCipherExecutorTests {
+@Tag("Cipher")
+class YubiKeyAccountCipherExecutorTests {
     @Test
-    public void verifyAction() {
+    void verifyAction() {
         val cipher = new YubikeyAccountCipherExecutor(null, null,
-            CipherExecutor.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM, 512, 256);
-
-        val encoded = cipher.encode("ST-1234567890");
-        assertEquals("ST-1234567890", cipher.decode(encoded));
+            EncryptionJwtCryptoProperties.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM, 512,
+            EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
+        val value = UUID.randomUUID().toString();
+        val encoded = cipher.encode(value);
+        assertEquals(value, cipher.decode(encoded));
         assertNotNull(cipher.getName());
         assertNotNull(cipher.getSigningKeySetting());
         assertNotNull(cipher.getEncryptionKeySetting());

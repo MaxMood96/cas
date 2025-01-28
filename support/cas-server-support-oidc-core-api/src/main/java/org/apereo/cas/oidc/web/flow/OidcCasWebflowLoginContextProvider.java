@@ -27,8 +27,8 @@ public class OidcCasWebflowLoginContextProvider implements CasWebflowLoginContex
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(context);
         val service = argumentExtractor.extractService(request);
         val hint = Optional.ofNullable(service)
-            .map(svc -> svc.getAttributes().getOrDefault(OidcConstants.LOGIN_HINT, List.of()))
+            .map(svc -> (List) svc.getAttributes().getOrDefault(OidcConstants.LOGIN_HINT, List.of()))
             .orElseGet(List::of);
-        return hint.isEmpty() ? Optional.empty() : Optional.ofNullable(hint.get(0).toString());
+        return hint.isEmpty() ? Optional.empty() : Optional.ofNullable(hint.getFirst().toString());
     }
 }

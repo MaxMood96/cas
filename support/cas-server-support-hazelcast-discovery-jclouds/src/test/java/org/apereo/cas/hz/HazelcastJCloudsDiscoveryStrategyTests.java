@@ -1,13 +1,16 @@
 package org.apereo.cas.hz;
 
 import org.apereo.cas.configuration.model.support.hazelcast.HazelcastClusterProperties;
+import org.apereo.cas.test.CasTestExtension;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.JoinConfig;
 import com.hazelcast.config.NetworkConfig;
+import com.hazelcast.jclouds.JCloudsDiscoveryStrategyFactory;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.UUID;
 
@@ -21,9 +24,10 @@ import static org.mockito.Mockito.*;
  * @since 6.3.0
  */
 @Tag("Hazelcast")
-public class HazelcastJCloudsDiscoveryStrategyTests {
+@ExtendWith(CasTestExtension.class)
+class HazelcastJCloudsDiscoveryStrategyTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val cluster = new HazelcastClusterProperties();
         val clouds = cluster.getDiscovery().getJclouds();
         val id = UUID.randomUUID().toString();
@@ -42,5 +46,18 @@ public class HazelcastJCloudsDiscoveryStrategyTests {
         val hz = new HazelcastJCloudsDiscoveryStrategy();
         val result = hz.get(cluster, mock(JoinConfig.class), mock(Config.class), mock(NetworkConfig.class));
         assertNotNull(result);
+        assertTrue(result.isPresent());
+
+        val properties = result.get().getProperties();
+        for (val propertyDefinition : new JCloudsDiscoveryStrategyFactory().getConfigurationProperties()) {
+            val value = properties.get(propertyDefinition.key());
+            if (value == null) {
+                assertTrue(propertyDefinition.optional(),
+                    () -> "Property " + propertyDefinition.key() + " is not optional and should be given");
+            } else {
+                assertDoesNotThrow(() -> propertyDefinition.typeConverter().convert(value),
+                    () -> "Property " + propertyDefinition.key() + " has invalid value '" + value + '\'');
+            }
+        }
     }
 }

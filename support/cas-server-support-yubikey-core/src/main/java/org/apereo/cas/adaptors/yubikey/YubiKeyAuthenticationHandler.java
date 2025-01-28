@@ -4,8 +4,10 @@ import org.apereo.cas.adaptors.yubikey.registry.OpenYubiKeyAccountRegistry;
 import org.apereo.cas.authentication.AuthenticationHandlerExecutionResult;
 import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.MultifactorAuthenticationHandler;
+import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.handler.support.AbstractPreAndPostProcessingAuthenticationHandler;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.web.support.WebUtils;
@@ -16,10 +18,12 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.ObjectProvider;
 
 import javax.security.auth.login.AccountNotFoundException;
 import javax.security.auth.login.FailedLoginException;
 import java.security.GeneralSecurityException;
+import java.util.Objects;
 
 /**
  * An authentication handler that uses the Yubico cloud validation
@@ -40,20 +44,26 @@ public class YubiKeyAuthenticationHandler extends AbstractPreAndPostProcessingAu
 
     private final YubicoClient client;
 
+    private final ObjectProvider<MultifactorAuthenticationProvider> multifactorAuthenticationProvider;
+
     public YubiKeyAuthenticationHandler(final String name,
                                         final ServicesManager servicesManager,
                                         final PrincipalFactory principalFactory,
                                         final YubicoClient client,
                                         final YubiKeyAccountRegistry registry,
-                                        final Integer order) {
+                                        final Integer order,
+                                        final ObjectProvider<MultifactorAuthenticationProvider> multifactorAuthenticationProvider) {
         super(name, servicesManager, principalFactory, order);
         this.registry = registry;
         this.client = client;
+        this.multifactorAuthenticationProvider = multifactorAuthenticationProvider;
     }
 
-    public YubiKeyAuthenticationHandler(final YubicoClient client) {
+    public YubiKeyAuthenticationHandler(final YubicoClient client,
+                                        final ObjectProvider<MultifactorAuthenticationProvider> multifactorAuthenticationProvider) {
         this(StringUtils.EMPTY, null, null,
-            client, new OpenYubiKeyAccountRegistry(new AcceptAllYubiKeyAccountValidator()), null);
+            client, new OpenYubiKeyAccountRegistry(new AcceptAllYubiKeyAccountValidator()), null,
+            multifactorAuthenticationProvider);
     }
 
     @Override
@@ -67,7 +77,7 @@ public class YubiKeyAuthenticationHandler extends AbstractPreAndPostProcessingAu
     }
 
     @Override
-    protected AuthenticationHandlerExecutionResult doAuthentication(final Credential credential) throws GeneralSecurityException {
+    protected AuthenticationHandlerExecutionResult doAuthentication(final Credential credential, final Service service) throws GeneralSecurityException {
         val yubiKeyCredential = (YubiKeyCredential) credential;
 
         val otp = yubiKeyCredential.getToken();
@@ -77,10 +87,8 @@ public class YubiKeyAuthenticationHandler extends AbstractPreAndPostProcessingAu
             throw new AccountNotFoundException("OTP format is invalid");
         }
 
-        val authentication = WebUtils.getInProgressAuthentication();
-        if (authentication == null) {
-            throw new IllegalArgumentException("CAS has no reference to an authentication event to locate a principal");
-        }
+        val authentication = Objects.requireNonNull(WebUtils.getInProgressAuthentication(),
+            "CAS has no reference to an authentication event to locate a principal");
         val principal = authentication.getPrincipal();
         val uid = principal.getId();
         val publicId = registry.getAccountValidator().getTokenPublicId(otp);
@@ -97,7 +105,7 @@ public class YubiKeyAuthenticationHandler extends AbstractPreAndPostProcessingAu
                 return createHandlerResult(yubiKeyCredential, this.principalFactory.createPrincipal(uid));
             }
             throw new FailedLoginException("Authentication failed with status: " + status);
-        } catch (final Exception e) {
+        } catch (final Throwable e) {
             LoggingUtils.error(LOGGER, e);
             throw new FailedLoginException("YubiKey validation failed: " + e.getMessage());
         }

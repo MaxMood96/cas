@@ -4,14 +4,15 @@ import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
+import org.apereo.cas.ticket.BaseOAuth20Token;
 import org.apereo.cas.ticket.ExpirationPolicy;
-import org.apereo.cas.ticket.TicketGrantingTicket;
-import org.apereo.cas.ticket.code.OAuth20DefaultCode;
+import org.apereo.cas.ticket.Ticket;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.Map;
 
@@ -22,8 +23,9 @@ import java.util.Map;
  * @since 5.0.0
  */
 @NoArgsConstructor
-public class OAuth20DefaultAccessToken extends OAuth20DefaultCode implements OAuth20AccessToken {
+public class OAuth20DefaultAccessToken extends BaseOAuth20Token implements OAuth20AccessToken {
 
+    @Serial
     private static final long serialVersionUID = 2339545346159721563L;
 
     @Setter
@@ -37,7 +39,7 @@ public class OAuth20DefaultAccessToken extends OAuth20DefaultCode implements OAu
                                      final Service service,
                                      final Authentication authentication,
                                      final ExpirationPolicy expirationPolicy,
-                                     final TicketGrantingTicket ticketGrantingTicket,
+                                     final Ticket ticketGrantingTicket,
                                      final String token,
                                      final Collection<String> scopes,
                                      final String codeChallenge,
@@ -56,7 +58,7 @@ public class OAuth20DefaultAccessToken extends OAuth20DefaultCode implements OAu
     public OAuth20DefaultAccessToken(final String id, final Service service,
                                      final Authentication authentication,
                                      final ExpirationPolicy expirationPolicy,
-                                     final TicketGrantingTicket ticketGrantingTicket,
+                                     final Ticket ticketGrantingTicket,
                                      final String token,
                                      final Collection<String> scopes,
                                      final String clientId,

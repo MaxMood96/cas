@@ -5,14 +5,10 @@ import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
 import org.apereo.cas.oidc.AbstractOidcTests;
 import org.apereo.cas.support.oauth.OAuth20Constants;
-import org.apereo.cas.util.HttpRequestUtils;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.resolver.CasWebflowEventResolver;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
-import org.apereo.inspektr.common.web.ClientInfo;
-import org.apereo.inspektr.common.web.ClientInfoHolder;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,15 +17,10 @@ import org.springframework.binding.expression.support.LiteralExpression;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.webflow.engine.Transition;
 import org.springframework.webflow.engine.support.DefaultTargetStateResolver;
 import org.springframework.webflow.engine.support.DefaultTransitionCriteria;
-import org.springframework.webflow.test.MockRequestContext;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -38,30 +29,22 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@Tag("OIDC")
+@Tag("OIDCWeb")
+@TestPropertySource(properties = "cas.authn.oidc.discovery.acr-values-supported=mfa-dummy")
 @Import(OidcAuthenticationContextWebflowEventResolverTests.OidcAuthenticationContextTestConfiguration.class)
-public class OidcAuthenticationContextWebflowEventResolverTests extends AbstractOidcTests {
+class OidcAuthenticationContextWebflowEventResolverTests extends AbstractOidcTests {
     @Autowired
     @Qualifier("oidcAuthenticationContextWebflowEventResolver")
     protected CasWebflowEventResolver resolver;
 
-    private MockRequestContext context;
-
-    @BeforeEach
-    @Override
-    public void initialize() {
-        super.initialize();
-        this.context = new MockRequestContext();
-
-        val request = new MockHttpServletRequest();
-        request.setRemoteAddr("385.86.151.11");
-        request.setLocalAddr("295.88.151.11");
-        request.addHeader(HttpRequestUtils.USER_AGENT_HEADER, "MSIE");
-        request.addParameter(OAuth20Constants.ACR_VALUES, TestMultifactorAuthenticationProvider.ID);
-        ClientInfoHolder.setClientInfo(new ClientInfo(request));
-
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+    @Test
+    void verifyOperationNeedsMfa() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
+        context.setRemoteAddr("385.86.151.11");
+        context.setLocalAddr("295.88.151.11");
+        context.withUserAgent();
+        context.setParameter(OAuth20Constants.ACR_VALUES, TestMultifactorAuthenticationProvider.ID);
+        context.setClientInfo();
 
         val targetResolver = new DefaultTargetStateResolver(TestMultifactorAuthenticationProvider.ID);
         val transition = new Transition(new DefaultTransitionCriteria(
@@ -71,17 +54,14 @@ public class OidcAuthenticationContextWebflowEventResolverTests extends Abstract
         WebUtils.putServiceIntoFlowScope(context, CoreAuthenticationTestUtils.getWebApplicationService());
         TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext);
         WebUtils.putAuthentication(CoreAuthenticationTestUtils.getAuthentication(), context);
-    }
-
-    @Test
-    public void verifyOperationNeedsMfa() {
+        
         val event = resolver.resolve(context);
         assertEquals(1, event.size());
         assertEquals(TestMultifactorAuthenticationProvider.ID, event.iterator().next().getId());
     }
 
     @TestConfiguration(value = "OidcAuthenticationContextTestConfiguration", proxyBeanMethods = false)
-    public static class OidcAuthenticationContextTestConfiguration {
+    static class OidcAuthenticationContextTestConfiguration {
         @Bean
         public MultifactorAuthenticationProvider dummyProvider() {
             return new TestMultifactorAuthenticationProvider();

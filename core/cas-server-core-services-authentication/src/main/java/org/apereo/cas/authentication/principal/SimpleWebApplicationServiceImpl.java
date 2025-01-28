@@ -5,8 +5,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.NoArgsConstructor;
 
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+
+import java.io.Serial;
 
 /**
  * Represents a service which wishes to use the CAS protocol.
@@ -20,17 +22,12 @@ import javax.persistence.Entity;
 @NoArgsConstructor
 public class SimpleWebApplicationServiceImpl extends AbstractWebApplicationService {
 
+    @Serial
     private static final long serialVersionUID = 8334068957483758042L;
 
-    /**
-     * Instantiates a new Simple web application service.
-     *
-     * @param id          the id
-     * @param originalUrl the original url
-     * @param artifactId  the artifact id
-     */
     @JsonCreator
-    protected SimpleWebApplicationServiceImpl(@JsonProperty("id") final String id, @JsonProperty("originalUrl") final String originalUrl,
+    protected SimpleWebApplicationServiceImpl(@JsonProperty("id") final String id,
+                                              @JsonProperty("originalUrl") final String originalUrl,
                                               @JsonProperty("artifactId") final String artifactId) {
         super(id, originalUrl, artifactId);
     }

@@ -2,10 +2,11 @@ package org.apereo.cas.support.saml;
 
 import org.opensaml.saml.metadata.resolver.impl.DOMMetadataResolver;
 import org.springframework.core.io.Resource;
-
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 /**
@@ -16,10 +17,12 @@ import java.nio.file.Files;
  */
 public class InMemoryResourceMetadataResolver extends DOMMetadataResolver {
 
+    public InMemoryResourceMetadataResolver(final String metadataResource, final OpenSamlConfigBean configBean) {
+        this(new ByteArrayInputStream(metadataResource.getBytes(StandardCharsets.UTF_8)), configBean);
+    }
+
     public InMemoryResourceMetadataResolver(final Resource metadataResource, final OpenSamlConfigBean configBean) throws IOException {
-        super(SamlUtils.getRootElementFrom(metadataResource.getInputStream(), configBean));
-        setParserPool(configBean.getParserPool());
-        setResolveViaPredicatesOnly(true);
+        this(metadataResource.getInputStream(), configBean);
     }
 
     public InMemoryResourceMetadataResolver(final InputStream metadataResource, final OpenSamlConfigBean configBean) {
@@ -29,7 +32,7 @@ public class InMemoryResourceMetadataResolver extends DOMMetadataResolver {
     }
 
     public InMemoryResourceMetadataResolver(final File metadataResource, final OpenSamlConfigBean configBean) throws IOException {
-        super(SamlUtils.getRootElementFrom(Files.newInputStream(metadataResource.toPath()), configBean));
+        this(Files.newInputStream(metadataResource.toPath()), configBean);
         setParserPool(configBean.getParserPool());
         setResolveViaPredicatesOnly(true);
     }

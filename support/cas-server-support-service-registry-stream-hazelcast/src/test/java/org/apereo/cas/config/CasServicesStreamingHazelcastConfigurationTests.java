@@ -2,17 +2,17 @@ package org.apereo.cas.config;
 
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.publisher.CasRegisteredServiceStreamPublisher;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.PublisherIdentifier;
 import org.apereo.cas.util.cache.DistributedCacheManager;
 import org.apereo.cas.util.cache.DistributedCacheObject;
-
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -22,15 +22,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @Tag("Hazelcast")
+@ExtendWith(CasTestExtension.class)
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasServicesStreamingHazelcastConfiguration.class,
-    CasServicesStreamingConfiguration.class
+    CasServicesStreamingHazelcastAutoConfiguration.class,
+    CasServicesStreamingAutoConfiguration.class
 }, properties = {
     "cas.service-registry.stream.hazelcast.config.cluster.core.instance-name=servicesRegistryStream",
-    "cas.service-registry.stream.enabled=true"
+    "cas.service-registry.stream.core.enabled=true"
 })
-public class CasServicesStreamingHazelcastConfigurationTests {
+class CasServicesStreamingHazelcastConfigurationTests {
     @Autowired
     @Qualifier("registeredServiceDistributedCacheManager")
     private DistributedCacheManager<RegisteredService, DistributedCacheObject<RegisteredService>, PublisherIdentifier> registeredServiceDistributedCacheManager;
@@ -40,7 +41,7 @@ public class CasServicesStreamingHazelcastConfigurationTests {
     private CasRegisteredServiceStreamPublisher casRegisteredServiceStreamPublisher;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(registeredServiceDistributedCacheManager);
         assertNotNull(casRegisteredServiceStreamPublisher);
     }

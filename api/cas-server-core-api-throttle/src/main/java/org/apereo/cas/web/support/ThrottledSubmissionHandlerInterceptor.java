@@ -1,12 +1,12 @@
 package org.apereo.cas.web.support;
 
+import org.apereo.cas.util.NamedObject;
 import org.springframework.web.servlet.AsyncHandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.util.Collection;
-import java.util.List;
+import jakarta.annotation.Nonnull;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * This is {@link ThrottledSubmissionHandlerInterceptor}.
@@ -14,7 +14,12 @@ import java.util.List;
  * @author Misagh Moayyed
  * @since 5.0.0
  */
-public interface ThrottledSubmissionHandlerInterceptor extends AsyncHandlerInterceptor {
+public interface ThrottledSubmissionHandlerInterceptor extends AsyncHandlerInterceptor, NamedObject {
+
+    /**
+     * Default bean name.
+     */
+    String BEAN_NAME = "authenticationThrottle";
 
     /**
      * No op throttled submission handler interceptor.
@@ -43,55 +48,48 @@ public interface ThrottledSubmissionHandlerInterceptor extends AsyncHandlerInter
     default boolean exceedsThreshold(final HttpServletRequest request) {
         return false;
     }
+    
 
     /**
-     * Gets name.
-     *
-     * @return the name
+     * Decrement the throttle so authentication can resume.
      */
-    default String getName() {
-        return getClass().getSimpleName();
+    default void release() {
     }
 
     /**
-     * Decrement the the throttle so authentication can resume.
+     * Clear records and remove all.
      */
-    default void decrement() {
-    }
-
-    /**
-     * Gets all records.
-     *
-     * @return the all records
-     */
-    default Collection getRecords() {
-        return List.of();
+    default void clear() {
     }
 
     @Override
-    default boolean preHandle(final HttpServletRequest request,
+    default boolean preHandle(
+        final HttpServletRequest request,
         final HttpServletResponse response,
-        final Object handler) throws Exception {
+        final Object handler) {
         return true;
     }
 
     @Override
-    default void postHandle(final HttpServletRequest request,
+    default void postHandle(
+        final HttpServletRequest request,
         final HttpServletResponse response,
         final Object handler,
         final ModelAndView modelAndView) {
     }
 
     @Override
-    default void afterCompletion(final HttpServletRequest request,
+    default void afterCompletion(
+        final HttpServletRequest request,
         final HttpServletResponse response,
         final Object handler,
-        final Exception e) throws Exception {
+        final Exception e) {
     }
 
     @Override
-    default void afterConcurrentHandlingStarted(final HttpServletRequest request,
-        final HttpServletResponse response,
-        final Object handler) throws Exception {
+    default void afterConcurrentHandlingStarted(
+        @Nonnull final HttpServletRequest request,
+        @Nonnull final HttpServletResponse response,
+        @Nonnull final Object handler) {
     }
 }

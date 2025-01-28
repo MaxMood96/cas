@@ -1,11 +1,11 @@
 package org.apereo.cas.support.oauth.web.mgmt;
 
-import org.apereo.cas.CentralAuthenticationService;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.support.oauth.web.response.accesstoken.response.OAuth20JwtAccessTokenEncoder;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.ticket.refreshtoken.OAuth20RefreshToken;
+import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.token.JwtBuilder;
 import org.apereo.cas.web.BaseCasActuatorEndpoint;
 
@@ -13,6 +13,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.actuate.endpoint.Access;
 import org.springframework.boot.actuate.endpoint.annotation.DeleteOperation;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
@@ -28,19 +30,19 @@ import java.util.stream.Collectors;
  * @author Misagh Moayyed
  * @since 6.0.0
  */
-@Endpoint(id = "oauthTokens", enableByDefault = false)
+@Endpoint(id = "oauthTokens", defaultAccess = Access.NONE)
 @Slf4j
 public class OAuth20TokenManagementEndpoint extends BaseCasActuatorEndpoint {
 
-    private final CentralAuthenticationService centralAuthenticationService;
+    private final ObjectProvider<TicketRegistry> ticketRegistry;
 
-    private final JwtBuilder accessTokenJwtBuilder;
+    private final ObjectProvider<JwtBuilder> accessTokenJwtBuilder;
 
     public OAuth20TokenManagementEndpoint(final CasConfigurationProperties casProperties,
-                                          final CentralAuthenticationService centralAuthenticationService,
-                                          final JwtBuilder accessTokenJwtBuilder) {
+                                          final ObjectProvider<TicketRegistry> ticketRegistry,
+                                          final ObjectProvider<JwtBuilder> accessTokenJwtBuilder) {
         super(casProperties);
-        this.centralAuthenticationService = centralAuthenticationService;
+        this.ticketRegistry = ticketRegistry;
         this.accessTokenJwtBuilder = accessTokenJwtBuilder;
     }
 
@@ -52,9 +54,7 @@ public class OAuth20TokenManagementEndpoint extends BaseCasActuatorEndpoint {
     @ReadOperation
     @Operation(summary = "Get access and/or refresh tokens")
     public Collection<Ticket> getTokens() {
-        return centralAuthenticationService.getTickets(ticket ->
-            (ticket instanceof OAuth20AccessToken || ticket instanceof OAuth20RefreshToken) && !ticket.isExpired())
-            .stream()
+        return ticketRegistry.getObject().getTickets(ticket -> (ticket instanceof OAuth20AccessToken || ticket instanceof OAuth20RefreshToken) && !ticket.isExpired())
             .sorted(Comparator.comparing(Ticket::getId))
             .collect(Collectors.toList());
     }
@@ -67,11 +67,11 @@ public class OAuth20TokenManagementEndpoint extends BaseCasActuatorEndpoint {
      * @return the access token
      */
     @ReadOperation
-    @Operation(summary = "Get single token by id", parameters = {@Parameter(name = "token", required = true)})
+    @Operation(summary = "Get single token by id", parameters = @Parameter(name = "token", required = true, description = "The token id"))
     public Ticket getToken(@Selector final String token) {
         try {
             val ticketId = extractAccessTokenFrom(token);
-            return centralAuthenticationService.getTicket(ticketId, Ticket.class);
+            return ticketRegistry.getObject().getTicket(ticketId, Ticket.class);
         } catch (final Exception e) {
             LOGGER.debug("Ticket [{}] is has expired or cannot be found", token);
             return null;
@@ -81,21 +81,19 @@ public class OAuth20TokenManagementEndpoint extends BaseCasActuatorEndpoint {
     /**
      * Delete access token.
      *
-     * @param ticketId the ticket id
+     * @param token the ticket id
+     * @throws Exception the exception
      */
     @DeleteOperation
-    @Operation(summary = "Delete token by id", parameters = {@Parameter(name = "ticketId", required = true)})
-    public void deleteToken(@Selector final String ticketId) {
-        val ticket = getToken(ticketId);
+    @Operation(summary = "Delete token by id", parameters = @Parameter(name = "token", required = true, description = "The token id"))
+    public void deleteToken(@Selector final String token) throws Exception {
+        val ticket = getToken(token);
         if (ticket != null) {
-            centralAuthenticationService.deleteTicket(ticket.getId());
+            ticketRegistry.getObject().deleteTicket(ticket.getId());
         }
     }
 
-    private String extractAccessTokenFrom(final String token) {
-        return OAuth20JwtAccessTokenEncoder.builder()
-            .accessTokenJwtBuilder(accessTokenJwtBuilder)
-            .build()
-            .decode(token);
+    protected String extractAccessTokenFrom(final String token) {
+        return OAuth20JwtAccessTokenEncoder.toDecodableCipher(accessTokenJwtBuilder.getObject()).decode(token);
     }
 }

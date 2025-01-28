@@ -1,17 +1,20 @@
 package org.apereo.cas.support.saml.idp.metadata.locator;
 
-import org.apereo.cas.support.saml.idp.metadata.generator.SamlIdPMetadataGenerator;
+import org.apereo.cas.monitor.Monitorable;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.SamlIdPMetadataDocument;
+import org.apereo.cas.util.ResourceUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
+import org.apereo.cas.util.function.FunctionUtils;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.springframework.core.io.FileSystemResource;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.Resource;
 
 import java.io.File;
@@ -26,59 +29,51 @@ import java.util.Optional;
  */
 @Slf4j
 @Getter
+@Monitorable
 public class FileSystemSamlIdPMetadataLocator extends AbstractSamlIdPMetadataLocator {
     private final File metadataLocation;
 
-    public FileSystemSamlIdPMetadataLocator(final Resource resource, final Cache<String, SamlIdPMetadataDocument> metadataCache) throws Exception {
-        this(resource.getFile(), metadataCache);
+    public FileSystemSamlIdPMetadataLocator(final CipherExecutor cipherExecutor,
+                                            final Resource resource, final Cache<String, SamlIdPMetadataDocument> metadataCache,
+                                            final ConfigurableApplicationContext applicationContext) throws Exception {
+        this(cipherExecutor, resource.getFile(), metadataCache, applicationContext);
     }
 
-    public FileSystemSamlIdPMetadataLocator(final File resource, final Cache<String, SamlIdPMetadataDocument> metadataCache) {
-        super(CipherExecutor.noOpOfStringToString(), metadataCache);
+    public FileSystemSamlIdPMetadataLocator(final CipherExecutor cipherExecutor, final File resource,
+                                            final Cache<String, SamlIdPMetadataDocument> metadataCache,
+                                            final ConfigurableApplicationContext applicationContext) {
+        super(cipherExecutor, metadataCache, applicationContext);
         this.metadataLocation = resource;
     }
 
     @Override
-    public Resource resolveSigningCertificate(final Optional<SamlRegisteredService> registeredService) {
+    public Resource resolveSigningCertificate(final Optional<SamlRegisteredService> registeredService) throws Throwable {
         return getMetadataArtifact(registeredService, "idp-signing.crt");
     }
 
     @Override
-    public Resource resolveSigningKey(final Optional<SamlRegisteredService> registeredService) {
+    public Resource resolveSigningKey(final Optional<SamlRegisteredService> registeredService) throws Throwable {
         return getMetadataArtifact(registeredService, "idp-signing.key");
     }
 
     @Override
-    public Resource resolveMetadata(final Optional<SamlRegisteredService> registeredService) {
+    public Resource resolveMetadata(final Optional<SamlRegisteredService> registeredService) throws Throwable {
         return getMetadataArtifact(registeredService, "idp-metadata.xml");
     }
 
     @Override
-    public Resource getEncryptionCertificate(final Optional<SamlRegisteredService> registeredService) {
+    public Resource resolveEncryptionCertificate(final Optional<SamlRegisteredService> registeredService) throws Throwable {
         return getMetadataArtifact(registeredService, "idp-encryption.crt");
     }
 
     @Override
-    public Resource resolveEncryptionKey(final Optional<SamlRegisteredService> registeredService) {
+    public Resource resolveEncryptionKey(final Optional<SamlRegisteredService> registeredService) throws Throwable {
         return getMetadataArtifact(registeredService, "idp-encryption.key");
     }
 
     @Override
-    public boolean exists(final Optional<SamlRegisteredService> registeredService) {
+    public boolean exists(final Optional<SamlRegisteredService> registeredService) throws Throwable {
         return resolveMetadata(registeredService).exists();
-    }
-
-    @SneakyThrows
-    @Override
-    protected SamlIdPMetadataDocument fetchInternal(final Optional<SamlRegisteredService> registeredService) {
-        val doc = new SamlIdPMetadataDocument();
-        doc.setMetadata(IOUtils.toString(resolveMetadata(registeredService).getInputStream(), StandardCharsets.UTF_8));
-        doc.setEncryptionCertificate(IOUtils.toString(getEncryptionCertificate(registeredService).getInputStream(), StandardCharsets.UTF_8));
-        doc.setEncryptionKey(IOUtils.toString(resolveEncryptionKey(registeredService).getInputStream(), StandardCharsets.UTF_8));
-        doc.setSigningCertificate(IOUtils.toString(resolveSigningCertificate(registeredService).getInputStream(), StandardCharsets.UTF_8));
-        doc.setSigningKey(IOUtils.toString(resolveSigningKey(registeredService).getInputStream(), StandardCharsets.UTF_8));
-        doc.setAppliesTo(SamlIdPMetadataGenerator.getAppliesToFor(registeredService));
-        return doc;
     }
 
     @Override
@@ -87,36 +82,52 @@ public class FileSystemSamlIdPMetadataLocator extends AbstractSamlIdPMetadataLoc
         LOGGER.info("Metadata directory location is at [{}]", this.metadataLocation);
     }
 
-    private void initializeMetadataDirectory() {
-        if (!this.metadataLocation.exists()) {
-            LOGGER.debug("Metadata directory [{}] does not exist. Creating...", this.metadataLocation);
-            if (!this.metadataLocation.mkdir()) {
-                throw new IllegalArgumentException("Metadata directory location " + this.metadataLocation + " cannot be located/created");
-            }
-        }
+    @Override
+    protected SamlIdPMetadataDocument fetchInternal(final Optional<SamlRegisteredService> registeredService) throws Exception {
+        return FunctionUtils.doUnchecked(() -> {
+            val doc = new SamlIdPMetadataDocument();
+            doc.setMetadata(IOUtils.toString(resolveMetadata(registeredService).getInputStream(), StandardCharsets.UTF_8));
+            doc.setEncryptionCertificate(IOUtils.toString(resolveEncryptionCertificate(registeredService).getInputStream(), StandardCharsets.UTF_8));
+            doc.setEncryptionKey(IOUtils.toString(resolveEncryptionKey(registeredService).getInputStream(), StandardCharsets.UTF_8));
+            doc.setSigningCertificate(IOUtils.toString(resolveSigningCertificate(registeredService).getInputStream(), StandardCharsets.UTF_8));
+            doc.setSigningKey(IOUtils.toString(resolveSigningKey(registeredService).getInputStream(), StandardCharsets.UTF_8));
+            doc.setAppliesTo(getAppliesToFor(registeredService));
+            return doc;
+        });
     }
 
-    /**
-     * Gets metadata artifact.
-     *
-     * @param result       the result
-     * @param artifactName the artifact name
-     * @return the metadata artifact
-     */
-    protected Resource getMetadataArtifact(final Optional<SamlRegisteredService> result, final String artifactName) {
+    protected Resource getMetadataArtifact(final Optional<SamlRegisteredService> result, final String artifactName) throws Throwable {
         if (result.isPresent()) {
-            val serviceDirectory = new File(this.metadataLocation, SamlIdPMetadataGenerator.getAppliesToFor(result));
+            val serviceDirectory = new File(this.metadataLocation, getAppliesToFor(result));
             LOGGER.trace("Metadata directory location for [{}] is [{}]", result.get().getName(), serviceDirectory);
             if (serviceDirectory.exists()) {
                 val artifact = new File(serviceDirectory, artifactName);
                 LOGGER.trace("Artifact location for [{}] and [{}] is [{}]", artifactName, result.get().getName(), artifact);
                 if (artifact.exists()) {
                     LOGGER.debug("Using metadata artifact [{}] at [{}]", artifactName, artifact);
-                    return new FileSystemResource(artifact);
+                    return ResourceUtils.toFileSystemResource(artifact);
                 }
             }
         }
         initializeMetadataDirectory();
-        return new FileSystemResource(new File(this.metadataLocation, artifactName));
+        val resource = ResourceUtils.toFileSystemResource(new File(this.metadataLocation, artifactName));
+        if (resource.exists() && resource.isReadable()) {
+            val content = FileUtils.readFileToString(resource.getFile(), StandardCharsets.UTF_8);
+            if (StringUtils.isNotBlank(content)) {
+                return resolveContentToResource(content);
+            }
+            LOGGER.warn("Metadata artifact at [{}] is empty and invalid and will be deleted", resource);
+            FileUtils.deleteQuietly(resource.getFile());
+        }
+        return ResourceUtils.toFileSystemResource(resource.getFile());
+    }
+
+    protected void initializeMetadataDirectory() {
+        if (!this.metadataLocation.exists()) {
+            LOGGER.debug("Metadata directory [{}] does not exist. Creating...", this.metadataLocation);
+            if (!this.metadataLocation.mkdir()) {
+                throw new IllegalArgumentException("Metadata directory location " + this.metadataLocation + " cannot be located/created");
+            }
+        }
     }
 }

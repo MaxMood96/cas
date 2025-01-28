@@ -1,13 +1,15 @@
 package org.apereo.cas.configuration.model.core.web.security;
 
+import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
+import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -20,9 +22,10 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("HttpHeadersRequestProperties")
+
 public class HttpHeadersRequestProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 5993704062519851359L;
 
     /**
@@ -44,7 +47,7 @@ public class HttpHeadersRequestProperties implements Serializable {
 
     /**
      * When true, will inject the following headers into the response:
-     * {@code Strict-Transport-Security: max-age=15768000 ; includeSubDomains}.
+     * {@code Strict-Transport-Security: ...}.
      */
     private boolean hsts = true;
 
@@ -74,10 +77,25 @@ public class HttpHeadersRequestProperties implements Serializable {
     private String xssOptions = "1; mode=block";
 
     /**
+     * Control the value of the {@code Strict-Transport-Security} header.
+     */
+    private String hstsOptions = "max-age=15768000 ; includeSubDomains";
+
+    /**
      * Helps you reduce XSS risks on modern browsers by declaring what dynamic
      * resources are allowed to load via a HTTP Header.
      * Header value is made up of one or more directives.
      * Multiple directives are separated with a semicolon.
+     * &#64;nonce&#64; is a specific value which is replaced by a generated random value
+     * saved as the request attribute 'contentSecurityPolicyGeneratedNonce'.
      */
-    private String contentSecurityPolicy;
+    @ExpressionLanguageCapable
+    private String contentSecurityPolicy = "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+        + "https://www.googletagmanager.com https://www.google.com; object-src 'none'; worker-src 'self' blob: 'unsafe-inline';";
+
+    /**
+     * Files with these extensions are considered static, so they will be cached by browsers. The value is part of a RegEx.
+     */
+    @RegularExpressionCapable
+    private String cacheControlStaticResources = "css|js|png|txt|jpg|ico|jpeg|bmp|gif";
 }

@@ -4,13 +4,11 @@ import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.web.AbstractServiceValidateController;
 import org.apereo.cas.web.ServiceValidateConfigurationContext;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.servlet.ModelAndView;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * CAS v2 ticket validation endpoint.
@@ -25,7 +23,7 @@ public class ServiceValidateController extends AbstractServiceValidateController
         super(serviceValidateConfigurationContext);
     }
 
-    @GetMapping(path = CasProtocolConstants.ENDPOINT_SERVICE_VALIDATE)
+    @GetMapping(path = { CasProtocolConstants.ENDPOINT_SERVICE_VALIDATE, "/tenants/{tenant}/" + CasProtocolConstants.ENDPOINT_SERVICE_VALIDATE })
     @Override
     public ModelAndView handleRequestInternal(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
         return super.handleRequestInternal(request, response);

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout(mainContentClass='container-xxl')}">
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <link href="../../static/css/cas.css" rel="stylesheet" th:remove="tag"/>
+    <link rel="stylesheet" type="text/css" th:href="@{#{webjars.highlight.css}}" />
+    <script type="text/javascript" th:src="@{#{webjars.highlight.js}}"></script>
+    <script type="text/javascript" th:src="@{#{webjars.sweet-alert.js}}"></script>
+    <link rel="stylesheet" type="text/css" th:href="@{#{webjars.sweet-alert.css}}" />
+    <link rel="stylesheet" type="text/css" th:href="@{#{webjars.animate.css}}" />
+</head>
+
+<body id="cas">
+<main class="container-xxl mt-3 mb-3">
+    <div layout:fragment="content">
+        <script type="text/javascript">
+            function jqueryReady() {
+                if (window.location.hash) {
+                    console.log(`Fragment ${window.location.hash}`);
+                    showPanel(window.location.hash);
+                } else {
+                    showPanel("#divOverview");
+                }
+            }
+
+            function showPanel(element) {
+                $('div.profile-content').hide();
+                $(element).show();
+            }
+        </script>
+
+
+        <div id="casAccountProfile">
+            <div th:replace="~{fragments/accountprofile/accountprofilenavigation :: navigation}" />
+            <div class="mdc-card p-2 m-1" style="min-height: 100vh;">
+                <div th:replace="~{fragments/accountprofile/accountprofileoverview :: overview}" />
+                <div th:replace="~{fragments/accountprofile/accountprofilemfadevices :: mfadevices}"/>
+                <div th:replace="~{fragments/accountprofile/accountprofileauditlog :: auditlog}"/>
+                <div th:replace="~{fragments/accountprofile/accountprofilesecurityquestions :: securityquestions}" />
+                <div th:replace="~{fragments/accountprofile/accountprofileapplications :: applications}"/>
+                <div th:replace="~{fragments/accountprofile/accountprofilesessions :: sessions}"/>
+                <div th:replace="~{fragments/accountprofile/accountprofileconsent :: consent}"/>
+                <div th:replace="~{fragments/accountprofile/accountprofileattributes :: attributes}"/>
+                <div th:replace="~{fragments/accountprofile/accountprofiletrusteddevices :: trusteddevices}"/>
+                <div th:replace="~{fragments/accountprofile/accountprofileaccesstokens :: accesstokens}"/>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

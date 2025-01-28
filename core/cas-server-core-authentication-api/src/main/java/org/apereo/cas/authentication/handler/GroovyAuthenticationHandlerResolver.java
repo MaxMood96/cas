@@ -4,15 +4,14 @@ import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.AuthenticationHandlerResolver;
 import org.apereo.cas.authentication.AuthenticationTransaction;
 import org.apereo.cas.services.ServicesManager;
-import org.apereo.cas.util.scripting.WatchableGroovyScriptResource;
-
+import org.apereo.cas.util.scripting.ExecutableCompiledScript;
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.val;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.Resource;
-
 import java.util.Set;
 
 /**
@@ -24,7 +23,7 @@ import java.util.Set;
 @Getter
 @Setter
 public class GroovyAuthenticationHandlerResolver implements AuthenticationHandlerResolver, DisposableBean {
-    private final WatchableGroovyScriptResource watchableScript;
+    private final ExecutableCompiledScript watchableScript;
 
     private final ServicesManager servicesManager;
 
@@ -37,18 +36,20 @@ public class GroovyAuthenticationHandlerResolver implements AuthenticationHandle
     public GroovyAuthenticationHandlerResolver(final Resource groovyResource, final ServicesManager servicesManager, final int order) {
         this.order = order;
         this.servicesManager = servicesManager;
-        this.watchableScript = new WatchableGroovyScriptResource(groovyResource);
+        val scriptFactory = ExecutableCompiledScriptFactory.getExecutableCompiledScriptFactory();
+        this.watchableScript = scriptFactory.fromResource(groovyResource);
     }
 
     @Override
-    public Set<AuthenticationHandler> resolve(final Set<AuthenticationHandler> candidateHandlers, final AuthenticationTransaction transaction) {
+    public Set<AuthenticationHandler> resolve(final Set<AuthenticationHandler> candidateHandlers,
+                                              final AuthenticationTransaction transaction) throws Throwable {
         val args = new Object[]{candidateHandlers, transaction, servicesManager, LOGGER};
         return watchableScript.execute(args, Set.class);
     }
 
     @Override
 
-    public boolean supports(final Set<AuthenticationHandler> handlers, final AuthenticationTransaction transaction) {
+    public boolean supports(final Set<AuthenticationHandler> handlers, final AuthenticationTransaction transaction) throws Throwable {
         val args = new Object[]{handlers, transaction, servicesManager, LOGGER};
         return watchableScript.execute("supports", Boolean.class, args);
     }

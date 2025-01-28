@@ -1,7 +1,9 @@
 package org.apereo.cas.config;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.util.serialization.ComponentSerializationPlanConfigurer;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.ws.idp.services.CustomNamespaceWSFederationClaimsReleasePolicy;
 import org.apereo.cas.ws.idp.services.WSFederationClaimsReleasePolicy;
 import org.apereo.cas.ws.idp.services.WSFederationRegisteredService;
@@ -19,9 +21,10 @@ import org.springframework.context.annotation.ScopedProxyMode;
  * @author Misagh Moayyed
  * @since 5.1.0
  */
-@Configuration(value = "CoreWsSecurityIdentityProviderComponentSerializationConfiguration", proxyBeanMethods = false)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-public class CoreWsSecurityIdentityProviderComponentSerializationConfiguration {
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.WsFederationIdentityProvider)
+@Configuration(value = "CoreWsSecurityIdentityProviderComponentSerializationConfiguration", proxyBeanMethods = false)
+class CoreWsSecurityIdentityProviderComponentSerializationConfiguration {
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = "wsFederationComponentSerializationPlanConfigurer")

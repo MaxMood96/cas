@@ -2,6 +2,7 @@ package org.apereo.cas.ticket.factory;
 
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.configuration.support.Beans;
+import org.apereo.cas.services.CasModelRegisteredService;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.ticket.ExpirationPolicy;
 import org.apereo.cas.ticket.ExpirationPolicyBuilder;
@@ -11,14 +12,14 @@ import org.apereo.cas.ticket.expiration.MultiTimeUseOrTimeoutExpirationPolicy;
 import org.apereo.cas.ticket.proxy.ProxyGrantingTicket;
 import org.apereo.cas.ticket.proxy.ProxyTicket;
 import org.apereo.cas.ticket.proxy.ProxyTicketFactory;
-import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
+import org.apereo.cas.util.HostNameBasedUniqueTicketIdGenerator;
 import org.apereo.cas.util.crypto.CipherExecutor;
-
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-
 import java.util.Map;
 
 /**
@@ -30,75 +31,42 @@ import java.util.Map;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class DefaultProxyTicketFactory implements ProxyTicketFactory {
-    private final UniqueTicketIdGenerator defaultTicketIdGenerator = new DefaultUniqueTicketIdGenerator();
+public class DefaultProxyTicketFactory implements ProxyTicketFactory<ProxyTicket> {
+    private final UniqueTicketIdGenerator defaultTicketIdGenerator = new HostNameBasedUniqueTicketIdGenerator();
 
-    private final ExpirationPolicyBuilder<ProxyTicket> proxyTicketExpirationPolicy;
+    @Getter
+    private final ExpirationPolicyBuilder<ProxyTicket> expirationPolicyBuilder;
 
     private final Map<String, UniqueTicketIdGenerator> uniqueTicketIdGeneratorsForService;
 
     private final CipherExecutor<String, String> cipherExecutor;
 
-    private final boolean onlyTrackMostRecentSession;
+    private final TicketTrackingPolicy serviceTicketSessionTrackingPolicy;
 
     private final ServicesManager servicesManager;
 
     @Override
-    public <T extends Ticket> T create(final ProxyGrantingTicket proxyGrantingTicket, final Service service,
-                                       final Class<T> clazz) {
+    public ProxyTicket create(final ProxyGrantingTicket proxyGrantingTicket, final Service service) throws Throwable {
         val ticketId = produceTicketIdentifier(service);
-        return produceTicket(proxyGrantingTicket, service, ticketId, clazz);
+        return produceTicket(proxyGrantingTicket, service, ticketId);
     }
 
-    private ExpirationPolicy determineExpirationPolicyForService(final Service service) {
-        val registeredService = servicesManager.findServiceBy(service);
-        if (registeredService != null && registeredService.getProxyTicketExpirationPolicy() != null) {
-            val policy = registeredService.getProxyTicketExpirationPolicy();
-            val count = policy.getNumberOfUses();
-            val ttl = policy.getTimeToLive();
-            if (count > 0 && StringUtils.isNotBlank(ttl)) {
-                return new MultiTimeUseOrTimeoutExpirationPolicy.ProxyTicketExpirationPolicy(count,
-                    Beans.newDuration(ttl).getSeconds());
-            }
-        }
-        return this.proxyTicketExpirationPolicy.buildTicketExpirationPolicy();
+    @Override
+    public Class<? extends Ticket> getTicketType() {
+        return ProxyTicket.class;
     }
 
-    /**
-     * Produce ticket.
-     *
-     * @param <T>                 the type parameter
-     * @param proxyGrantingTicket the proxy granting ticket
-     * @param service             the service
-     * @param ticketId            the ticket id
-     * @param clazz               the clazz
-     * @return the ticket
-     */
-    protected <T extends Ticket> T produceTicket(final ProxyGrantingTicket proxyGrantingTicket,
-                                                 final Service service, final String ticketId,
-                                                 final Class<T> clazz) {
+    protected ProxyTicket produceTicket(final ProxyGrantingTicket proxyGrantingTicket,
+                                        final Service service, final String ticketId) {
         val expirationPolicyToUse = determineExpirationPolicyForService(service);
-        val result = proxyGrantingTicket.grantProxyTicket(
+        return proxyGrantingTicket.grantProxyTicket(
             ticketId,
             service,
             expirationPolicyToUse,
-            this.onlyTrackMostRecentSession);
-
-        if (!clazz.isAssignableFrom(result.getClass())) {
-            throw new ClassCastException("Result [" + result
-                + " is of type " + result.getClass()
-                + " when we were expecting " + clazz);
-        }
-        return (T) result;
+            serviceTicketSessionTrackingPolicy);
     }
 
-    /**
-     * Produce ticket identifier.
-     *
-     * @param service the service
-     * @return the ticket id
-     */
-    protected String produceTicketIdentifier(final Service service) {
+    protected String produceTicketIdentifier(final Service service) throws Throwable {
         val uniqueTicketIdGenKey = service.getClass().getName();
         LOGGER.debug("Looking up ticket id generator for [{}]", uniqueTicketIdGenKey);
         var generator = this.uniqueTicketIdGeneratorsForService.get(uniqueTicketIdGenKey);
@@ -117,8 +85,17 @@ public class DefaultProxyTicketFactory implements ProxyTicketFactory {
         return encodedId;
     }
 
-    @Override
-    public Class<? extends Ticket> getTicketType() {
-        return ProxyTicket.class;
+    private ExpirationPolicy determineExpirationPolicyForService(final Service service) {
+        val registeredService = servicesManager.findServiceBy(service, CasModelRegisteredService.class);
+        if (registeredService != null && registeredService.getProxyTicketExpirationPolicy() != null) {
+            val policy = registeredService.getProxyTicketExpirationPolicy();
+            val count = policy.getNumberOfUses();
+            val ttl = policy.getTimeToLive();
+            if (count > 0 && StringUtils.isNotBlank(ttl)) {
+                return new MultiTimeUseOrTimeoutExpirationPolicy.ProxyTicketExpirationPolicy(count,
+                    Beans.newDuration(ttl).toSeconds());
+            }
+        }
+        return expirationPolicyBuilder.buildTicketExpirationPolicy();
     }
 }

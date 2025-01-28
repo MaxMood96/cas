@@ -1,12 +1,13 @@
 package org.apereo.cas.web.flow;
 
-import org.apereo.cas.authentication.AuthenticationCredentialsThreadLocalBinder;
 import org.apereo.cas.authentication.AuthenticationServiceSelectionPlan;
 import org.apereo.cas.configuration.model.core.sso.SingleSignOnProperties;
+import org.apereo.cas.configuration.support.TriStateBoolean;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.services.WebBasedRegisteredService;
+import org.apereo.cas.ticket.AuthenticationAwareTicket;
+import org.apereo.cas.ticket.TicketGrantingTicketAwareTicket;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
-import org.apereo.cas.util.model.TriStateBoolean;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -42,47 +43,42 @@ public class DefaultSingleSignOnParticipationStrategy extends BaseSingleSignOnPa
             return false;
         }
 
-        val registeredService = getRegisteredService(ssoRequest);
+        val registeredService = (WebBasedRegisteredService) getRegisteredService(ssoRequest);
         if (registeredService == null) {
             return properties.isSsoEnabled();
         }
 
-        val authentication = getAuthenticationFrom(ssoRequest);
-        val ca = AuthenticationCredentialsThreadLocalBinder.getCurrentAuthentication();
-        try {
-            AuthenticationCredentialsThreadLocalBinder.bindCurrent(authentication);
-            val isAllowedForSso = registeredService.getAccessStrategy().isServiceAccessAllowedForSso();
-            LOGGER.trace("Located [{}] in registry. Service access to participate in SSO is set to [{}]",
-                registeredService.getServiceId(), isAllowedForSso);
+        val isAllowedForSso = registeredService.getAccessStrategy().isServiceAccessAllowedForSso(registeredService);
+        LOGGER.trace("Located [{}] in registry. Service access to participate in SSO is set to [{}]",
+            registeredService.getServiceId(), isAllowedForSso);
 
-            if (!isAllowedForSso) {
-                LOGGER.debug("Service [{}] is not authorized to participate in SSO", registeredService.getServiceId());
-                return false;
-            }
-
-            val ssoPolicy = registeredService.getSingleSignOnParticipationPolicy();
-            if (ssoPolicy != null) {
-                val ticketState = getTicketState(ssoRequest);
-                if (ticketState.isPresent()) {
-                    return ssoPolicy.shouldParticipateInSso(registeredService, ticketState.get());
-                }
-            }
-
-            val tgtPolicy = registeredService.getTicketGrantingTicketExpirationPolicy();
-            if (tgtPolicy != null) {
-                val ticketState = getTicketState(ssoRequest);
-                return tgtPolicy.toExpirationPolicy()
-                    .map(policy -> !policy.isExpired(ticketState.get())).orElse(Boolean.TRUE);
-            }
-        } finally {
-            AuthenticationCredentialsThreadLocalBinder.bindCurrent(ca);
+        if (!isAllowedForSso) {
+            LOGGER.debug("Service [{}] is not authorized to participate in SSO", registeredService.getServiceId());
+            return false;
         }
-        return true;
+
+        val ssoPolicy = registeredService.getSingleSignOnParticipationPolicy();
+        if (ssoPolicy != null) {
+            val ticketState = getTicketState(ssoRequest);
+            if (ticketState.isPresent()) {
+                return ssoPolicy.shouldParticipateInSso(registeredService, (AuthenticationAwareTicket) ticketState.get());
+            }
+        }
+
+        val tgtPolicy = registeredService.getTicketGrantingTicketExpirationPolicy();
+        if (tgtPolicy != null) {
+            val ticketState = getTicketState(ssoRequest);
+            return tgtPolicy.toExpirationPolicy()
+                .filter(tgt -> ticketState.isPresent())
+                .map(policy -> !policy.isExpired((TicketGrantingTicketAwareTicket) ticketState.get()))
+                .orElse(Boolean.TRUE);
+        }
+        return properties.isSsoEnabled();
     }
 
     @Override
     public TriStateBoolean isCreateCookieOnRenewedAuthentication(final SingleSignOnParticipationRequest context) {
-        val registeredService = getRegisteredService(context);
+        val registeredService = (WebBasedRegisteredService) getRegisteredService(context);
         if (registeredService != null) {
             val ssoPolicy = registeredService.getSingleSignOnParticipationPolicy();
             if (ssoPolicy != null) {

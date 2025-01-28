@@ -4,10 +4,9 @@ import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
 import org.apereo.cas.support.saml.SamlIdPConstants;
 import org.apereo.cas.support.saml.SamlUtils;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
-import org.apereo.cas.util.HttpUtils;
-
+import org.apereo.cas.util.http.HttpUtils;
 import lombok.val;
-import org.apache.http.HttpStatus;
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -25,10 +24,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -37,8 +34,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Tag("SAML")
-public class ECPSamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
+@Tag("SAML2Web")
+class ECPSamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
     @Autowired
     @Qualifier("ecpProfileHandlerController")
     private ECPSamlIdPProfileHandlerController controller;
@@ -46,7 +43,7 @@ public class ECPSamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigur
     private SamlRegisteredService samlRegisteredService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         servicesManager.deleteAll();
         samlRegisteredService = getSamlRegisteredServiceFor(false, false,
             false, "https://cassp.example.org");
@@ -54,7 +51,7 @@ public class ECPSamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigur
     }
 
     @Test
-    public void verifyOK() {
+    void verifyOK() throws Throwable {
         val response = new MockHttpServletResponse();
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
@@ -71,7 +68,7 @@ public class ECPSamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigur
     }
 
     @Test
-    public void verifyBadAuthn() {
+    void verifyBadAuthn() throws Throwable {
         val response = new MockHttpServletResponse();
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
@@ -90,7 +87,7 @@ public class ECPSamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigur
     }
 
     @Test
-    public void verifyNoCredentials() {
+    void verifyNoCredentials() throws Throwable {
         val response = new MockHttpServletResponse();
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
@@ -104,7 +101,7 @@ public class ECPSamlIdPProfileHandlerControllerTests extends BaseSamlIdPConfigur
     }
 
     @Test
-    public void verifyFailures() {
+    void verifyFailures() throws Throwable {
         val response = new MockHttpServletResponse();
         val request = new MockHttpServletRequest();
         val headers = HttpUtils.createBasicAuthHeaders("casuser", "casuser");

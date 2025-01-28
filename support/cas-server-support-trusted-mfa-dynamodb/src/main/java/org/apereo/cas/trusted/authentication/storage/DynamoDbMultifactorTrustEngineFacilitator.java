@@ -6,10 +6,9 @@ import org.apereo.cas.dynamodb.DynamoDbTableUtils;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustRecord;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.DateTimeUtils;
-
+import org.apereo.cas.util.function.FunctionUtils;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -21,7 +20,6 @@ import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
-
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -39,14 +37,7 @@ import java.util.stream.Stream;
  * @since 6.1.0
  */
 @Slf4j
-@Getter
-@RequiredArgsConstructor
-@SuppressWarnings("JavaUtilDate")
-public class DynamoDbMultifactorTrustEngineFacilitator {
-    private final DynamoDbTrustedDevicesMultifactorProperties dynamoDbProperties;
-
-    private final DynamoDbClient amazonDynamoDBClient;
-
+public record DynamoDbMultifactorTrustEngineFacilitator(DynamoDbTrustedDevicesMultifactorProperties dynamoDbProperties, DynamoDbClient amazonDynamoDBClient) {
     private static MultifactorAuthenticationTrustRecord extractAttributeValuesFrom(final Map<String, AttributeValue> item) {
         val record = new MultifactorAuthenticationTrustRecord();
         record.setId(Long.parseLong(item.get(ColumnNames.ID.getColumnName()).s()));
@@ -90,12 +81,11 @@ public class DynamoDbMultifactorTrustEngineFacilitator {
      *
      * @param deleteTables the delete tables
      */
-    @SneakyThrows
     public void createTable(final boolean deleteTables) {
-        DynamoDbTableUtils.createTable(amazonDynamoDBClient, dynamoDbProperties,
+        FunctionUtils.doUnchecked(__ -> DynamoDbTableUtils.createTable(amazonDynamoDBClient, dynamoDbProperties,
             dynamoDbProperties.getTableName(), deleteTables,
             List.of(AttributeDefinition.builder().attributeName(ColumnNames.ID.getColumnName()).attributeType(ScalarAttributeType.S).build()),
-            List.of(KeySchemaElement.builder().attributeName(ColumnNames.ID.getColumnName()).keyType(KeyType.HASH).build()));
+            List.of(KeySchemaElement.builder().attributeName(ColumnNames.ID.getColumnName()).keyType(KeyType.HASH).build())));
     }
 
     /**

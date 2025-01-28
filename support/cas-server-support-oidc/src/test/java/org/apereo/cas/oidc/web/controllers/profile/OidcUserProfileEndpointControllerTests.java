@@ -22,6 +22,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -31,8 +32,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.3.0
  */
-@Tag("OIDC")
-public class OidcUserProfileEndpointControllerTests extends AbstractOidcTests {
+@Tag("OIDCWeb")
+class OidcUserProfileEndpointControllerTests extends AbstractOidcTests {
     @Autowired
     @Qualifier("oidcProfileController")
     protected OidcUserProfileEndpointController oidcUserProfileEndpointController;
@@ -42,24 +43,24 @@ public class OidcUserProfileEndpointControllerTests extends AbstractOidcTests {
     protected OAuth20AccessTokenFactory accessTokenFactory;
 
     @Test
-    public void verifyBadEndpointRequest() throws Exception {
+    void verifyBadEndpointRequest() throws Throwable {
         val request = getHttpRequestForEndpoint("unknown/issuer");
         request.setRequestURI("unknown/issuer");
         val response = new MockHttpServletResponse();
         val mv = oidcUserProfileEndpointController.handlePostRequest(request, response);
-        assertEquals(HttpStatus.NOT_FOUND, mv.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, mv.getStatusCode());
     }
 
     @Test
-    public void verify() throws Exception {
+    void verify() throws Throwable {
         val map = new HashMap<String, List<Object>>();
         map.put("cn", List.of("cas"));
 
-        val principal = CoreAuthenticationTestUtils.getPrincipal("casuser", map);
+        val principal = CoreAuthenticationTestUtils.getPrincipal(UUID.randomUUID().toString(), map);
         val authentication = RegisteredServiceTestUtils.getAuthentication(principal);
         val code = addCode(principal, getOidcRegisteredService());
         val accessToken = accessTokenFactory.create(RegisteredServiceTestUtils.getService(), authentication,
-            new MockTicketGrantingTicket("casuser"), new ArrayList<>(),
+            new MockTicketGrantingTicket(principal.getId()), new ArrayList<>(),
             code.getId(), code.getClientId(), new HashMap<>(),
             OAuth20ResponseTypes.CODE, OAuth20GrantTypes.AUTHORIZATION_CODE);
         ticketRegistry.addTicket(accessToken);

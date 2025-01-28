@@ -3,6 +3,8 @@ package org.apereo.cas.support.inwebo.web.flow.actions;
 import org.apereo.cas.support.inwebo.authentication.InweboCredential;
 import org.apereo.cas.support.inwebo.service.InweboService;
 import org.apereo.cas.support.inwebo.service.response.InweboResult;
+import org.apereo.cas.util.function.FunctionUtils;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.flow.resolver.CasWebflowEventResolver;
 import org.apereo.cas.web.support.WebUtils;
 
@@ -10,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -22,25 +23,25 @@ import org.springframework.webflow.execution.RequestContext;
  */
 @RequiredArgsConstructor
 @Slf4j
-public class InweboCheckAuthenticationAction extends AbstractAction {
+public class InweboCheckAuthenticationAction extends BaseCasWebflowAction {
 
     private final InweboService service;
 
     private final CasWebflowEventResolver casWebflowEventResolver;
 
     @Override
-    public Event doExecute(final RequestContext requestContext) {
-        val authentication = WebUtils.getInProgressAuthentication();
+    protected Event doExecuteInternal(final RequestContext requestContext) {
+        val authentication = WebUtils.getAuthentication(requestContext);
         val login = authentication.getPrincipal().getId();
-        val otp = requestContext.getRequestParameters().get(WebflowConstants.OTP);
+        val otp = requestContext.getRequestParameters().get(InweboWebflowConstants.OTP);
         val flowScope = requestContext.getFlowScope();
-        val sessionId = (String) flowScope.get(WebflowConstants.INWEBO_SESSION_ID);
+        val sessionId = (String) flowScope.get(InweboWebflowConstants.INWEBO_SESSION_ID);
         if (StringUtils.isNotBlank(otp)) {
             val credential = new InweboCredential(login);
             credential.setOtp(otp);
             LOGGER.debug("Received OTP: [{}] for login: [{}]", otp, login);
             WebUtils.putCredential(requestContext, credential);
-            return this.casWebflowEventResolver.resolveSingle(requestContext);
+            return resolveEvent(requestContext);
         }
         if (StringUtils.isNotBlank(sessionId)) {
             val response = service.checkPushResult(login, sessionId);
@@ -52,11 +53,11 @@ public class InweboCheckAuthenticationAction extends AbstractAction {
                 credential.setAlreadyAuthenticated(true);
                 LOGGER.debug("User: [{}] validated push for sessionId: [{}] and device: [{}]", login, sessionId, deviceName);
                 WebUtils.putCredential(requestContext, credential);
-                return this.casWebflowEventResolver.resolveSingle(requestContext);
+                return resolveEvent(requestContext);
             }
             if (result == InweboResult.WAITING) {
                 LOGGER.trace("Waiting for user to validate on mobile/desktop");
-                return getEventFactorySupport().event(this, WebflowConstants.PENDING);
+                return getEventFactorySupport().event(this, InweboWebflowConstants.PENDING);
             }
             LOGGER.debug("Validation fails: [{}]", result);
             if (result == InweboResult.REFUSED || result == InweboResult.TIMEOUT) {
@@ -64,6 +65,10 @@ public class InweboCheckAuthenticationAction extends AbstractAction {
             }
         }
         return error();
+    }
+
+    private Event resolveEvent(final RequestContext requestContext) {
+        return FunctionUtils.doUnchecked(() -> casWebflowEventResolver.resolveSingle(requestContext));
     }
 
 }

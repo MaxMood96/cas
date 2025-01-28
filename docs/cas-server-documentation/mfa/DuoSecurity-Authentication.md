@@ -20,17 +20,20 @@ Duo offers several options for authenticating users:
 
 {% include_cached casmodule.html group="org.apereo.cas" module="cas-server-support-duo" %}
 
-<div class="alert alert-warning"><strong>Usage</strong>
-<p>Please note that support for Duo multifactor authentication that is based on the Duo's Web SDK and the embedded iFrame
-is deprecated and scheduled to be removed in the future. You should consider switching to the 'Universal Prompt' variant
-described in this document to avoid surprised in future upgrades.</p>
-</div>
+## Configuration
+
+{% include_cached casproperties.html properties="cas.authn.mfa.duo" %}
+
+### Bypass
+
+{% include_cached casproperties.html properties="cas.authn.mfa.duo" includes=".bypass" %}
+
 
 ## Actuator Endpoints
       
 The following endpoints are provided by CAS:
 
-{% include_cached actuators.html endpoints="duoPing,duoAccountStatus"  %}
+{% include_cached actuators.html endpoints="duoPing,duoAccountStatus,health,duoAdmin" healthIndicators="duoSecurityHealthIndicator" %}
 
 ## Multiple Instances
 
@@ -44,20 +47,10 @@ For this behavior to function, separate unique ids of your own choosing need to 
 provider. Each provider instance is registered with CAS and activated in the authentication
 flows as necessary. The provider id need not be defined if there is only a single Duo instance available.
 
-## User Account Status
+## Account Profile Management
 
-If users are unregistered with Duo Security or allowed through via a direct bypass, 
-CAS will query Duo Security for the user account apriori to learn
-whether user is registered or configured for direct bypass. If the account is configured for direct bypass or the
-user account is not registered yet the new-user enrollment policy allows the user to skip registration, CAS will bypass
-Duo Security altogether and shall not challenge the user and will also **NOT** report back a multifactor-enabled 
-authentication context back to the application.
-
-<div class="alert alert-warning"><strong>YMMV</strong><p>In recent conversations with Duo Security, it 
-turns out that the API behavior has changed (for security reasons) where it may no longer accurately 
-report back account status. This means even if the above conditions hold true, CAS may continue to route 
-the user to Duo Security having received an eligibility status from the API. Duo Security is reportedly 
-working on a fix to restore the API behavior in a more secure way. In the meanwhile, YMMV.</p></div>
+The integration with Duo Security is able to provide user device registration information to the 
+account profile management feature in CAS. [See this guide](../registration/Account-Management-Overview.html) for better details.
 
 ## Health Status
 
@@ -66,7 +59,7 @@ the health status of the service using Duo Security's `ping` API.
 The results of the operations are recorded and reported using `health` endpoint 
 provided by [CAS Monitoring endpoints](../monitoring/Monitoring-Statistics.html).
 Of course, the same result throughout the Duo authentication flow is also used to determine failure modes.
- 
+  
 ## Universal Prompt
 
 Universal Prompt is a variation of Duo Multifactor Authentication 
@@ -106,10 +99,6 @@ to pass through Duo Security as well.
 curl --location --header "Content-Type: application/cas" https://apps.example.org/myapp -L -u casuser:Mellon
 ```
 
-## Configuration
-
-{% include_cached casproperties.html properties="cas.authn.mfa.duo" %}
-
 ## REST Protocol Credential Extraction
 
 In the event that the [CAS REST Protocol](../protocol/REST-Protocol.html) is turned on, a 
@@ -117,6 +106,12 @@ special credential extractor is injected into the REST authentication engine in 
 to recognize credentials and authenticate them as part of the REST request.
 The expected parameter name in the request body is `passcode` that can be found from
 Duo Security's mobile application or received via SMS.
+ 
+## Passwordless Authentication
+
+The integration with Duo Security can also act as an account store 
+for [Passwordless Authentication](../authentication/Passwordless-Authentication-Storage-DuoSecurity.html). This behavior needs to be
+explicitly turned on in CAS settings for eligible multifactor authentication providers.
 
 ## Troubleshooting
 
@@ -126,8 +121,8 @@ levels:
 ```xml
 ...
 <Logger name="com.duosecurity" level="debug" additivity="false">
-    <AppenderRef ref="console"/>
-    <AppenderRef ref="file"/>
+    <AppenderRef ref="casConsole"/>
+    <AppenderRef ref="casFile"/>
 </Logger>
 ...
 ``` 

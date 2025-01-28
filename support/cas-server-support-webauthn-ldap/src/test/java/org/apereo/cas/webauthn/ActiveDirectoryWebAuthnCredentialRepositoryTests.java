@@ -1,9 +1,8 @@
 package org.apereo.cas.webauthn;
 
-import org.apereo.cas.config.LdapWebAuthnConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.config.CasLdapWebAuthnAutoConfiguration;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.webauthn.storage.BaseWebAuthnCredentialRepositoryTests;
-
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.Modification;
 import com.unboundid.ldap.sdk.ModificationType;
@@ -11,12 +10,11 @@ import com.unboundid.util.ssl.SSLUtil;
 import com.unboundid.util.ssl.TrustAllTrustManager;
 import lombok.Cleanup;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.ldaptive.BindConnectionInitializer;
 import org.ldaptive.Credential;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
 
 /**
@@ -27,26 +25,29 @@ import org.springframework.test.context.TestPropertySource;
  */
 @TestPropertySource(
     properties = {
-        "cas.authn.mfa.web-authn.ldap.account-attribute-name=streetAddress",
+        "cas.authn.mfa.web-authn.crypto.signing.key=dK6PhAi8JSfDk3-CHHf07sBesFh_0OXaDUOsYgf9KLF83riM3MF4UjhC47vJ8M4CPvi_n-O2D2ygU2DDxgugXw",
+        "cas.authn.mfa.web-authn.crypto.encryption.key=qv5XggQkdy9OYuEbdgiF7shq0aCA6F1EQpfTy168ypWYb-En6Kn18idrj3K8XSqr0z0xGU6cZl3eQGFOvRrPyg",
+        
+        "cas.authn.mfa.web-authn.ldap.account-attribute-name=webauthndevices",
         "cas.authn.mfa.web-authn.ldap.ldap-url=ldaps://localhost:10636",
         "cas.authn.mfa.web-authn.ldap.bind-dn=CN=admin,CN=Users,DC=cas,DC=example,DC=org",
         "cas.authn.mfa.web-authn.ldap.bind-credential=P@ssw0rd",
         "cas.authn.mfa.web-authn.ldap.base-dn=CN=Users,DC=cas,DC=example,DC=org",
         "cas.authn.mfa.web-authn.ldap.search-filter=cn={user}",
-        "cas.authn.mfa.web-authn.ldap.trust-store=file:/tmp/adcacerts.jks",
+        "cas.authn.mfa.web-authn.ldap.trust-store=file:${#systemProperties['java.io.tmpdir']}/adcacerts.jks",
         "cas.authn.mfa.web-authn.ldap.trust-store-type=JKS",
         "cas.authn.mfa.web-authn.ldap.trust-store-password=changeit",
         "cas.authn.mfa.web-authn.ldap.min-pool-size=0",
-        "cas.authn.mfa.web-authn.ldap.hostname-verifier=DEFAULT"
+        "cas.authn.mfa.web-authn.ldap.hostname-verifier=ANY",
+        "cas.authn.mfa.web-authn.ldap.trust-manager=ANY"
     })
-@Tag("Ldap")
-@EnabledIfPortOpen(port = 10636)
+@Tag("ActiveDirectory")
+@EnabledIfListeningOnPort(port = 10636)
 @Getter
-@Import(LdapWebAuthnConfiguration.class)
-public class ActiveDirectoryWebAuthnCredentialRepositoryTests extends BaseWebAuthnCredentialRepositoryTests {
+@ImportAutoConfiguration(CasLdapWebAuthnAutoConfiguration.class)
+class ActiveDirectoryWebAuthnCredentialRepositoryTests extends BaseWebAuthnCredentialRepositoryTests {
     @Override
-    @SneakyThrows
-    protected String getUsername() {
+    protected String getUsername() throws Exception {
         val uid = super.getUsername();
 
         val bindInit = new BindConnectionInitializer("CN=admin,CN=Users,DC=cas,DC=example,DC=org", new Credential("P@ssw0rd"));
@@ -55,12 +56,12 @@ public class ActiveDirectoryWebAuthnCredentialRepositoryTests extends BaseWebAut
         val socketFactory = sslUtil.createSSLSocketFactory();
 
         @Cleanup
-        val c = new LDAPConnection(socketFactory, "localhost", 10636,
+        val connection = new LDAPConnection(socketFactory, "localhost", 10636,
             bindInit.getBindDn(), bindInit.getBindCredential().getString());
 
-        c.add(getLdif(uid));
-        val mod = new Modification(ModificationType.REPLACE, "streetAddress", " ");
-        c.modify(String.format("CN=%s,CN=Users,DC=cas,DC=example,DC=org", uid), mod);
+        connection.add(getLdif(uid));
+        val mod = new Modification(ModificationType.REPLACE, "webauthndevices", " ");
+        connection.modify(String.format("CN=%s,CN=Users,DC=cas,DC=example,DC=org", uid), mod);
 
         return uid;
     }

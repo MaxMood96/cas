@@ -2,9 +2,6 @@ package org.apereo.cas.ticket;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
-import java.io.Serializable;
-import java.time.ZonedDateTime;
-
 /**
  * Interface for the generic concept of a ticket.
  *
@@ -12,7 +9,7 @@ import java.time.ZonedDateTime;
  * @since 3.0.0
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
-public interface Ticket extends Serializable, Comparable<Ticket> {
+public interface Ticket extends ExpirableTicket, StatelessTicket, Comparable<Ticket> {
 
     /**
      * Method to retrieve the id.
@@ -22,25 +19,19 @@ public interface Ticket extends Serializable, Comparable<Ticket> {
     String getId();
 
     /**
-     * Method to retrieve the TicketGrantingTicket that granted this ticket.
-     *
-     * @return the ticket or null if it has no parent
+     * Method to retrieve the tenant id that owns and issued this ticket.
+     * @return tenant id or null
      */
-    TicketGrantingTicket getTicketGrantingTicket();
-
-    /**
-     * Method to return the time the Ticket was created.
-     *
-     * @return the time the ticket was created.
-     */
-    ZonedDateTime getCreationTime();
+    String getTenantId();
 
     /**
      * Gets count of uses.
      *
      * @return the number of times this ticket was used.
      */
-    int getCountOfUses();
+    default int getCountOfUses() {
+        return 0;
+    }
 
     /**
      * Gets prefix.
@@ -50,23 +41,15 @@ public interface Ticket extends Serializable, Comparable<Ticket> {
     String getPrefix();
 
     /**
-     * Determines if the ticket is expired. Most common implementations might
-     * collaborate with <i>ExpirationPolicy</i> strategy.
+     * May record the <i>previous</i> last time this ticket was used as well as
+     * the last usage time. The ticket usage count is also incremented.
+     * <p>Tickets themselves are solely responsible to maintain their state. The
+     * determination of ticket usage is left up to the implementation and
+     * the specific ticket type.
      *
-     * @return true, if the ticket is expired
      * @see ExpirationPolicy
+     * @since 5.0.0
      */
-    boolean isExpired();
-
-    /**
-     * Get expiration policy associated with ticket.
-     *
-     * @return the expiration policy
-     */
-    ExpirationPolicy getExpirationPolicy();
-
-    /**
-     * Mark a ticket as expired.
-     */
-    void markTicketExpired();
+    default void update() {
+    }
 }

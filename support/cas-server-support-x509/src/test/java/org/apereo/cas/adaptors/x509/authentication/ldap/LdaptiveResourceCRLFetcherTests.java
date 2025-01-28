@@ -4,18 +4,17 @@ import org.apereo.cas.adaptors.ldap.LdapIntegrationTestsOperations;
 import org.apereo.cas.adaptors.x509.authentication.CRLFetcher;
 import org.apereo.cas.adaptors.x509.authentication.revocation.checker.CRLDistributionPointRevocationChecker;
 import org.apereo.cas.adaptors.x509.authentication.revocation.policy.AllowRevocationPolicy;
+import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.util.EncodingUtils;
 import org.apereo.cas.util.LdapTestUtils;
 import org.apereo.cas.util.crypto.CertUtils;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import lombok.Cleanup;
 import lombok.val;
 import org.apache.commons.io.IOUtils;
-import org.ehcache.UserManagedCache;
-import org.ehcache.config.builders.ResourcePoolsBuilder;
-import org.ehcache.config.builders.UserManagedCacheBuilder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -30,11 +29,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.test.context.TestPropertySource;
-
 import java.net.URI;
 import java.net.URL;
 import java.security.cert.CertificateException;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -45,8 +42,8 @@ import static org.mockito.Mockito.*;
  * @since 4.1
  */
 @Tag("Ldap")
-@EnabledIfPortOpen(port = 10389)
-public class LdaptiveResourceCRLFetcherTests {
+@EnabledIfListeningOnPort(port = 10389)
+class LdaptiveResourceCRLFetcherTests {
 
     private static final String DN = "CN=x509,ou=people,dc=example,dc=org";
 
@@ -68,26 +65,25 @@ public class LdaptiveResourceCRLFetcherTests {
     }
 
     @Test
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val config = mock(ConnectionConfig.class);
         val operation = mock(SearchOperation.class);
         val fetcher = new LdaptiveResourceCRLFetcher(config, operation, "attribute");
         assertNull(fetcher.fetch(new URI("https://github.com")));
-        assertNull(fetcher.fetch(new URL("https://github.com")));
+        assertNull(fetcher.fetch(new URI("https://github.com").toURL()));
         assertNull(fetcher.fetch("https://github.com"));
     }
 
     @Nested
     @Tag("Ldap")
     @TestPropertySource(properties = "cas.authn.x509.ldap.certificate-attribute=cn")
-    @SuppressWarnings("ClassCanBeStatic")
-    public class InvalidNonBinaryAttributeFetchFromLdap extends BaseX509LdapResourceFetcherTests {
+    class InvalidNonBinaryAttributeFetchFromLdap extends BaseX509LdapResourceFetcherTests {
         @Autowired
         @Qualifier("crlFetcher")
         private CRLFetcher fetcher;
 
         @Test
-        public void verifyResourceFromResourceUrl() throws Exception {
+        void verifyResourceFromResourceUrl() {
             val resource = mock(Resource.class);
             when(resource.toString()).thenReturn("ldap://localhost:10389");
             assertThrows(CertificateException.class, () -> fetcher.fetch(resource));
@@ -97,14 +93,13 @@ public class LdaptiveResourceCRLFetcherTests {
     @Nested
     @Tag("Ldap")
     @TestPropertySource(properties = "cas.authn.x509.ldap.certificate-attribute=unknown")
-    @SuppressWarnings("ClassCanBeStatic")
-    public class UnknownAttributeFetchFromLdap extends BaseX509LdapResourceFetcherTests {
+    class UnknownAttributeFetchFromLdap extends BaseX509LdapResourceFetcherTests {
         @Autowired
         @Qualifier("crlFetcher")
         private CRLFetcher fetcher;
 
         @Test
-        public void verifyResourceFromResourceUrl() throws Exception {
+        void verifyResourceFromResourceUrl() {
             val resource = mock(Resource.class);
             when(resource.toString()).thenReturn("ldap://localhost:10389");
             assertThrows(CertificateException.class, () -> fetcher.fetch(resource));
@@ -113,14 +108,13 @@ public class LdaptiveResourceCRLFetcherTests {
 
     @Nested
     @Tag("Ldap")
-    @SuppressWarnings("ClassCanBeStatic")
-    public class DefaultFetchFromLdap extends BaseX509LdapResourceFetcherTests {
+    class DefaultFetchFromLdap extends BaseX509LdapResourceFetcherTests {
         @Autowired
         @Qualifier("crlFetcher")
         private CRLFetcher fetcher;
 
         @Test
-        public void verifyResourceFromResourceUrl() throws Exception {
+        void verifyResourceFromResourceUrl() throws Throwable {
             val resource = mock(Resource.class);
             when(resource.toString()).thenReturn("ldap://localhost:10389");
             assertNotNull(fetcher.fetch(resource));
@@ -137,8 +131,8 @@ public class LdaptiveResourceCRLFetcherTests {
         }
 
         @Test
-        public void getCrlFromLdap() throws Exception {
-            val cache = getCache(100);
+        void getCrlFromLdap() throws Exception {
+            val cache = getCache();
             for (var i = 0; i < 10; i++) {
                 val checker =
                     new CRLDistributionPointRevocationChecker(false, new AllowRevocationPolicy(), null,
@@ -149,9 +143,9 @@ public class LdaptiveResourceCRLFetcherTests {
         }
 
         @Test
-        public void getCrlFromLdapWithNoCaching() throws Exception {
+        void getCrlFromLdapWithNoCaching() throws Exception {
             for (var i = 0; i < 10; i++) {
-                val cache = getCache(100);
+                val cache = getCache();
                 val checker = new CRLDistributionPointRevocationChecker(
                     false, new AllowRevocationPolicy(), null,
                     cache, fetcher, true);
@@ -160,9 +154,11 @@ public class LdaptiveResourceCRLFetcherTests {
             }
         }
 
-        private UserManagedCache<URI, byte[]> getCache(final int entries) {
-            return UserManagedCacheBuilder.newUserManagedCacheBuilder(URI.class, byte[].class)
-                .withResourcePools(ResourcePoolsBuilder.heap(entries)).build();
+        private static Cache<URI, byte[]> getCache() {
+            return Caffeine.newBuilder()
+                .maximumSize(1000)
+                .expireAfterWrite(Beans.newDuration("PT1H"))
+                .build();
         }
     }
 }

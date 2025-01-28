@@ -1,7 +1,12 @@
-description = "Apereo CAS U2F YubiKey DynamoDb Support"
+description = "Apereo CAS YubiKey DynamoDb Support"
 
 ext {
-    maxParallelForksForTests = 1
+
+    publishMetadata = true
+    projectMetadata = [
+            category: "YubiKey Multifactor Authentication",
+            title: "YubiKey Support via DynamoDb"
+    ]
 }
 
 dependencies {
@@ -20,6 +25,7 @@ dependencies {
     implementation project(":core:cas-server-core-services-api")
     implementation project(":core:cas-server-core-authentication-api")
     implementation project(":core:cas-server-core-webflow")
+    implementation project(":core:cas-server-core-multitenancy")
     implementation project(":core:cas-server-core-web")
     implementation project(":core:cas-server-core-webflow-api")
 
@@ -27,6 +33,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core-notifications")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-cookie")
     testImplementation project(":core:cas-server-core-tickets")
@@ -36,7 +43,8 @@ dependencies {
 
     testImplementation project(path: ":support:cas-server-support-yubikey-core", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-yubikey", configuration: "tests")
-
+    testImplementation project(path: ":support:cas-server-support-person-directory-core", configuration: "tests")
+    
     testImplementation project(path: ":core:cas-server-core-authentication-mfa-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication", configuration: "tests")

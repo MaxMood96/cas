@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -14,13 +15,16 @@ import java.io.Serializable;
  *
  * @author Misagh Moayyed
  * @since 5.0.0
+ * @deprecated Since 7.0.0
  */
 @Getter
 @Setter
 @Accessors(chain = true)
 @RequiresModule(name = "cas-server-support-memcached-core")
+@Deprecated(since = "7.0.0")
 public class BaseMemcachedProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 514520518053691666L;
 
     /**
@@ -146,7 +150,7 @@ public class BaseMemcachedProperties implements Serializable {
          */
         KRYO,
         /**
-         * Kryp native transcoder that serializes and compresses objects.
+         * Kryo native transcoder that serializes and compresses objects.
          */
         SERIAL,
         /**

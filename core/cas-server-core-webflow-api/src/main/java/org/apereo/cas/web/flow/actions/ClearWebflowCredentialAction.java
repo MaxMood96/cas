@@ -1,11 +1,11 @@
 package org.apereo.cas.web.flow.actions;
 
+import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -21,10 +21,10 @@ import org.springframework.webflow.execution.RequestContext;
  * @since 5.0.0
  */
 @Slf4j
-public class ClearWebflowCredentialAction extends AbstractAction {
+public class ClearWebflowCredentialAction extends BaseCasWebflowAction {
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
+    protected Event doExecuteInternal(final RequestContext requestContext) {
         val currentEvent = requestContext.getCurrentEvent();
         if (currentEvent == null) {
             return null;
@@ -33,7 +33,8 @@ public class ClearWebflowCredentialAction extends AbstractAction {
         if (current.equalsIgnoreCase(CasWebflowConstants.TRANSITION_ID_SUCCESS)) {
             return null;
         }
-
+        val credential = WebUtils.getCredential(requestContext);
+        requestContext.getConversationScope().put(Credential.class.getName(), credential);
         WebUtils.removeCredential(requestContext);
         if (current.equalsIgnoreCase(CasWebflowConstants.TRANSITION_ID_AUTHENTICATION_FAILURE)
             || current.equalsIgnoreCase(CasWebflowConstants.TRANSITION_ID_ERROR)) {

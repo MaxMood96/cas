@@ -20,7 +20,9 @@ import org.apereo.inspektr.audit.annotation.Audit;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.util.Optional;
 import java.util.Set;
 
@@ -41,17 +43,18 @@ public class DefaultMultifactorAuthenticationProviderWebflowEventResolver extend
     }
 
     @Override
-    public Set<Event> resolveInternal(final RequestContext context) {
+    public Set<Event> resolveInternal(final RequestContext context) throws Throwable {
         val registeredService = resolveRegisteredServiceInRequestContext(context);
         val service = resolveServiceFromAuthenticationRequest(context);
         val authentication = WebUtils.getAuthentication(context);
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(context);
-        val result = determineMultifactorAuthenticationProvider(registeredService, authentication, request, service);
+        val response = WebUtils.getHttpServletResponseFromExternalWebflowContext(context);
+        val result = determineMultifactorAuthenticationProvider(registeredService, authentication, request, response, service);
         return result
             .map(provider -> {
                 LOGGER.trace("Building event based on the authentication provider [{}] and service [{}]", provider, registeredService);
                 val eventMap = MultifactorAuthenticationUtils.buildEventAttributeMap(authentication.getPrincipal(),
-                    Optional.ofNullable(registeredService), provider);
+                    Optional.ofNullable(service), Optional.ofNullable(registeredService), provider);
                 eventMap.put(MultifactorAuthenticationTrigger.class.getSimpleName(), multifactorAuthenticationTrigger.getName());
                 val event = MultifactorAuthenticationUtils.validateEventIdForMatchingTransitionInContext(
                     provider.getId(), Optional.of(context), eventMap);
@@ -64,19 +67,21 @@ public class DefaultMultifactorAuthenticationProviderWebflowEventResolver extend
         actionResolverName = AuditActionResolvers.AUTHENTICATION_EVENT_ACTION_RESOLVER,
         resourceResolverName = AuditResourceResolvers.AUTHENTICATION_EVENT_RESOURCE_RESOLVER)
     @Override
-    public Event resolveSingle(final RequestContext context) {
+    public Event resolveSingle(final RequestContext context) throws Throwable {
         return super.resolveSingle(context);
     }
 
-    private Optional<MultifactorAuthenticationProvider> determineMultifactorAuthenticationProvider(final RegisteredService registeredService,
-                                                                                                   final Authentication authentication,
-                                                                                                   final HttpServletRequest request,
-                                                                                                   final Service service) {
-        if (registeredService != null && registeredService.getMultifactorPolicy().isBypassEnabled()) {
+    protected Optional<MultifactorAuthenticationProvider> determineMultifactorAuthenticationProvider(
+        final RegisteredService registeredService,
+        final Authentication authentication,
+        final HttpServletRequest request,
+        final HttpServletResponse response,
+        final Service service) throws Throwable {
+        if (registeredService != null && registeredService.getMultifactorAuthenticationPolicy().isBypassEnabled()) {
             return Optional.empty();
         }
         if (multifactorAuthenticationTrigger.supports(request, registeredService, authentication, service)) {
-            return multifactorAuthenticationTrigger.isActivated(authentication, registeredService, request, service);
+            return multifactorAuthenticationTrigger.isActivated(authentication, registeredService, request, response, service);
         }
         return Optional.empty();
     }

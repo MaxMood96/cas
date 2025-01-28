@@ -2,7 +2,10 @@ package org.apereo.cas.util.transforms;
 
 import org.apereo.cas.authentication.handler.PrincipalNameTransformer;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.val;
 
@@ -17,15 +20,17 @@ import java.util.List;
  */
 @ToString
 @Getter
+@AllArgsConstructor
+@NoArgsConstructor
 public class ChainingPrincipalNameTransformer implements PrincipalNameTransformer {
 
-    private final List<PrincipalNameTransformer> transformers = new ArrayList<>(0);
+    private List<PrincipalNameTransformer> transformers = new ArrayList<>(0);
 
     @Override
-    public String transform(final String formUserId) {
+    public String transform(final String formUserId) throws Throwable{
         var idToTransform = formUserId;
-        for (val t : this.transformers) {
-            idToTransform = t.transform(idToTransform);
+        for (val transformer : this.transformers) {
+            idToTransform = transformer.transform(idToTransform);
         }
         return idToTransform;
     }
@@ -34,8 +39,23 @@ public class ChainingPrincipalNameTransformer implements PrincipalNameTransforme
      * Add transformer.
      *
      * @param transformer the transformer
+     * @return the chaining principal name transformer
      */
-    public void addTransformer(final PrincipalNameTransformer transformer) {
-        this.transformers.add(transformer);
+    @CanIgnoreReturnValue
+    public ChainingPrincipalNameTransformer addTransformer(final PrincipalNameTransformer transformer) {
+        return addTransformers(List.of(transformer));
     }
+
+    /**
+     * Add transformers chaining principal name transformer.
+     *
+     * @param input the input
+     * @return the chaining principal name transformer
+     */
+    @CanIgnoreReturnValue
+    public ChainingPrincipalNameTransformer addTransformers(final List<PrincipalNameTransformer> input) {
+        transformers.addAll(input);
+        return this;
+    }
+    
 }

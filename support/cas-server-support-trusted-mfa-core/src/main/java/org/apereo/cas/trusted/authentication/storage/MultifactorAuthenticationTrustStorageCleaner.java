@@ -2,7 +2,7 @@ package org.apereo.cas.trusted.authentication.storage;
 
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustStorage;
 import org.apereo.cas.util.function.FunctionUtils;
-
+import org.apereo.cas.util.thread.Cleanable;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,21 +16,22 @@ import org.springframework.transaction.annotation.Transactional;
  * @author Misagh Moayyed
  * @since 5.0.0
  */
-@EnableTransactionManagement
+@EnableTransactionManagement(proxyTargetClass = false)
 @Transactional(transactionManager = "transactionManagerMfaAuthnTrust")
 @Slf4j
 @RequiredArgsConstructor
 @Getter
-public class MultifactorAuthenticationTrustStorageCleaner {
+public class MultifactorAuthenticationTrustStorageCleaner implements Cleanable {
     private final MultifactorAuthenticationTrustStorage storage;
 
-    /**
-     * Clean up expired records.
-     */
-    @Scheduled(initialDelayString = "${cas.authn.mfa.trusted.cleaner.schedule.start-delay:PT10S}",
+    @Override
+    @Scheduled(
+        cron = "${cas.authn.mfa.trusted.cleaner.schedule.cron-expression:}",
+        zone = "${cas.authn.mfa.trusted.cleaner.schedule.cron-time-zone:}",
+        initialDelayString = "${cas.authn.mfa.trusted.cleaner.schedule.start-delay:PT10S}",
         fixedDelayString = "${cas.authn.mfa.trusted.cleaner.schedule.repeat-interval:PT60S}")
     public void clean() {
-        FunctionUtils.doAndIgnore(o -> {
+        FunctionUtils.doAndHandle(__ -> {
             LOGGER.trace("Proceeding to clean up expired trusted authentication records...");
             storage.remove();
         });

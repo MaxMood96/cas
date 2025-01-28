@@ -2,11 +2,11 @@ package org.apereo.cas.configuration.model.support.ldap;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,9 +21,10 @@ import java.util.List;
 @Getter
 @Accessors(chain = true)
 @Setter
-@JsonFilter("RecursiveSearchEntryHandlersProperties")
+
 public class RecursiveSearchEntryHandlersProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 7138108925310792763L;
 
     /**

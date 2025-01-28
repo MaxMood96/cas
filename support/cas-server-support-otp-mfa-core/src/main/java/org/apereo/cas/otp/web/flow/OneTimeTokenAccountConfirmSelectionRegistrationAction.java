@@ -1,11 +1,12 @@
 package org.apereo.cas.otp.web.flow;
 
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.val;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -16,7 +17,7 @@ import org.springframework.webflow.execution.RequestContext;
  * @since 5.0.0
  */
 @RequiredArgsConstructor
-public class OneTimeTokenAccountConfirmSelectionRegistrationAction extends AbstractAction {
+public class OneTimeTokenAccountConfirmSelectionRegistrationAction extends BaseCasWebflowAction {
     /**
      * Account id parameter.
      */
@@ -25,9 +26,9 @@ public class OneTimeTokenAccountConfirmSelectionRegistrationAction extends Abstr
     private final OneTimeTokenCredentialRepository repository;
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
-        val id = requestContext.getRequestParameters().getRequired(REQUEST_PARAMETER_ACCOUNT_ID, Long.class);
-        WebUtils.putOneTimeTokenAccount(requestContext, repository.get(id));
+    protected Event doExecuteInternal(final RequestContext requestContext) {
+        val id = Long.parseLong(WebUtils.getRequestParameterOrAttribute(requestContext, REQUEST_PARAMETER_ACCOUNT_ID).orElseThrow());
+        MultifactorAuthenticationWebflowUtils.putOneTimeTokenAccount(requestContext, repository.get(id));
         return success();
     }
 }

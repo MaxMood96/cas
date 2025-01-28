@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-
 import java.io.Serializable;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -36,7 +35,7 @@ public interface RegisteredServiceProperty extends Serializable {
      * @return the value, or null if the collection is empty.
      */
     @JsonIgnore
-    String getValue();
+    String value();
 
     /**
      * Gets property value.
@@ -47,7 +46,7 @@ public interface RegisteredServiceProperty extends Serializable {
      */
     @JsonIgnore
     default <T> T getValue(final Class<T> clazz) {
-        val value = getValue();
+        val value = value();
         if (StringUtils.isNotBlank(value)) {
             return clazz.cast(value);
         }
@@ -69,7 +68,7 @@ public interface RegisteredServiceProperty extends Serializable {
      */
     @JsonIgnore
     default boolean getBooleanValue() {
-        val value = getValue();
+        val value = value();
         return StringUtils.isNotBlank(value) && BooleanUtils.toBoolean(value);
     }
 
@@ -80,6 +79,10 @@ public interface RegisteredServiceProperty extends Serializable {
     @Getter
     @RequiredArgsConstructor
     enum RegisteredServicePropertyGroups {
+        /**
+         * Property grouup for OpenID Connect.
+         */
+        OIDC,
         /**
          * Property group for CORS settings.
          */
@@ -206,6 +209,61 @@ public interface RegisteredServiceProperty extends Serializable {
             RegisteredServicePropertyGroups.JWT_SERVICE_TICKETS, RegisteredServicePropertyTypes.STRING,
             "Produce an encrypted JWT as a response when generating service tickets using the provided encryption key."),
         /**
+         * Encryption algorithm when generating service tickets using the provided encryption key.
+         **/
+        TOKEN_AS_SERVICE_TICKET_ENCRYPTION_ALG("jwtAsServiceTicketEncryptionAlg", StringUtils.EMPTY,
+            RegisteredServicePropertyGroups.JWT_SERVICE_TICKETS, RegisteredServicePropertyTypes.STRING,
+            "Encryption algorithm when generating service tickets using the provided encryption key."),
+        /**
+         * Whether signing operations should be enabled when producing JWTs.
+         **/
+        TOKEN_AS_SERVICE_TICKET_SIGNING_ENABLED("jwtAsServiceTicketSigningEnabled", "true",
+            RegisteredServicePropertyGroups.JWT_SERVICE_TICKETS, RegisteredServicePropertyTypes.BOOLEAN,
+            "Whether signing operations should be enabled when producing JWTs."),
+
+        /**
+         * Whether encryption operations should be enabled when producing JWTs.
+         **/
+        TOKEN_AS_SERVICE_TICKET_ENCRYPTION_ENABLED("jwtAsServiceTicketEncryptionEnabled", "true",
+            RegisteredServicePropertyGroups.JWT_SERVICE_TICKETS, RegisteredServicePropertyTypes.BOOLEAN,
+            "Whether encryption operations should be enabled when producing JWTs."),
+
+        /**
+         * Indicate whether the client was registered with CAS using OpenID Connect client dynamic registration flow.
+         */
+        OIDC_DYNAMIC_CLIENT_REGISTRATION("oidcDynamicClientRegistration", "false",
+            RegisteredServicePropertyGroups.OIDC, RegisteredServicePropertyTypes.BOOLEAN,
+            "Indicate whether the client was registered with CAS using OpenID Connect client dynamic registration flow."),
+
+        /**
+         * Indicate the registration date/time when the client was registered with CAS using OpenID Connect client dynamic registration flow.
+         */
+        OIDC_DYNAMIC_CLIENT_REGISTRATION_DATE("oidcDynamicClientRegistrationDate", StringUtils.EMPTY,
+            RegisteredServicePropertyGroups.OIDC, RegisteredServicePropertyTypes.STRING,
+            "Indicate the registration date/time when the client was registered with CAS using OpenID Connect client dynamic registration flow."),
+
+        /**
+         * Indicate the cipher strategy for JWTs for OIDC responses, to determine order of signing/encryption operations.
+         */
+        OIDC_RESPONSE_MODE_JWT_CIPHER_STRATEGY_TYPE("oidcResponseModeAsJwtCipherStrategyType", StringUtils.EMPTY,
+            RegisteredServicePropertyGroups.OIDC, RegisteredServicePropertyTypes.STRING,
+            "Indicate the cipher strategy for JWTs for OIDC responses, to determine order of signing/encryption operations."),
+
+        /**
+         * Enable signing JWTs as a response when generating resonse mode JWTs using the provided signing key.
+         **/
+        OIDC_RESPONSE_MODE_JWT_CIPHER_SIGNING_ENABLED("oidcResponseModeAsJwtCipherSigningEnabled", "true",
+            RegisteredServicePropertyGroups.JWT_ACCESS_TOKENS, RegisteredServicePropertyTypes.BOOLEAN,
+            "Enable signing JWTs as a response when generating resonse mode JWTs using the provided signing key."),
+
+        /**
+         * Enable encrypted JWTs as a response when generating resonse mode JWTs using the provided signing key.
+         **/
+        OIDC_RESPONSE_MODE_JWT_CIPHER_ENCRYPTION_ENABLED("oidcResponseModeAsJwtCipherEncryptionEnabled", "true",
+            RegisteredServicePropertyGroups.JWT_ACCESS_TOKENS, RegisteredServicePropertyTypes.BOOLEAN,
+            "Enable encrypted JWTs as a response when generating resonse mode JWTs using the provided encryption key."),
+
+        /**
          * Produce a signed JWT as a response when generating access tokens using the provided signing key.
          **/
         ACCESS_TOKEN_AS_JWT_SIGNING_KEY("accessTokenAsJwtSigningKey", StringUtils.EMPTY,
@@ -236,11 +294,17 @@ public interface RegisteredServiceProperty extends Serializable {
             RegisteredServicePropertyGroups.JWT_ACCESS_TOKENS, RegisteredServicePropertyTypes.STRING,
             "Produce an encrypted JWT as a response when generating access tokens using the provided encryption key."),
         /**
+         * Encryption algorithm to use when generating access tokens using the provided encryption key.
+         */
+        ACCESS_TOKEN_AS_JWT_ENCRYPTION_ALG("accessTokenAsJwtEncryptionAlg", StringUtils.EMPTY,
+            RegisteredServicePropertyGroups.JWT_ACCESS_TOKENS, RegisteredServicePropertyTypes.STRING,
+            "Encryption algorithm to use when generating access tokens using the provided encryption key."),
+        /**
          * Jwt signing secret defined for a given service.
          **/
         TOKEN_SECRET_SIGNING("jwtSigningSecret", StringUtils.EMPTY,
             RegisteredServicePropertyGroups.JWT_AUTHENTICATION, RegisteredServicePropertyTypes.STRING,
-            "Jwt signing secret defined for a given service."),
+            "Jwt signing secret defined for a given service. This property supports the spring expression language and may point to an external private key file."),
         /**
          * Jwt signing secret alg defined for a given service.
          **/
@@ -252,7 +316,7 @@ public interface RegisteredServiceProperty extends Serializable {
          **/
         TOKEN_SECRET_ENCRYPTION("jwtEncryptionSecret", StringUtils.EMPTY,
             RegisteredServicePropertyGroups.JWT_AUTHENTICATION, RegisteredServicePropertyTypes.STRING,
-            "Jwt encryption secret defined for a given service."),
+            "Jwt encryption secret defined for a given service. This property supports the spring expression language and may point to an external public key file."),
         /**
          * Jwt encryption secret alg defined for a given service.
          **/
@@ -272,13 +336,17 @@ public interface RegisteredServiceProperty extends Serializable {
             RegisteredServicePropertyGroups.JWT_AUTHENTICATION, RegisteredServicePropertyTypes.BOOLEAN,
             "Determine whether secrets are Base64 encoded."),
         /**
-         * Whether interrupt notifications should be skipped.
-         * @deprecated Since 6.5.0
+         * Whether this service definition is one that is tagged as wildcarded (catch-all) entry.
          **/
-        @Deprecated(since = "6.5.0")
-        SKIP_INTERRUPT_NOTIFICATIONS("skipInterrupt", "false",
-            RegisteredServicePropertyGroups.INTERRUPTS, RegisteredServicePropertyTypes.BOOLEAN,
-            "Whether interrupt notifications should be skipped."),
+        WILDCARDED_SERVICE_DEFINITION("wildcardedServiceDefinition", "false",
+            RegisteredServicePropertyGroups.REGISTERED_SERVICES, RegisteredServicePropertyTypes.BOOLEAN,
+            "Whether this service definition is one that is tagged as wildcarded (catch-all) entry."),
+        /**
+         * Whether this service definition is one that is tagged for internal CAS functions.
+         **/
+        INTERNAL_SERVICE_DEFINITION("internalServiceDefinition", "false",
+            RegisteredServicePropertyGroups.REGISTERED_SERVICES, RegisteredServicePropertyTypes.BOOLEAN,
+            "Whether this service definition is an internal system-level entry used by CAS itself."),
         /**
          * Whether this service should skip qualification for required-service pattern checks.
          **/
@@ -303,6 +371,12 @@ public interface RegisteredServiceProperty extends Serializable {
         HTTP_HEADER_ENABLE_STRICT_TRANSPORT_SECURITY("httpHeaderEnableStrictTransportSecurity", "true",
             RegisteredServicePropertyGroups.HTTP_HEADERS, RegisteredServicePropertyTypes.BOOLEAN,
             "Whether CAS should inject strict transport security headers into the response when this service is in process."),
+        /**
+         * Control the header value CAS should use when injecting strict transport security headers into the response when this service is in process.
+         */
+        HTTP_HEADER_STRICT_TRANSPORT_SECURITY("httpHeaderStrictTransportSecurity", StringUtils.EMPTY,
+            RegisteredServicePropertyGroups.HTTP_HEADERS, RegisteredServicePropertyTypes.STRING,
+            "Control the header value CAS should use when injecting strict transport security headers into the response when this service is in process."),
         /**
          * Whether CAS should inject xframe options headers into the response when this service is in process.
          */
@@ -544,7 +618,7 @@ public interface RegisteredServiceProperty extends Serializable {
          * Does property belong to the requested group?
          *
          * @param group the group
-         * @return the boolean
+         * @return true/false
          */
         @JsonIgnore
         public boolean isMemberOf(final RegisteredServicePropertyGroups group) {
@@ -560,10 +634,13 @@ public interface RegisteredServiceProperty extends Serializable {
         @JsonIgnore
         public RegisteredServiceProperty getPropertyValue(final RegisteredService service) {
             if (isAssignedTo(service)) {
-                val property = service.getProperties().entrySet()
-                    .stream().filter(entry -> entry.getKey().equalsIgnoreCase(getPropertyName())
-                        && StringUtils.isNotBlank(entry.getValue().getValue()))
-                    .distinct().findFirst();
+                val property = service.getProperties()
+                    .entrySet()
+                    .stream()
+                    .filter(entry -> entry.getKey().equalsIgnoreCase(getPropertyName())
+                        && StringUtils.isNotBlank(entry.getValue().value()))
+                    .distinct()
+                    .findFirst();
                 if (property.isPresent()) {
                     return property.get().getValue();
                 }
@@ -584,7 +661,7 @@ public interface RegisteredServiceProperty extends Serializable {
             if (isAssignedTo(service)) {
                 val prop = getPropertyValue(service);
                 if (prop != null) {
-                    return clazz.cast(prop.getValue());
+                    return clazz.cast(prop.value());
                 }
             }
             return null;
@@ -620,7 +697,7 @@ public interface RegisteredServiceProperty extends Serializable {
             if (isAssignedTo(service)) {
                 val prop = getPropertyValue(service);
                 if (prop != null) {
-                    return Integer.parseInt(prop.getValue());
+                    return Integer.parseInt(prop.value());
                 }
             }
             return Integer.MIN_VALUE;
@@ -637,7 +714,7 @@ public interface RegisteredServiceProperty extends Serializable {
             if (isAssignedTo(service)) {
                 val prop = getPropertyValue(service);
                 if (prop != null) {
-                    return Long.parseLong(prop.getValue());
+                    return Long.parseLong(prop.value());
                 }
             }
             return Long.MIN_VALUE;
@@ -654,7 +731,7 @@ public interface RegisteredServiceProperty extends Serializable {
             if (isAssignedTo(service)) {
                 val prop = getPropertyValue(service);
                 if (prop != null) {
-                    return Double.parseDouble(prop.getValue());
+                    return Double.parseDouble(prop.value());
                 }
             }
             return Double.NaN;
@@ -671,7 +748,7 @@ public interface RegisteredServiceProperty extends Serializable {
             if (isAssignedTo(service)) {
                 val prop = getPropertyValue(service);
                 if (prop != null) {
-                    return BooleanUtils.toBoolean(prop.getValue());
+                    return BooleanUtils.toBoolean(prop.value());
                 }
             }
             return BooleanUtils.toBoolean(getDefaultValue());
@@ -700,8 +777,8 @@ public interface RegisteredServiceProperty extends Serializable {
             return service != null && service.getProperties().entrySet()
                 .stream()
                 .anyMatch(entry -> entry.getKey().equalsIgnoreCase(getPropertyName())
-                    && StringUtils.isNotBlank(entry.getValue().getValue())
-                    && valueFilter.test(entry.getValue().getValue()));
+                    && StringUtils.isNotBlank(entry.getValue().value())
+                    && valueFilter.test(entry.getValue().value()));
         }
 
         /**
@@ -711,18 +788,41 @@ public interface RegisteredServiceProperty extends Serializable {
          * @return the typed property value
          */
         public Object getTypedPropertyValue(final RegisteredService registeredService) {
-            switch (getType()) {
-                case SET:
-                    return getPropertyValues(registeredService, Set.class);
-                case INTEGER:
-                    return getPropertyIntegerValue(registeredService);
-                case LONG:
-                    return getPropertyLongValue(registeredService);
-                case BOOLEAN:
-                    return getPropertyBooleanValue(registeredService);
-                default:
-                    return getPropertyValue(registeredService).getValue();
+            return switch (getType()) {
+                case SET -> getPropertyValues(registeredService, Set.class);
+                case INTEGER -> getPropertyIntegerValue(registeredService);
+                case LONG -> getPropertyLongValue(registeredService);
+                case BOOLEAN -> getPropertyBooleanValue(registeredService);
+                default -> getPropertyValue(registeredService).value();
+            };
+        }
+
+
+        /**
+         * Is not assigned to boolean.
+         *
+         * @param service the service
+         * @return the boolean
+         */
+        @JsonIgnore
+        public boolean isNotAssignedTo(final RegisteredService service) {
+            return isNotAssignedTo(service, BooleanUtils::toBoolean);
+        }
+
+        /**
+         * Is not assigned to boolean.
+         *
+         * @param service     the service
+         * @param valueFilter the value filter
+         * @return the boolean
+         */
+        @JsonIgnore
+        public boolean isNotAssignedTo(final RegisteredService service, final Predicate<String> valueFilter) {
+            if (service == null || !service.getProperties().containsKey(getPropertyName())) {
+                return true;
             }
+            val property = service.getProperties().get(getPropertyName());
+            return property == null || property.getValues().isEmpty() || property.getValues().stream().noneMatch(valueFilter);
         }
     }
 }

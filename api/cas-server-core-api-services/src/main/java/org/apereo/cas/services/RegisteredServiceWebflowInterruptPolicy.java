@@ -1,9 +1,7 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.util.model.TriStateBoolean;
-
+import org.apereo.cas.configuration.support.TriStateBoolean;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
 import java.io.Serializable;
 
 /**
@@ -18,7 +16,7 @@ public interface RegisteredServiceWebflowInterruptPolicy extends Serializable {
     /**
      * Whether webflow interrupt is enabled for this service.
      *
-     * @return the boolean
+     * @return true/false
      */
     boolean isEnabled();
 
@@ -30,4 +28,28 @@ public interface RegisteredServiceWebflowInterruptPolicy extends Serializable {
      * @return true/false/undefined
      */
     TriStateBoolean getForceExecution();
+
+    /**
+     * Gets principal attribute name that must exist
+     * before interrupt can be triggered for this service.
+     *
+     * @return the attribute name
+     */
+    String getAttributeName();
+
+    /**
+     * Gets principal attribute value that must exist
+     * before interrupt can be triggered for this service.
+     *
+     * @return the attribute value
+     */
+    String getAttributeValue();
+
+    /**
+     * Gets inline/external groovy script
+     * to determine if interrupt should be activated for the service.
+     *
+     * @return the groovy script
+     */
+    String getGroovyScript();
 }

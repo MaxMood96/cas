@@ -10,7 +10,7 @@ category: Developer
 
 This page documents the steps that a CAS developer/contributor should take for building a CAS server locally.
 
-<div class="alert alert-warning"><strong>Usage Warning!</strong><p>
+<div class="alert alert-warning">:warning: <strong>Usage Warning!</strong><p>
 If you are about to deploy and configure CAS, you are in the <strong>WRONG PLACE</strong>! To deploy CAS locally, use the 
 WAR Overlay method described in the project documentation for a specific CAS version. Cloning, downloading and building the 
 CAS codebase from source is <strong>ONLY</strong> required if you wish to contribute to the development of the project.
@@ -31,7 +31,7 @@ git clone --recursive --depth=1 --single-branch --branch=master git@github.com:a
 # git fetch --unshallow
 ```
 
-For a successful clone, you will need to have [set up SSH keys](https://help.github.com/articles/working-with-ssh-key-passphrases/) for your account on Github.
+For a successful clone, you will need to have set up SSH keys for your account on GitHub.
 If that is not an option, you may clone the CAS repository under `https` via `https://github.com/apereo/cas.git`.
 
 You may also need to update submodules linked to the CAS repository. Newer versions of Git will do this automatically, 
@@ -56,30 +56,34 @@ When done, you may build the codebase via the following command:
 ./gradlew build --parallel -x test -x javadoc -x check --build-cache --configure-on-demand
 ```
 
-<div class="alert alert-info"><strong>Gradle Wrapper & Gum</strong>
+<div class="alert alert-info">:information_source: <strong>Gradle Wrapper & Gum</strong>
 <p>Rather than using the Gradle Wrapper directly, you
 might want to <a href="https://github.com/kordamp/gm">use Gum</a>, which is able to 
 auto-detect the location of the Gradle Wrapper anywhere in the project structure.</p></div>
 
 The following commandline boolean flags are supported by the build and can be passed in form of system properties via `-D`:
 
-| Flag                              | Description
-|-----------------------------------+---------------------------------------------------------------------------+
-| `enableRemoteDebugging`           | Allows for remote debugging via a pre-defined port (i.e. `5000`).
-| `remoteDebuggingSuspend`          | Set to `true` to suspend JVM remote debugging until the debugger attaches to the running session.
-| `verbose`                         | Control the logging level for tests and output additional data about passing/failing/skipped tests.
-| `skipCheckstyle`                  | Skip running Checkstyle checks.
-| `skipSpotbugs`                    | Skip running Spotbugs checks.
-| `skipVersionConflict`             | If a dependency conflict is found, use the latest version rather than failing the build.
-| `skipNestedConfigMetadataGen`     | Skip generating configuration metadata for nested properties and generic collections.
-| `skipSonarqube`                   | Ignore reporting results to Sonarqube.
-| `skipErrorProneCompiler`          | Skip running the `error-prone` static-analysis compiler.
-| `skipBootifulArtifact`            | Do not apply the Spring Boot plugin to bootify application artifacts.
-| `ignoreJavadocFailures`           | Ignore javadoc failures and let the build resume.
-| `ignoreFindbugsFailures`          | Ignore Findbugs failures and let the build resume.
-| `ignoreTestFailures`              | Ignore test failures and let the build resume.
-| `casModules`                      | Build property; Comma separated list of modules without the `cas-server-[support|core]` prefix.
-| `buildScript`                     | Build fragment to include when building the project. Typically used by and during integration tests.
+| Flag                          | Description                                                                                          |
+|-------------------------------|------------------------------------------------------------------------------------------------------|
+| `enableRemoteDebugging`       | Allows for remote debugging via a pre-defined port (i.e. `5000`).                                    |
+| `remoteDebuggingSuspend`      | Set to `true` to suspend JVM remote debugging until the debugger attaches to the running session.    |
+| `verbose`                     | Control the logging level for tests and output additional data about passing/failing/skipped tests.  |
+| `skipCheckstyle`              | Skip running Checkstyle checks.                                                                      |
+| `skipVersionConflict`         | If a dependency conflict is found, use the latest version rather than failing the build.             |
+| `skipNestedConfigMetadataGen` | Skip generating configuration metadata for nested properties and generic collections.                |
+| `skipSonarqube`               | Ignore reporting results to Sonarqube.                                                               |
+| `skipErrorProneCompiler`      | Skip running the `error-prone` static-analysis compiler.                                             |
+| `skipBootifulArtifact`        | Do not apply the Spring Boot plugin to bootify application artifacts.                                |
+| `skipBootifulLaunchScript`    | Do not include the launch script when bootifying the final web application artifact.                 |
+| `skipAot`                     | Skip running AOT processes when building Graal VM native images.                                     |
+| `aotSpringActiveProfiles`     | List of spring active profiles to use when building Graal VM native images.                          |
+| `ignoreJavadocFailures`       | Ignore javadoc failures and let the build resume.                                                    |
+| `ignoreFindbugsFailures`      | Ignore Findbugs failures and let the build resume.                                                   |
+| `ignoreTestFailures`          | Ignore test failures and let the build resume.                                                       |
+| `casModules`                  | Build property; Comma separated list of modules without the `cas-server-[support/api/core]`          |
+| `buildScript`                 | Build fragment to include when building the project. Typically used by and during integration tests. |
+| `generateGitProperties`       | Include Git information in the final web application artifact.                                       |
+| `generateTimestamps`          | Include the build timestamp in the final web application artifact.                                   |
 
 - You can use `-x <task>` to entirely skip/ignore a phase in the build. (i.e. `-x test`, `-x check`).
 - If you have no need to let Gradle resolve/update dependencies and new module versions for you, you can take advantage of the `--offline` flag when you build which tends to make the build go a lot faster.
@@ -98,13 +102,26 @@ CAS development may be carried out using any modern IDE that supports Gradle.
 
 The following IDEA settings for Gradle may also be useful:
 
-![image](https://user-images.githubusercontent.com/1205228/71612835-5ea5ed80-2bbc-11ea-8f49-9746dc2b3a70.png)
+![image](https://github.com/apereo/cas/assets/1205228/ab73a45a-44d8-4880-bfc6-105dfd52c3a9)
 
-<div class="alert alert-info"><p>
+<div class="alert alert-info">:information_source: <strong>Note</strong><p>
 You should always use the latest version of the Intellij IDEA.
 </p></div>
 
 Additionally, you may need to customize the VM settings to ensure the development environment can load and index the codebase:
+
+```bash
+-Xms2g
+-Xmx8g
+
+-XX:+UseStringDeduplication
+-XX:+ParallelRefProcEnabled
+```
+
+The key point for making IntelliJ IDEA handle the project nicely is to give it lots of 
+memory (either by specifying the `-Xmx8g` VM options or in the IDE menu `Help -> Change Memory Settings`).
+
+If you're still running IntelliJ with a JDK 8, you may require these options instead:
 
 ```bash
 -server
@@ -113,7 +130,7 @@ Additionally, you may need to customize the VM settings to ensure the developmen
 -Xss16m
 -XX:NewRatio=3
 
--XX:ReservedCodeCacheSize=240m
+-XX:ReservedCodeCacheSize=512m
 -XX:+UseCompressedOops
 -XX:SoftRefLRUPolicyMSPerMB=50
 
@@ -136,10 +153,6 @@ Additionally, you may need to customize the VM settings to ensure the developmen
 -Djsse.enableSNIExtension=true
 -ea
 ```
-
-If you're using OpenJDK 11 or later, you may find the above VM options do not work. The key point for making IntelliJ IDEA 
-handle the project nicely is to give it lots of memory (either by specifying the `-Xmx8g` VM options or in the IDE 
-menu `Help -> Change Memory Settings`).
 
 #### Plugins
 
@@ -165,27 +178,10 @@ should look something like the below screenshot:
 It is possible to run the CAS web application directly from IDEA by 
 creating a *Run Configuration* that roughly matches the following screenshot:
 
-[image](https://user-images.githubusercontent.com/1205228/41805461-9ea25b76-765f-11e8-9a36-fa82d286cf09.png)
+![image](https://user-images.githubusercontent.com/1205228/41805461-9ea25b76-765f-11e8-9a36-fa82d286cf09.png)
 
 This setup allows the developer to run the CAS web 
 application via an [embedded servlet container](Build-Process.html#embedded-containers).
-
-### Eclipse
-
-For Eclipse, execute the following commands:
-
-```bash
-cd cas-server
-./gradlew eclipse
-```
-
-Then, import the project into eclipse using "General\Existing Projects into Workspace" 
-and choose "Add Gradle Nature" from the "Configure" context menu of the project.
-
-<div class="alert alert-warning"><strong>YMMV</strong><p>We have had a less than ideal experience with Eclipse and its support for Gradle-based 
-projects. While time changes everything and docs grow old, it is likely that you may experience issues with how Eclipse manages to 
-resolve Gradle dependencies and build the project. In the end, you're welcome to use what works best for you as the ultimate goal 
-is to find the appropriate tooling to build and contribute to CAS.</p></div>
 
 ## Testing Modules
 
@@ -291,8 +287,6 @@ bin/catalina.sh jpda start
 
 When you're done, create a remote debugger configuration in your IDE that connects to this port and you will be able to step into the code.
 
-![image](https://cloud.githubusercontent.com/assets/1205228/26517058/d09a8288-4245-11e7-962e-004bfe174a0a.png)
-
 ## Manual Submodule Testing
 
 Please [see this page](Test-Process.html) to learn more about the testing process and guidelines.
@@ -322,17 +316,16 @@ function bc() {
     --configure-on-demand --build-cache \
     --parallel -x test -x javadoc -x check -DenableRemoteDebugging=true \
     --stacktrace -DskipNestedConfigMetadataGen=true \
-    -DremoteDebuggingSuspend=false \
+    -DremoteDebuggingSuspend=false --no-configuration-cache \
     -DcasModules=${casmodules}
 }
 
 # Install JARs/WARs for use with a CAS overlay project
 alias bci='clear; cas; \
     ./gradlew clean build publishToMavenLocal \ 
-    --configure-on-demand \
+    --configure-on-demand --no-configuration-cache \
     --build-cache --parallel \
     -x test -x javadoc -x check --stacktrace \
     -DskipNestedConfigMetadataGen=true \
     -DskipBootifulArtifact=true'
 ```
-

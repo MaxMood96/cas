@@ -1,7 +1,6 @@
 package org.apereo.cas.ws.idp.services;
 
-import org.apereo.cas.services.AbstractRegisteredService;
-import org.apereo.cas.services.RegexRegisteredService;
+import org.apereo.cas.services.BaseWebBasedRegisteredService;
 import org.apereo.cas.ws.idp.WSFederationConstants;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -10,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+
+import java.io.Serial;
 
 /**
  * This is {@link WSFederationRegisteredService}.
@@ -22,8 +23,9 @@ import lombok.ToString;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class WSFederationRegisteredService extends RegexRegisteredService {
+public class WSFederationRegisteredService extends BaseWebBasedRegisteredService {
 
+    @Serial
     private static final long serialVersionUID = -3700571300568534062L;
 
     private String realm = WSFederationConstants.REALM_DEFAULT_URI;
@@ -56,10 +58,5 @@ public class WSFederationRegisteredService extends RegexRegisteredService {
     @Override
     public int getEvaluationPriority() {
         return 3;
-    }
-
-    @Override
-    protected AbstractRegisteredService newInstance() {
-        return new WSFederationRegisteredService();
     }
 }

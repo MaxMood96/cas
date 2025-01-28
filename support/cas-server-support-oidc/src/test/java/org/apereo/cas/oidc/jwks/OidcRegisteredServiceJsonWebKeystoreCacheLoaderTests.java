@@ -16,24 +16,24 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@Tag("OIDC")
-public class OidcRegisteredServiceJsonWebKeystoreCacheLoaderTests extends AbstractOidcTests {
+@Tag("OIDCServices")
+class OidcRegisteredServiceJsonWebKeystoreCacheLoaderTests extends AbstractOidcTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val service = getOidcRegisteredService(UUID.randomUUID().toString());
         assertTrue(oidcServiceJsonWebKeystoreCache.get(new OidcJsonWebKeyCacheKey(service, OidcJsonWebKeyUsage.SIGNING)).isPresent());
         assertTrue(oidcServiceJsonWebKeystoreCache.get(new OidcJsonWebKeyCacheKey(service, OidcJsonWebKeyUsage.SIGNING)).isPresent());
     }
 
     @Test
-    public void verifyOperationWithOAuth() {
+    void verifyOperationWithOAuth() {
         val service = getOAuthRegisteredService("clientid", "secret");
         assertTrue(oidcServiceJsonWebKeystoreCache.get(new OidcJsonWebKeyCacheKey(service, OidcJsonWebKeyUsage.SIGNING)).isEmpty());
         assertTrue(oidcServiceJsonWebKeystoreCache.get(new OidcJsonWebKeyCacheKey(service, OidcJsonWebKeyUsage.SIGNING)).isEmpty());
     }
 
     @Test
-    public void verifyOperationWithKidPerServiceMissing() {
+    void verifyOperationWithKidPerServiceMissing() {
         val service = getOidcRegisteredService(UUID.randomUUID().toString());
         service.setJwksKeyId("myCustomKey");
         assertTrue(oidcServiceJsonWebKeystoreCache.get(
@@ -41,7 +41,7 @@ public class OidcRegisteredServiceJsonWebKeystoreCacheLoaderTests extends Abstra
     }
 
     @Test
-    public void verifyOperationWithKidPerServicePresent() {
+    void verifyOperationWithKidPerServicePresent() {
         val service = getOidcRegisteredService(UUID.randomUUID().toString());
         service.setJwksKeyId("1234567890");
         service.setJwks("classpath:servicekid.jwks");

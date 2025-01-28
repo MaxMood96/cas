@@ -8,7 +8,7 @@ import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.ticket.artifact.SamlArtifactTicketFactory;
 
 import lombok.val;
-import org.apache.http.HttpStatus;
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -40,9 +40,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Tag("SAML")
+@Tag("SAML2Web")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class SamlIdPSaml1ArtifactResolutionProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
+class SamlIdPSaml1ArtifactResolutionProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
     @Autowired
     @Qualifier("saml1ArtifactResolutionController")
     private SamlIdPSaml1ArtifactResolutionProfileHandlerController controller;
@@ -54,7 +54,7 @@ public class SamlIdPSaml1ArtifactResolutionProfileHandlerControllerTests extends
     private SamlRegisteredService samlRegisteredService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         samlRegisteredService = getSamlRegisteredServiceFor(false, false,
             false, "https://cassp.example.org");
         servicesManager.save(samlRegisteredService);
@@ -63,7 +63,7 @@ public class SamlIdPSaml1ArtifactResolutionProfileHandlerControllerTests extends
 
     @Test
     @Order(1)
-    public void verifyOK() {
+    void verifyOK() throws Throwable {
         val response = new MockHttpServletResponse();
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
@@ -99,7 +99,7 @@ public class SamlIdPSaml1ArtifactResolutionProfileHandlerControllerTests extends
 
     @Test
     @Order(2)
-    public void verifyFault() {
+    void verifyFault() throws Throwable {
         val response = new MockHttpServletResponse();
         val request = new MockHttpServletRequest();
         request.setMethod("POST");

@@ -1,7 +1,7 @@
 package org.apereo.cas.config;
 
 import org.apereo.cas.BaseCoreWsSecurityIdentityProviderConfigurationTests;
-import org.apereo.cas.web.ProtocolEndpointWebSecurityConfigurer;
+import org.apereo.cas.web.CasWebSecurityConfigurer;
 
 import org.apache.cxf.sts.token.realm.RealmProperties;
 import org.apache.cxf.ws.security.sts.provider.SecurityTokenServiceProvider;
@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @Tag("WSFederation")
-public class CoreWsSecuritySecurityTokenServiceConfigurationTests extends BaseCoreWsSecurityIdentityProviderConfigurationTests {
+class CoreWsSecuritySecurityTokenServiceConfigurationTests extends BaseCoreWsSecurityIdentityProviderConfigurationTests {
     @Autowired
     @Qualifier("cxfServlet")
     private ServletRegistrationBean cxfServlet;
@@ -35,15 +35,15 @@ public class CoreWsSecuritySecurityTokenServiceConfigurationTests extends BaseCo
 
     @Autowired
     @Qualifier("wsFederationProtocolEndpointConfigurer")
-    private ProtocolEndpointWebSecurityConfigurer<Void> wsFederationProtocolEndpointConfigurer;
+    private CasWebSecurityConfigurer<Void> wsFederationProtocolEndpointConfigurer;
 
     @Test
-    public void verifyEndpoints() {
+    void verifyEndpoints() {
         assertFalse(wsFederationProtocolEndpointConfigurer.getIgnoredEndpoints().isEmpty());
     }
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(cxfServlet);
         assertNotNull(transportSTSProviderBean);
         assertNotNull(casRealm);

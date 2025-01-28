@@ -1,24 +1,23 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.config.CasServicesStreamingConfiguration;
-import org.apereo.cas.config.CasServicesStreamingKafkaConfiguration;
+import org.apereo.cas.config.CasServicesStreamingAutoConfiguration;
+import org.apereo.cas.config.CasServicesStreamingKafkaAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.PublisherIdentifier;
 import org.apereo.cas.util.cache.DistributedCacheManager;
 import org.apereo.cas.util.cache.DistributedCacheObject;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import java.util.Map;
 import java.util.Objects;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -28,16 +27,17 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @Tag("Kafka")
+@ExtendWith(CasTestExtension.class)
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasServicesStreamingKafkaConfiguration.class,
-    CasServicesStreamingConfiguration.class
+    CasServicesStreamingKafkaAutoConfiguration.class,
+    CasServicesStreamingAutoConfiguration.class
 }, properties = {
     "cas.service-registry.stream.kafka.bootstrap-address=localhost:9092",
-    "cas.service-registry.stream.enabled=true"
+    "cas.service-registry.stream.core.enabled=true"
 })
-@EnabledIfPortOpen(port = 9092)
-public class RegisteredServiceKafkaDistributedCacheManagerTests {
+@EnabledIfListeningOnPort(port = 9092)
+class RegisteredServiceKafkaDistributedCacheManagerTests {
 
     @Autowired
     @Qualifier("registeredServiceDistributedCacheManager")
@@ -45,7 +45,7 @@ public class RegisteredServiceKafkaDistributedCacheManagerTests {
         registeredServiceDistributedCacheManager;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val service = RegisteredServiceTestUtils.getRegisteredService();
         assertFalse(registeredServiceDistributedCacheManager.contains(service));
         assertTrue(registeredServiceDistributedCacheManager.getAll().isEmpty());
@@ -63,7 +63,7 @@ public class RegisteredServiceKafkaDistributedCacheManagerTests {
 
 
     @BeforeEach
-    public void tearDown() {
+    void tearDown() {
         registeredServiceDistributedCacheManager.clear();
     }
 

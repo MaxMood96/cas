@@ -1,23 +1,18 @@
 package org.apereo.cas.adaptors.x509.web.flow;
 
-import org.apereo.cas.config.CasCoreUtilConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.apereo.cas.web.flow.X509TomcatServletFactoryInitialAction;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
-
+import org.springframework.context.ConfigurableApplicationContext;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -27,26 +22,22 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @Tag("WebflowActions")
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasCoreUtilConfiguration.class
-},
-    properties = "cas.authn.x509.webflow.port=9876")
-public class X509TomcatServletFactoryInitialActionTests {
+@ExtendWith(CasTestExtension.class)
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = CasCoreUtilAutoConfiguration.class, properties = "cas.authn.x509.webflow.port=9876")
+class X509TomcatServletFactoryInitialActionTests {
 
     @Autowired
     private CasConfigurationProperties casProperties;
 
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+    
     @Test
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val action = new X509TomcatServletFactoryInitialAction(casProperties);
 
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
+        val context = MockRequestContext.create(applicationContext);
 
         val result = action.execute(context);
         assertNull(result);

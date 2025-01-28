@@ -3,9 +3,11 @@ package org.apereo.cas.support.inwebo.web.flow.actions;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 
 import lombok.val;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.webflow.execution.Action;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,21 +18,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.4.0
  */
 @Tag("WebflowMfaActions")
-public class InweboMustEnrollActionTests extends BaseActionTests {
+class InweboMustEnrollActionTests extends BaseInweboActionTests {
 
-    private InweboMustEnrollAction action;
-
-    @BeforeEach
-    public void setUp() {
-        super.setUp();
-
-        action = new InweboMustEnrollAction();
-    }
-
+    @Autowired
+    @Qualifier(CasWebflowConstants.ACTION_ID_INWEBO_MUST_ENROLL)
+    private Action action;
+    
     @Test
-    public void verifySuccess() {
-        val event = action.doExecute(requestContext);
+    void verifySuccess() throws Throwable {
+        val event = action.execute(requestContext);
         assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, event.getId());
-        assertTrue((Boolean) requestContext.getFlowScope().get(WebflowConstants.MUST_ENROLL));
+        assertTrue((Boolean) requestContext.getFlowScope().get(InweboWebflowConstants.MUST_ENROLL));
     }
 }

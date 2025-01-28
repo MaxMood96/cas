@@ -1,21 +1,18 @@
 package org.apereo.cas.configuration.model.support.pac4j.saml;
 
 import org.apereo.cas.configuration.model.support.pac4j.Pac4jBaseClientProperties;
-import org.apereo.cas.configuration.support.Beans;
-import org.apereo.cas.configuration.support.CasFeatureModule;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
-import org.apereo.cas.util.model.TriStateBoolean;
-
-import com.fasterxml.jackson.annotation.JsonFilter;
+import org.apereo.cas.configuration.support.TriStateBoolean;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-
-import java.io.Serializable;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * This is {@link Pac4jSamlClientProperties}.
@@ -23,20 +20,33 @@ import java.util.List;
  * @author Misagh Moayyed
  * @since 5.2.0
  */
-@RequiresModule(name = "cas-server-support-pac4j-webflow")
+@RequiresModule(name = "cas-server-support-pac4j-saml")
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("Pac4jSamlClientProperties")
-public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties implements CasFeatureModule {
 
+public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties {
+
+    @Serial
     private static final long serialVersionUID = -862819796533384951L;
+
+    /**
+     * Metadata configuration properties.
+     */
+    @NestedConfigurationProperty
+    private Pac4jSamlClientMetadataProperties metadata = new Pac4jSamlClientMetadataProperties();
 
     /**
      * The destination binding to use
      * when creating authentication requests.
      */
     private String destinationBinding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect";
+
+    /**
+     * The destination binding to use
+     * when creating logout requests.
+     */
+    private String logoutRequestBinding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect";
 
     /**
      * The password to use when generating the SP/CAS keystore.
@@ -54,13 +64,7 @@ public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties impleme
      * Location of the keystore to use and generate the SP/CAS keystore.
      */
     @RequiredProperty
-    private String keystorePath = Beans.getTempFilePath("samlSpKeystore", ".jks");
-
-    /**
-     * The metadata location of the identity provider that is to handle authentications.
-     */
-    @RequiredProperty
-    private String identityProviderMetadataPath;
+    private String keystorePath;
 
     /**
      * Once you have an authenticated session on the identity provider, usually it won't prompt you again to enter your
@@ -96,12 +100,6 @@ public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties impleme
     private String serviceProviderEntityId = "https://apereo.org/cas/samlsp";
 
     /**
-     * Location of the SP metadata to use and generate.
-     */
-    @RequiredProperty
-    private String serviceProviderMetadataPath = Beans.getTempFilePath("samlSpMetadata", ".xml");
-
-    /**
      * Whether authentication requests should be tagged as forced auth.
      */
     private boolean forceAuth;
@@ -132,6 +130,14 @@ public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties impleme
     private boolean forceKeystoreGeneration;
 
     /**
+     * The SAML2 response binding type to use when generating metadata.
+     * This ultimately controls the binding type of the assertion consumer
+     * service in the metadata.
+     * Default value is typically {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST}.
+     */
+    private String responseBindingType;
+    
+    /**
      * Define the validity period for the certificate
      * in number of days. The end-date of the certificate
      * is controlled by this setting, when defined as a value
@@ -144,11 +150,6 @@ public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties impleme
      * when generating the certificate.
      */
     private String certificateSignatureAlg = "SHA1WithRSA";
-
-    /**
-     * The key alias used in the keystore.
-     */
-    private String keystoreAlias;
 
     /**
      * A name to append to signing certificates generated.
@@ -206,13 +207,6 @@ public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties impleme
     private boolean useNameQualifier = true;
 
     /**
-     * The attribute found in the saml response
-     * that may be used to establish the authenticated
-     * user and build a profile for CAS.
-     */
-    private String principalIdAttribute;
-
-    /**
      * Whether or not SAML SP metadata should be signed when generated.
      */
     private boolean signServiceProviderMetadata;
@@ -231,7 +225,7 @@ public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties impleme
      * List of attributes requested by the service provider
      * that would be put into the service provider metadata.
      */
-    private List<ServiceProviderRequestedAttribute> requestedAttributes = new ArrayList<>(0);
+    private List<Pac4jSamlServiceProviderRequestedAttribute> requestedAttributes = new ArrayList<>(0);
 
     /**
      * Collection of signing signature blocked algorithms, if any, to override the global defaults.
@@ -252,6 +246,13 @@ public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties impleme
      * The signing signature canonicalization algorithm, if any, to override the global defaults.
      */
     private String signatureCanonicalizationAlgorithm;
+
+    /**
+     * The attribute name that should be used and extracted from the SAML2
+     * response to identify and build a NameID value, when the response
+     * is processed and consumed.
+     */
+    private String nameIdAttribute;
 
     /**
      * Provider name set for the saml authentication request.
@@ -281,32 +282,47 @@ public class Pac4jSamlClientProperties extends Pac4jBaseClientProperties impleme
      */
     private String messageStoreFactory = "org.pac4j.saml.store.EmptyStoreFactory";
 
-    @RequiresModule(name = "cas-server-support-pac4j-webflow")
-    @Getter
-    @Setter
-    @Accessors(chain = true)
-    public static class ServiceProviderRequestedAttribute implements Serializable {
-        private static final long serialVersionUID = -862819796533384951L;
+    /**
+     * Controls the way SAML2 attributes are converted from the authentication response into pac4j attributes.
+     * By default, values of complex types are serialized into a single attribute. To change this behaviour, a
+     * converter class implementing the {@code
+     * AttributeConverter
+     * } interface.
+     *
+     * @see <a href="https://www.pac4j.org/docs/clients/saml.html">Pac4j</a>
+     */
+    private String saml2AttributeConverter;
 
-        /**
-         * Attribute name.
-         */
-        private String name;
+    /**
+     * Logouts are only successful if the IdP was able to inform all services, otherwise it will
+     * respond with {@code PartialLogout}. This setting allows clients such as CAS to ignore such server-side behavior.
+     * If the IdP reports back a partial logout, this setting instructs CAS whether it should accept or deny that response.
+     */
+    private boolean partialLogoutAsSuccess = true;
 
-        /**
-         * Attribute friendly name.
-         */
-        private String friendlyName;
+    /**
+     * When validating the response, ensure it has a value set for the {@code Destination} attribute.
+     */
+    private boolean responseDestinationMandatory = true;
 
-        /**
-         * Attribute name format.
-         */
-        private String nameFormat = "urn:oasis:names:tc:SAML:2.0:attrname-format:uri";
+    /**
+     * When generating SAML2 metadata, configure and set the request initiator location attribute.
+     */
+    private String requestInitiatorUrl;
 
-        /**
-         * Whether this attribute is required and should
-         * be marked so in the metadata.
-         */
-        private boolean required;
-    }
+    /**
+     * When generating SAML2 metadata, configure and set the single logout service URL attribute.
+     */
+    private String singleLogoutServiceUrl;
+
+    /**
+     * Control the logout response binding type during logout operations as invoked
+     * by an external IdP and in response to logout requests.
+     */
+    private String logoutResponseBindingType;
+
+    /**
+     * When generating SAML2 metadata, configure and set the list of supported protocols in the metadata.
+     */
+    private List<String> supportedProtocols = Stream.of("urn:oasis:names:tc:SAML:2.0:protocol").toList();
 }

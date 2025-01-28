@@ -1,6 +1,6 @@
 description = "Apereo CAS Core Webflow"
 dependencies {
-
+    implementation libraries.jose4j
     implementation libraries.bouncycastle
     
     implementation project(":core:cas-server-core-authentication-api")
@@ -11,6 +11,7 @@ dependencies {
     implementation project(":core:cas-server-core-configuration-api")
     implementation project(":core:cas-server-core-web-api")
     implementation project(":core:cas-server-core-services")
+    implementation project(":core:cas-server-core-multitenancy")
     implementation project(":core:cas-server-core-services-api")
     implementation project(":core:cas-server-core-tickets-api")
     implementation project(":core:cas-server-core-validation-api")
@@ -22,6 +23,7 @@ dependencies {
     api project(":api:cas-server-core-api-web")
     api project(":api:cas-server-core-api-audit")
     api project(":api:cas-server-core-api-cookie")
+    api project(":api:cas-server-core-api-multitenancy")
 
     testImplementation project(":core:cas-server-core-util")
     testImplementation project(":core:cas-server-core-web")
@@ -35,7 +37,9 @@ dependencies {
     testImplementation project(":core:cas-server-core-services-registry")
     testImplementation project(":core:cas-server-core-services-authentication")
     testImplementation project(":core:cas-server-core-cookie")
+    testImplementation project(":core:cas-server-core-monitor")
     testImplementation project(":core:cas-server-core")
+    testImplementation project(":core:cas-server-core-scripting")
 
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")

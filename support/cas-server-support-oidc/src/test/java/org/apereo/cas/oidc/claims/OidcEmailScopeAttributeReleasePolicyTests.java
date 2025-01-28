@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -23,23 +24,25 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@Tag("OIDC")
+@Tag("OIDCAttributes")
 @TestPropertySource(properties = {
     "cas.authn.oidc.core.claims-map.email=mail",
     "cas.authn.oidc.core.claims-map.email_verified=mail_confirmed"
 })
-public class OidcEmailScopeAttributeReleasePolicyTests extends AbstractOidcTests {
+class OidcEmailScopeAttributeReleasePolicyTests extends AbstractOidcTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val policy = new OidcEmailScopeAttributeReleasePolicy();
         assertEquals(OidcConstants.StandardScopes.EMAIL.getScope(), policy.getScopeType());
         assertNotNull(policy.getAllowedAttributes());
-        val principal = CoreAuthenticationTestUtils.getPrincipal(CollectionUtils.wrap("email", List.of("cas@example.org"),
+        val principal = CoreAuthenticationTestUtils.getPrincipal(UUID.randomUUID().toString(),
+            CollectionUtils.wrap("email", List.of("cas@example.org"),
             "email_verified", List.of("cas@example.org")));
         val releasePolicyContext = RegisteredServiceAttributeReleasePolicyContext.builder()
             .registeredService(CoreAuthenticationTestUtils.getRegisteredService())
             .service(CoreAuthenticationTestUtils.getService())
             .principal(principal)
+            .applicationContext(applicationContext)
             .build();
         val attrs = policy.getAttributes(releasePolicyContext);
         assertTrue(policy.getAllowedAttributes().stream().allMatch(attrs::containsKey));
@@ -47,7 +50,7 @@ public class OidcEmailScopeAttributeReleasePolicyTests extends AbstractOidcTests
     }
 
     @Test
-    public void verifyClaimMapOperation() {
+    void verifyClaimMapOperation() throws Throwable {
         val policy = new OidcEmailScopeAttributeReleasePolicy();
         assertEquals(OidcConstants.StandardScopes.EMAIL.getScope(), policy.getScopeType());
         assertNotNull(policy.getAllowedAttributes());
@@ -58,6 +61,7 @@ public class OidcEmailScopeAttributeReleasePolicyTests extends AbstractOidcTests
             .registeredService(CoreAuthenticationTestUtils.getRegisteredService())
             .service(CoreAuthenticationTestUtils.getService())
             .principal(principal)
+            .applicationContext(applicationContext)
             .build();
         val attrs = policy.getAttributes(releasePolicyContext);
         assertEquals(List.of("cas@example.org"), attrs.get("email"));
@@ -69,6 +73,7 @@ public class OidcEmailScopeAttributeReleasePolicyTests extends AbstractOidcTests
             .registeredService(CoreAuthenticationTestUtils.getRegisteredService())
             .service(CoreAuthenticationTestUtils.getService())
             .principal(serviceTicketPrincipal)
+            .applicationContext(applicationContext)
             .build();
         val releaseAttrs = policy.getAttributes(releasePolicyContext2);
         assertEquals(List.of("cas@example.org"), releaseAttrs.get("email"));
@@ -77,13 +82,13 @@ public class OidcEmailScopeAttributeReleasePolicyTests extends AbstractOidcTests
     }
 
     @Test
-    public void verifySerialization() {
+    void verifySerialization() {
         val policy = new OidcEmailScopeAttributeReleasePolicy();
         val chain = new ChainingAttributeReleasePolicy();
-        chain.addPolicy(policy);
+        chain.addPolicies(policy);
         val service = getOidcRegisteredService();
         service.setAttributeReleasePolicy(chain);
-        val serializer = new RegisteredServiceJsonSerializer();
+        val serializer = new RegisteredServiceJsonSerializer(applicationContext);
         val json = serializer.toString(service);
         assertNotNull(json);
         assertNotNull(serializer.from(json));

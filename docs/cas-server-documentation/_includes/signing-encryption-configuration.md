@@ -39,7 +39,7 @@ visibly and may only be given a half truth vis-a-vis a public key to verify the 
 and decode it. This particular option makes little sense in situations where CAS itself is both
 a producer and a consumer of the payload.
 
-<div class="alert alert-info mt-3"><strong>Remember</strong><p>Signing and encryption options are not 
+<div class="alert alert-info mt-3">:information_source: <strong>Remember</strong><p>Signing and encryption options are not 
 mutually exclusive. While it would be rather nonsensical, it is entirely possible for CAS to 
 use <code>AES</code> keys for signing and <code>RSA</code> keys for encryption, or vice versa.</p></div>
 
@@ -55,7 +55,7 @@ The private key path (i.e. `file:///path/to/private.key`) needs to be configured
 signing key in CAS properties for the relevant feature. The public key needs to be shared
 with client applications and consumers of the payload in order to validate the payload signature.
 
-<div class="alert alert-info mt-3"><strong>Key Size</strong><p>Remember that RSA key sizes 
+<div class="alert alert-info mt-3">:information_source: <strong>Key Size</strong><p>Remember that RSA key sizes 
 are required to be at least <code>2048</code> and above. Smaller key sizes are not 
 accepted by CAS and will cause runtime errors. Choose wisely.</p></div>
 

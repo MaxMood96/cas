@@ -3,26 +3,36 @@ package org.apereo.cas.adaptors.x509.authentication.principal;
 import org.apereo.cas.adaptors.x509.authentication.CasX509Certificate;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.CoreAuthenticationUtils;
+import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
+import org.apereo.cas.authentication.attribute.AttributeRepositoryResolver;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.authentication.principal.resolvers.PrincipalResolutionContext;
 import org.apereo.cas.configuration.model.core.authentication.PrincipalAttributesCoreProperties;
+import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
-
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.apereo.services.persondir.IPersonAttributeDao;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 import java.io.FileInputStream;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.stream.Stream;
-
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.junit.jupiter.params.provider.Arguments.*;
 
 /**
  * This is {@link X509CommonNameEDIPIPrincipalResolverTests}.
@@ -31,12 +41,32 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
  * @since 5.3.0
  */
 @Tag("X509")
-public class X509CommonNameEDIPIPrincipalResolverTests {
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = RefreshAutoConfiguration.class)
+@ExtendWith(CasTestExtension.class)
+class X509CommonNameEDIPIPrincipalResolverTests {
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+    
+    @Mock
+    private ServicesManager servicesManager;
+
+    @Mock
+    private AttributeDefinitionStore attributeDefinitionStore;
+
+    @Mock
+    private AttributeRepositoryResolver attributeRepositoryResolver;
+
+    @BeforeEach
+    void before() throws Exception {
+        MockitoAnnotations.openMocks(this).close();
+    }
+
     private static X509Certificate getCertificateFrom(final String certPath) throws Exception {
         return (X509Certificate) CertificateFactory.getInstance("X509").generateCertificate(
             new FileInputStream(X509CommonNameEDIPIPrincipalResolverTests.class.getResource(certPath).getPath()));
     }
-    
+
     /**
      * Gets the unit test parameters.
      *
@@ -65,7 +95,7 @@ public class X509CommonNameEDIPIPrincipalResolverTests {
                 new EDIPIX509AttributeExtractor(),
                 false
             ),
-            
+
             /*
              * test with cert with EDIPI and no alternate, default attribute extractor
              */
@@ -104,13 +134,17 @@ public class X509CommonNameEDIPIPrincipalResolverTests {
 
     @ParameterizedTest
     @MethodSource("getTestParameters")
-    public void verifyResolvePrincipalInternal(final X509Certificate certificate,
-                                               final String expectedResult,
-                                               final String alternatePrincipalAttribute,
-                                               final X509AttributeExtractor x509AttributeExtractor,
-                                               final boolean edipiExpected) throws Exception {
+    void verifyResolvePrincipalInternal(final X509Certificate certificate,
+                                        final String expectedResult,
+                                        final String alternatePrincipalAttribute,
+                                        final X509AttributeExtractor x509AttributeExtractor,
+                                        final boolean edipiExpected) {
 
         val context = PrincipalResolutionContext.builder()
+            .attributeDefinitionStore(attributeDefinitionStore)
+            .servicesManager(servicesManager)
+            .applicationContext(applicationContext)
+            .attributeRepositoryResolver(attributeRepositoryResolver)
             .attributeMerger(CoreAuthenticationUtils.getAttributeMerger(PrincipalAttributesCoreProperties.MergingStrategyTypes.REPLACE))
             .attributeRepository(CoreAuthenticationTestUtils.getAttributeRepository())
             .principalFactory(PrincipalFactoryUtils.newPrincipalFactory())
@@ -118,7 +152,7 @@ public class X509CommonNameEDIPIPrincipalResolverTests {
             .principalNameTransformer(formUserId -> formUserId)
             .useCurrentPrincipalId(false)
             .resolveAttributes(true)
-            .activeAttributeRepositoryIdentifiers(CollectionUtils.wrapSet(IPersonAttributeDao.WILDCARD))
+            .activeAttributeRepositoryIdentifiers(CollectionUtils.wrapSet(PersonAttributeDao.WILDCARD))
             .build();
 
         val resolver = new X509CommonNameEDIPIPrincipalResolver(context);

@@ -1,9 +1,7 @@
 package org.apereo.cas.web;
 
 import org.apereo.cas.configuration.model.support.captcha.GoogleRecaptchaProperties;
-import org.apereo.cas.configuration.model.support.captcha.GoogleRecaptchaProperties.RecaptchaVersions;
-
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * This is {@link CaptchaValidator}.
@@ -18,14 +16,14 @@ public interface CaptchaValidator {
      * @param googleRecaptcha the google recaptcha
      * @return the instance
      */
-    static CaptchaValidator getInstance(GoogleRecaptchaProperties googleRecaptcha) {
-        if (googleRecaptcha.getVersion() == RecaptchaVersions.GOOGLE_RECAPTCHA_V2) {
-            return new GoogleCaptchaV2Validator(googleRecaptcha);
-        }
-        if (googleRecaptcha.getVersion() == RecaptchaVersions.GOOGLE_RECAPTCHA_V3) {
-            return new GoogleCaptchaV3Validator(googleRecaptcha);
-        }
-        return new HCaptchaValidator(googleRecaptcha);
+    static CaptchaValidator getInstance(final GoogleRecaptchaProperties googleRecaptcha) {
+        return switch (googleRecaptcha.getVersion()) {
+            case GOOGLE_RECAPTCHA_V2 -> new GoogleCaptchaV2Validator(googleRecaptcha);
+            case GOOGLE_RECAPTCHA_V3 -> new GoogleCaptchaV3Validator(googleRecaptcha);
+            case HCAPTCHA -> new HCaptchaValidator(googleRecaptcha);
+            case TURNSTILE -> new TurnstileCaptchaValidator(googleRecaptcha);
+            case FRIENDLY_CAPTCHA -> new FriendlyCaptchaValidator(googleRecaptcha);
+        };
     }
 
     /**
@@ -33,7 +31,7 @@ public interface CaptchaValidator {
      *
      * @param recaptchaResponse the recaptcha response
      * @param userAgent         the user agent
-     * @return the boolean
+     * @return true/false
      */
     boolean validate(String recaptchaResponse, String userAgent);
 
@@ -44,6 +42,13 @@ public interface CaptchaValidator {
      * @return the recaptcha response
      */
     String getRecaptchaResponse(HttpServletRequest request);
+
+    /**
+     * Gets recaptcha response parameter name.
+     *
+     * @return the recaptcha response parameter name
+     */
+    String getRecaptchaResponseParameterName();
 
     /**
      * Gets recaptcha properties.

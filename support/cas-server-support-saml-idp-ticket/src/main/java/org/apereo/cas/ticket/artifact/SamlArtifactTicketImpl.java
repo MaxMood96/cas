@@ -5,11 +5,12 @@ import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.ticket.AbstractTicket;
 import org.apereo.cas.ticket.ExpirationPolicy;
 import org.apereo.cas.ticket.TicketGrantingTicket;
-import org.apereo.cas.ticket.proxy.ProxyGrantingTicket;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.io.Serial;
 
 /**
  * This is {@link SamlArtifactTicketImpl}.
@@ -21,6 +22,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SamlArtifactTicketImpl extends AbstractTicket implements SamlArtifactTicket {
 
+    @Serial
     private static final long serialVersionUID = 6276140828446447398L;
 
     private String issuer;
@@ -45,8 +47,10 @@ public class SamlArtifactTicketImpl extends AbstractTicket implements SamlArtifa
      */
     private Authentication authentication;
 
-    public SamlArtifactTicketImpl(final String id, final Service service, final Authentication authentication, final ExpirationPolicy expirationPolicy,
-                                  final TicketGrantingTicket ticketGrantingTicket, final String issuer, final String relyingParty, final String samlObject) {
+    public SamlArtifactTicketImpl(final String id, final Service service, final Authentication authentication,
+                                  final ExpirationPolicy expirationPolicy,
+                                  final TicketGrantingTicket ticketGrantingTicket,
+                                  final String issuer, final String relyingParty, final String samlObject) {
         super(id, expirationPolicy);
         this.service = service;
         this.authentication = authentication;
@@ -54,16 +58,6 @@ public class SamlArtifactTicketImpl extends AbstractTicket implements SamlArtifa
         this.relyingPartyId = relyingParty;
         this.issuer = issuer;
         this.object = samlObject;
-    }
-
-    @Override
-    public boolean isFromNewLogin() {
-        return true;
-    }
-
-    @Override
-    public ProxyGrantingTicket grantProxyGrantingTicket(final String id, final Authentication authentication, final ExpirationPolicy expirationPolicy) {
-        throw new UnsupportedOperationException("No proxy-granting ticket is available");
     }
 
     @Override

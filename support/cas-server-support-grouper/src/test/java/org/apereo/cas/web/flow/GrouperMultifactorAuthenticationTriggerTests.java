@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.StaticApplicationContext;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -21,11 +22,11 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("MFATrigger")
-public class GrouperMultifactorAuthenticationTriggerTests {
+@Tag("Grouper")
+class GrouperMultifactorAuthenticationTriggerTests {
 
     @Test
-    public void verifyOperationFails() {
+    void verifyOperationFails() {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
 
@@ -36,16 +37,16 @@ public class GrouperMultifactorAuthenticationTriggerTests {
 
         assertTrue(trigger.isActivated(RegisteredServiceTestUtils.getAuthentication(),
             RegisteredServiceTestUtils.getRegisteredService(),
-            new MockHttpServletRequest(), RegisteredServiceTestUtils.getService()).isEmpty());
+            new MockHttpServletRequest(), new MockHttpServletResponse(), RegisteredServiceTestUtils.getService()).isEmpty());
 
         casProperties.getAuthn().getMfa().getTriggers().getGrouper().setGrouperGroupField("name");
         assertTrue(trigger.isActivated(RegisteredServiceTestUtils.getAuthentication(),
             null,
-            new MockHttpServletRequest(), RegisteredServiceTestUtils.getService()).isEmpty());
+            new MockHttpServletRequest(), new MockHttpServletResponse(), RegisteredServiceTestUtils.getService()).isEmpty());
 
         assertThrows(AuthenticationException.class,
             () -> trigger.isActivated(RegisteredServiceTestUtils.getAuthentication(),
                 RegisteredServiceTestUtils.getRegisteredService(),
-                new MockHttpServletRequest(), RegisteredServiceTestUtils.getService()));
+                new MockHttpServletRequest(), new MockHttpServletResponse(), RegisteredServiceTestUtils.getService()));
     }
 }

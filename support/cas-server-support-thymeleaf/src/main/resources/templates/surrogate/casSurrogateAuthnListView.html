@@ -10,7 +10,7 @@
 </head>
 
 <body>
-    <main role="main" class="container mt-3 mb-3">
+    <main class="container mt-3 mb-3">
         <div id="content" layout:fragment="content" class="mdc-card card p-4 m-auto w-lg-66">
             <form method="post" id="loginForm">
 
@@ -34,11 +34,11 @@
                 <input type="hidden" name="execution" th:value="${flowExecutionKey}" />
                 <input type="hidden" name="_eventId" value="submit" />
                 <div class="d-flex">
-                    <button class="mdc-button mdc-button--raised btn btn-primary mr-2" id="submit" name="submit" accesskey="l"
+                    <button class="mdc-button mdc-button--raised btn btn-primary me-2" id="submit" name="submit" accesskey="l"
                         th:value="#{screen.welcome.button.login}" value="Login">
                         <span class="mdc-button__label" th:text="#{screen.welcome.button.login}">Login</span>
                     </button>
-                    <a class="mdc-button mdc-button--outline btn btn-outline-secondary" id="cancel" name="cancel" th:unless="${service}"
+                    <a class="mdc-button mdc-button--outline btn btn-outline-secondary button-cancel" id="cancel" name="cancel" th:unless="${service}"
                         th:href="@{/login}">
                         <span class="mdc-button__label" th:text="#{screen.surrogates.button.cancel}">Cancel</span>
                     </a>

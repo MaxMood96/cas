@@ -13,31 +13,32 @@ import org.apereo.cas.authentication.support.password.PasswordExpiringWarningMes
 import org.apereo.cas.configuration.model.support.rest.RestAuthenticationProperties;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.DateTimeUtils;
-import org.apereo.cas.util.HttpUtils;
 import org.apereo.cas.util.LoggingUtils;
+import org.apereo.cas.util.http.HttpClient;
+import org.apereo.cas.util.http.HttpExecutionRequest;
+import org.apereo.cas.util.http.HttpUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
+import org.apache.hc.core5.http.HttpEntityContainer;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.core5.http.NameValuePair;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-
 import javax.security.auth.login.AccountExpiredException;
 import javax.security.auth.login.AccountLockedException;
 import javax.security.auth.login.AccountNotFoundException;
 import javax.security.auth.login.FailedLoginException;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -65,68 +66,61 @@ public class RestAuthenticationHandler extends AbstractUsernamePasswordAuthentic
 
     private final RestAuthenticationProperties properties;
 
+    private final HttpClient httpClient;
+
     public RestAuthenticationHandler(final ServicesManager servicesManager,
                                      final PrincipalFactory principalFactory,
-                                     final RestAuthenticationProperties properties) {
+                                     final RestAuthenticationProperties properties,
+                                     final HttpClient httpClient) {
         super(properties.getName(), servicesManager, principalFactory, properties.getOrder());
         this.properties = properties;
+        this.httpClient = httpClient;
     }
 
     @Override
     protected AuthenticationHandlerExecutionResult authenticateUsernamePasswordInternal(
         final UsernamePasswordCredential credential,
-        final String originalPassword) throws GeneralSecurityException {
+        final String originalPassword) throws Throwable {
 
         var response = (HttpResponse) null;
         try {
-            val exec = HttpUtils.HttpExecutionRequest.builder()
+            val exec = HttpExecutionRequest
+                .builder()
                 .basicAuthUsername(credential.getUsername())
-                .basicAuthPassword(credential.getPassword())
-                .method(HttpMethod.POST)
+                .basicAuthPassword(credential.toPassword())
+                .method(HttpMethod.valueOf(properties.getMethod().toUpperCase(Locale.ENGLISH)))
                 .url(properties.getUri())
+                .httpClient(httpClient)
                 .build();
             response = HttpUtils.execute(exec);
-            val status = HttpStatus.resolve(Objects.requireNonNull(response).getStatusLine().getStatusCode());
-            switch (Objects.requireNonNull(status)) {
-                case OK:
-                    return buildPrincipalFromResponse(credential, response);
-                case FORBIDDEN:
-                    throw new AccountDisabledException("Could not authenticate forbidden account for " + credential.getUsername());
-                case UNAUTHORIZED:
-                    throw new FailedLoginException("Could not authenticate account for " + credential.getUsername());
-                case NOT_FOUND:
-                    throw new AccountNotFoundException("Could not locate account for " + credential.getUsername());
-                case LOCKED:
-                    throw new AccountLockedException("Could not authenticate locked account for " + credential.getUsername());
-                case PRECONDITION_FAILED:
-                    throw new AccountExpiredException("Could not authenticate expired account for " + credential.getUsername());
-                case PRECONDITION_REQUIRED:
-                    throw new AccountPasswordMustChangeException("Account password must change for " + credential.getUsername());
-                default:
-                    throw new FailedLoginException("Rest endpoint returned an unknown status code " + status + " for " + credential.getUsername());
-            }
+            val status = HttpStatus.resolve(Objects.requireNonNull(response).getCode());
+            return switch (Objects.requireNonNull(status)) {
+                case OK -> buildPrincipalFromResponse(credential, response);
+                case FORBIDDEN -> throw new AccountDisabledException("Could not authenticate forbidden account for " + credential.getUsername());
+                case UNAUTHORIZED -> throw new FailedLoginException("Could not authenticate account for " + credential.getUsername());
+                case NOT_FOUND -> throw new AccountNotFoundException("Could not locate account for " + credential.getUsername());
+                case LOCKED -> throw new AccountLockedException("Could not authenticate locked account for " + credential.getUsername());
+                case PRECONDITION_FAILED -> throw new AccountExpiredException("Could not authenticate expired account for " + credential.getUsername());
+                case PRECONDITION_REQUIRED -> throw new AccountPasswordMustChangeException("Account password must change for " + credential.getUsername());
+                default -> throw new FailedLoginException("Rest endpoint returned an unknown status code " + status + " for " + credential.getUsername());
+            };
         } finally {
             HttpUtils.close(response);
         }
     }
 
-    /**
-     * Build principal from response.
-     *
-     * @param credential the credential
-     * @param response   the response
-     * @return the authentication handler execution result
-     * @throws GeneralSecurityException the general security exception
-     */
-    protected AuthenticationHandlerExecutionResult buildPrincipalFromResponse(final UsernamePasswordCredential credential,
-                                                                              final HttpResponse response) throws GeneralSecurityException {
+    protected AuthenticationHandlerExecutionResult buildPrincipalFromResponse(
+        final UsernamePasswordCredential credential,
+        final HttpResponse response) throws Throwable {
         try {
-            val result = IOUtils.toString(response.getEntity().getContent(), StandardCharsets.UTF_8);
-            LOGGER.debug("REST authentication response received: [{}]", result);
-            val principalFromRest = MAPPER.readValue(result, Principal.class);
-            val principal = principalFactory.createPrincipal(principalFromRest.getId(), principalFromRest.getAttributes());
-            return createHandlerResult(credential, principal, getWarnings(response));
-        } catch (final Exception e) {
+            try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                LOGGER.debug("REST authentication response received: [{}]", result);
+                val principalFromRest = MAPPER.readValue(result, Principal.class);
+                val principal = principalFactory.createPrincipal(principalFromRest.getId(), principalFromRest.getAttributes());
+                return createHandlerResult(credential, principal, getWarnings(response));
+            }
+        } catch (final Throwable e) {
             LoggingUtils.error(LOGGER, e);
             throw new FailedLoginException("Unable to detect the authentication principal for " + credential.getUsername());
         }

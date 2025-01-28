@@ -3,13 +3,15 @@ package org.apereo.cas.support.oauth.web.response.accesstoken;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
-import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
-import org.apereo.cas.ticket.refreshtoken.OAuth20RefreshToken;
+import org.apereo.cas.ticket.Ticket;
 
 import lombok.Builder;
+import lombok.Getter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -22,10 +24,13 @@ import java.util.Optional;
  */
 @SuperBuilder
 @ToString(doNotUseGetters = true, exclude = "registeredService")
-public class OAuth20TokenGeneratedResult {
-    private final OAuth20AccessToken accessToken;
+public class OAuth20TokenGeneratedResult implements Serializable {
+    @Serial
+    private static final long serialVersionUID = -4111380934505564576L;
 
-    private final OAuth20RefreshToken refreshToken;
+    private final Ticket accessToken;
+
+    private final Ticket refreshToken;
 
     private final OAuth20ResponseTypes responseType;
 
@@ -38,13 +43,14 @@ public class OAuth20TokenGeneratedResult {
     private final String userCode;
 
     @Builder.Default
+    @Getter
     private final Map<String, Object> details = new LinkedHashMap<>();
 
-    public Optional<OAuth20AccessToken> getAccessToken() {
+    public Optional<Ticket> getAccessToken() {
         return Optional.ofNullable(accessToken);
     }
 
-    public Optional<OAuth20RefreshToken> getRefreshToken() {
+    public Optional<Ticket> getRefreshToken() {
         return Optional.ofNullable(refreshToken);
     }
 
@@ -66,9 +72,5 @@ public class OAuth20TokenGeneratedResult {
 
     public Optional<String> getUserCode() {
         return Optional.ofNullable(userCode);
-    }
-
-    public Map<String, Object> getDetails() {
-        return details;
     }
 }

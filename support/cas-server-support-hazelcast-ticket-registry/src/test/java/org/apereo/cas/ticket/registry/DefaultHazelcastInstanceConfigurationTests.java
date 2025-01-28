@@ -1,72 +1,49 @@
 package org.apereo.cas.ticket.registry;
 
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryConfiguration;
-import org.apereo.cas.config.CasTicketCatalogConfigurationValuesProvider;
-import org.apereo.cas.config.HazelcastTicketRegistryConfiguration;
-import org.apereo.cas.config.HazelcastTicketRegistryTicketCatalogConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
-
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasHazelcastTicketRegistryAutoConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.ticket.catalog.CasTicketCatalogConfigurationValuesProvider;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import com.hazelcast.core.HazelcastInstance;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author Dmitriy Kopylenko
  * @since 4.2.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    HazelcastTicketRegistryConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    RefreshAutoConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    HazelcastTicketRegistryTicketCatalogConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasPersonDirectoryConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreServicesAuthenticationConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreAuthenticationPolicyConfiguration.class,
-    CasCoreAuthenticationMetadataConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationHandlersConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasCoreConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class
+    CasHazelcastTicketRegistryAutoConfiguration.class,
+    CasCoreTicketsAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class,
+    CasPersonDirectoryAutoConfiguration.class,
+    CasCoreLogoutAutoConfiguration.class,
+    CasCoreServicesAutoConfiguration.class,
+    CasCoreAuthenticationAutoConfiguration.class,
+    CasCoreAutoConfiguration.class,
+    CasCoreNotificationsAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class
 },
     properties = {
         "cas.ticket.registry.hazelcast.cluster.core.instance-name=samplelocalhostinstance",
@@ -74,13 +51,14 @@ import static org.junit.jupiter.api.Assertions.*;
     })
 @Slf4j
 @Tag("Hazelcast")
-public class DefaultHazelcastInstanceConfigurationTests {
+@ExtendWith(CasTestExtension.class)
+class DefaultHazelcastInstanceConfigurationTests {
     @Autowired
     @Qualifier("casTicketRegistryHazelcastInstance")
     private HazelcastInstance hzInstance;
 
     @Test
-    public void correctHazelcastInstanceIsCreated() {
+    void correctHazelcastInstanceIsCreated() {
         assertNotNull(this.hzInstance);
         val config = this.hzInstance.getConfig();
         assertFalse(config.getNetworkConfig().getJoin().getMulticastConfig().isEnabled());

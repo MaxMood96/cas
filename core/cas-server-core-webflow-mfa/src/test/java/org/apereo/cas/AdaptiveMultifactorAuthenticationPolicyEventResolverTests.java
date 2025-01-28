@@ -3,10 +3,9 @@ package org.apereo.cas;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
-import org.apereo.cas.util.HttpRequestUtils;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.resolver.CasWebflowEventResolver;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
 import org.apereo.inspektr.common.web.ClientInfo;
 import org.apereo.inspektr.common.web.ClientInfoHolder;
@@ -19,16 +18,12 @@ import org.springframework.binding.expression.support.LiteralExpression;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.engine.Transition;
 import org.springframework.webflow.engine.support.DefaultTargetStateResolver;
 import org.springframework.webflow.engine.support.DefaultTransitionCriteria;
-import org.springframework.webflow.test.MockRequestContext;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -40,26 +35,23 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestPropertySource(properties = "cas.authn.adaptive.policy.require-multifactor.mfa-dummy=MSIE")
 @Tag("WebflowEvents")
 @Import(AdaptiveMultifactorAuthenticationPolicyEventResolverTests.AdaptiveMultifactorTestConfiguration.class)
-public class AdaptiveMultifactorAuthenticationPolicyEventResolverTests extends BaseCasWebflowMultifactorAuthenticationTests {
+class AdaptiveMultifactorAuthenticationPolicyEventResolverTests extends BaseCasWebflowMultifactorAuthenticationTests {
     @Autowired
     @Qualifier("adaptiveAuthenticationPolicyWebflowEventResolver")
     protected CasWebflowEventResolver resolver;
-
+    
     private MockRequestContext context;
 
     private MockHttpServletRequest request;
 
     @BeforeEach
-    public void initialize() {
-        this.context = new MockRequestContext();
+    void initialize() throws Exception {
+        this.context = MockRequestContext.create(applicationContext);
 
-        request = new MockHttpServletRequest();
+        request = this.context.getHttpServletRequest();
         request.setRemoteAddr("185.86.151.11");
         request.setLocalAddr("195.88.151.11");
-
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-
+        
         val targetResolver = new DefaultTargetStateResolver(TestMultifactorAuthenticationProvider.ID);
         val transition = new Transition(new DefaultTransitionCriteria(
             new LiteralExpression(TestMultifactorAuthenticationProvider.ID)), targetResolver);
@@ -71,26 +63,26 @@ public class AdaptiveMultifactorAuthenticationPolicyEventResolverTests extends B
     }
 
     @Test
-    public void verifyOperationNeedsMfa() {
-        request.addHeader(HttpRequestUtils.USER_AGENT_HEADER, "MSIE");
-        ClientInfoHolder.setClientInfo(new ClientInfo(request));
+    void verifyOperationNeedsMfa() throws Throwable {
+        request.addHeader(HttpHeaders.USER_AGENT, "MSIE");
+        ClientInfoHolder.setClientInfo(ClientInfo.from(request));
         val event = resolver.resolve(context);
         assertEquals(1, event.size());
         assertEquals(TestMultifactorAuthenticationProvider.ID, event.iterator().next().getId());
     }
 
     @Test
-    public void verifyOperationNeedsMfaByGeo() {
-        request.addHeader(HttpRequestUtils.USER_AGENT_HEADER, "FIREFOX");
+    void verifyOperationNeedsMfaByGeo() throws Throwable {
+        request.addHeader(HttpHeaders.USER_AGENT, "FIREFOX");
         request.addParameter("geolocation", "1000,1000,1000,1000");
-        ClientInfoHolder.setClientInfo(new ClientInfo(request));
+        ClientInfoHolder.setClientInfo(ClientInfo.from(request));
         val event = resolver.resolve(context);
         assertEquals(1, event.size());
         assertEquals(TestMultifactorAuthenticationProvider.ID, event.iterator().next().getId());
     }
 
     @TestConfiguration(value = "AdaptiveMultifactorTestConfiguration", proxyBeanMethods = false)
-    public static class AdaptiveMultifactorTestConfiguration {
+    static class AdaptiveMultifactorTestConfiguration {
         @Bean
         public MultifactorAuthenticationProvider dummyProvider() {
             return new TestMultifactorAuthenticationProvider();

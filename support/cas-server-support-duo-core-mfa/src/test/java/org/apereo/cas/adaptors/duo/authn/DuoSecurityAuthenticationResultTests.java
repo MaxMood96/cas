@@ -12,10 +12,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.3.0
  */
-@Tag("MFAProvider")
-public class DuoSecurityAuthenticationResultTests {
+@Tag("DuoSecurity")
+class DuoSecurityAuthenticationResultTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val result = DuoSecurityAuthenticationResult.builder().success(true).username("casuser").build();
         assertNotNull(result.getUsername());
         assertNotNull(result.getAttributes());

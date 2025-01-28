@@ -1,18 +1,19 @@
 package org.apereo.cas.configuration.model.support.jpa;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.model.support.ConnectionPoolingProperties;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,10 +28,11 @@ import java.util.Map;
 @Setter
 @RequiresModule(name = "cas-server-support-jdbc-drivers")
 @Accessors(chain = true)
-@JsonFilter("AbstractJpaProperties")
-@SuppressWarnings("UnescapedEntity")
-public abstract class AbstractJpaProperties implements Serializable {
 
+@SuppressWarnings("UnescapedEntity")
+public abstract class AbstractJpaProperties implements CasFeatureModule, Serializable {
+
+    @Serial
     private static final long serialVersionUID = 761486823496930920L;
 
     /**
@@ -113,13 +115,20 @@ public abstract class AbstractJpaProperties implements Serializable {
     private String idleTimeout = "PT10M";
 
     /**
+     * Indicates the maximum number of milliseconds that the service
+     * can wait to obtain a connection.
+     */
+    @DurationCapable
+    private String connectionTimeout = "PT30S";
+
+    /**
      * Attempts to do a JNDI data source look up for the data source name specified.
      * Will attempt to locate the data source object as is.
      */
     private String dataSourceName;
 
     /**
-     * Additional settings provided by Hibernate in form of key-value pairs.
+     * Additional settings provided by Hibernate (or the connection provider) in form of key-value pairs.
      */
     private Map<String, String> properties = new HashMap<>(0);
 
@@ -133,7 +142,8 @@ public abstract class AbstractJpaProperties implements Serializable {
      * Controls the amount of time that a connection can be out of the pool before a message
      * is logged indicating a possible connection leak.
      */
-    private int leakThreshold = 3_000;
+    @DurationCapable
+    private String leakThreshold = "PT6S";
 
     /**
      * Allow hibernate to generate query statistics.
@@ -149,7 +159,7 @@ public abstract class AbstractJpaProperties implements Serializable {
      * Used to specify number of rows to be fetched in a select query.
      */
     private int fetchSize = 100;
-    
+
     /**
      * Set the pool initialization failure timeout.
      * <ul>
@@ -162,7 +172,7 @@ public abstract class AbstractJpaProperties implements Serializable {
      * attempt to obtain a connection and validate that the {@code connectionTestQuery}
      * and {@code connectionInitSql} are valid.  If those validations fail, an exception
      * will be thrown.  If a connection cannot be obtained, the validation is skipped
-     * and the the pool will start and continue to try to obtain connections in the
+     * and the pool will start and continue to try to obtain connections in the
      * background. This can mean that callers to {@code DataSource#getConnection()} may
      * encounter exceptions. </li>
      * <li>A value less than zero will <i>not</i> bypass any connection attempt and
@@ -202,7 +212,7 @@ public abstract class AbstractJpaProperties implements Serializable {
      * Fully-qualified name of the class that can control the physical naming strategy of hibernate.
      */
     private String physicalNamingStrategyClassName = "org.apereo.cas.hibernate.CasHibernatePhysicalNamingStrategy";
-    
+
     /**
      * Defines the isolation level for transactions.
      *

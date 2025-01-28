@@ -1,4 +1,11 @@
 description = "Apereo CAS WebAuthN LDAP Support"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "WebAuthN & FIDO2 Multifactor Authentication",
+            title: "WebAuthN Support via LDAP & Active Directory"
+    ]
+}
 dependencies {
     implementation libraries.ldaptive
     implementation libraries.webauthn
@@ -8,6 +15,7 @@ dependencies {
     implementation project(":support:cas-server-support-ldap-core")
     
     implementation project(":core:cas-server-core-webflow")
+    implementation project(":core:cas-server-core-multitenancy")
     implementation project(":core:cas-server-core-authentication-api")
     implementation project(":core:cas-server-core-webflow-mfa")
     implementation project(":core:cas-server-core-util-api")
@@ -25,14 +33,18 @@ dependencies {
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-tickets")
     testImplementation project(":core:cas-server-core-audit")
-
+    testImplementation project(":core:cas-server-core-scripting")
+    
     testImplementation project(":support:cas-server-support-actions")
     testImplementation project(":support:cas-server-support-themes")
     testImplementation project(":support:cas-server-support-trusted-mfa")
-
+    testImplementation project(":support:cas-server-support-webconfig")
+    
     testImplementation project(path: ":support:cas-server-support-webauthn-core", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-webauthn", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-ldap-core", configuration: "tests")
+    testImplementation project(path: ":support:cas-server-support-person-directory-core", configuration: "tests")
+
     testImplementation project(path: ":core:cas-server-core-authentication", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")

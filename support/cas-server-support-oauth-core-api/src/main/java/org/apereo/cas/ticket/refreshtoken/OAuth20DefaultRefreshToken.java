@@ -4,13 +4,14 @@ import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
+import org.apereo.cas.ticket.BaseOAuth20Token;
 import org.apereo.cas.ticket.ExpirationPolicy;
-import org.apereo.cas.ticket.TicketGrantingTicket;
-import org.apereo.cas.ticket.code.OAuth20DefaultCode;
+import org.apereo.cas.ticket.Ticket;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -24,8 +25,9 @@ import java.util.Set;
  */
 @Getter
 @NoArgsConstructor
-public class OAuth20DefaultRefreshToken extends OAuth20DefaultCode implements OAuth20RefreshToken {
+public class OAuth20DefaultRefreshToken extends BaseOAuth20Token implements OAuth20RefreshToken {
 
+    @Serial
     private static final long serialVersionUID = -3544459978950667758L;
 
     /**
@@ -36,7 +38,7 @@ public class OAuth20DefaultRefreshToken extends OAuth20DefaultCode implements OA
     public OAuth20DefaultRefreshToken(final String id, final Service service,
                                       final Authentication authentication,
                                       final ExpirationPolicy expirationPolicy,
-                                      final TicketGrantingTicket ticketGrantingTicket,
+                                      final Ticket ticketGrantingTicket,
                                       final Collection<String> scopes,
                                       final String codeChallenge,
                                       final String codeChallengeMethod,
@@ -52,10 +54,11 @@ public class OAuth20DefaultRefreshToken extends OAuth20DefaultCode implements OA
         this.accessTokens.add(accessToken);
     }
 
-    public OAuth20DefaultRefreshToken(final String id, final Service service,
+    public OAuth20DefaultRefreshToken(final String id,
+                                      final Service service,
                                       final Authentication authentication,
                                       final ExpirationPolicy expirationPolicy,
-                                      final TicketGrantingTicket ticketGrantingTicket,
+                                      final Ticket ticketGrantingTicket,
                                       final Collection<String> scopes,
                                       final String clientId,
                                       final String accessToken,

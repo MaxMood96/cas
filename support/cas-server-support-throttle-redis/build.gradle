@@ -1,4 +1,11 @@
 description = "Apereo CAS Redis Authentication Throttling"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "Authentication Throttling",
+            title: "Authentication Throttling via Redis"
+    ]
+}
 dependencies {
     api project(":api:cas-server-core-api-throttle")
 
@@ -16,7 +23,8 @@ dependencies {
     implementation project(":support:cas-server-support-redis-core")
     
     testImplementation project(path: ":support:cas-server-support-throttle", configuration: "tests")
-    
+    testImplementation project(path: ":support:cas-server-support-person-directory-core", configuration: "tests")
+
     testImplementation project(path: ":core:cas-server-core-authentication", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
@@ -27,6 +35,8 @@ dependencies {
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-web-api")
     testImplementation project(":core:cas-server-core-web")
+    testImplementation project(":core:cas-server-core-webflow")
+    testImplementation project(":core:cas-server-core-webflow-mfa")
     testImplementation project(":core:cas-server-core-tickets-api")
     testImplementation project(":core:cas-server-core-tickets")
     testImplementation project(":core:cas-server-core-services")
@@ -36,5 +46,8 @@ dependencies {
     testImplementation project(":core:cas-server-core-services-authentication")
     testImplementation project(":core:cas-server-core-authentication-attributes")
     testImplementation project(":core:cas-server-core-authentication")
+    testImplementation project(":core:cas-server-core-authentication-mfa")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-cookie")
+    testImplementation project(":core:cas-server-core-scripting")
 }

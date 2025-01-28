@@ -5,14 +5,18 @@ import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import lombok.val;
 
-import javax.persistence.Column;
-import javax.persistence.Embeddable;
-import javax.persistence.Lob;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
+
+import java.io.Serial;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -40,6 +44,7 @@ public class DefaultRegisteredServiceProperty implements RegisteredServiceProper
      */
     public static final String TABLE_NAME = "RegexRegisteredServiceProperty";
 
+    @Serial
     private static final long serialVersionUID = 1349556364689133211L;
 
     @Lob
@@ -60,9 +65,10 @@ public class DefaultRegisteredServiceProperty implements RegisteredServiceProper
         if (this.values == null) {
             this.values = new HashSet<>(0);
         }
+        val resolver = SpringExpressionLanguageValueResolver.getInstance();
         return this.values
             .stream()
-            .map(value -> SpringExpressionLanguageValueResolver.getInstance().resolve(value))
+            .map(resolver::resolve)
             .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
@@ -81,7 +87,7 @@ public class DefaultRegisteredServiceProperty implements RegisteredServiceProper
 
     @Override
     @JsonIgnore
-    public String getValue() {
+    public String value() {
         if (values.isEmpty()) {
             return null;
         }
@@ -98,8 +104,10 @@ public class DefaultRegisteredServiceProperty implements RegisteredServiceProper
      *
      * @param value the value
      */
-    public void addValue(final String value) {
+    @CanIgnoreReturnValue
+    public RegisteredServiceProperty addValue(final String value) {
         values.add(value);
+        return this;
     }
 
 }

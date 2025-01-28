@@ -8,13 +8,14 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apereo.inspektr.audit.AuditActionContext;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
-import java.time.LocalDate;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This is {@link MongoDbAuditTrailManager}.
@@ -27,10 +28,10 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class MongoDbAuditTrailManager extends AbstractAuditTrailManager {
 
-    private final transient MongoTemplate mongoTemplate;
+    private final MongoOperations mongoTemplate;
     private final String collectionName;
 
-    public MongoDbAuditTrailManager(final MongoTemplate mongoTemplate, final String collectionName, final boolean asynchronous) {
+    public MongoDbAuditTrailManager(final MongoOperations mongoTemplate, final String collectionName, final boolean asynchronous) {
         super(asynchronous);
         this.mongoTemplate = mongoTemplate;
         this.collectionName = collectionName;
@@ -42,11 +43,18 @@ public class MongoDbAuditTrailManager extends AbstractAuditTrailManager {
     }
 
     @Override
-    public Set<? extends AuditActionContext> getAuditRecordsSince(final LocalDate localDate) {
+    public List<? extends AuditActionContext> getAuditRecords(final Map<WhereClauseFields, Object> whereClause) {
+        val localDate = (LocalDateTime) whereClause.get(WhereClauseFields.DATE);
         val dt = DateTimeUtils.dateOf(localDate);
         LOGGER.debug("Retrieving audit records since [{}] from [{}]", dt, this.collectionName);
         val query = new Query().addCriteria(Criteria.where("whenActionWasPerformed").gte(dt));
-        return new LinkedHashSet<>(this.mongoTemplate.find(query, AuditActionContext.class, this.collectionName));
+        if (whereClause.containsKey(WhereClauseFields.PRINCIPAL)) {
+            query.addCriteria(Criteria.where("principal").is(whereClause.get(WhereClauseFields.PRINCIPAL).toString()));
+        }
+        if (whereClause.containsKey(WhereClauseFields.COUNT)) {
+            query.limit(Long.valueOf(whereClause.get(WhereClauseFields.COUNT).toString()).intValue());
+        }
+        return new ArrayList<>(this.mongoTemplate.find(query, AuditActionContext.class, this.collectionName));
     }
 
     @Override

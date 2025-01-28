@@ -3,19 +3,25 @@ package org.apereo.cas.support.saml;
 import org.apereo.cas.support.saml.util.credential.BasicResourceCredentialFactoryBean;
 import org.apereo.cas.support.saml.util.credential.BasicX509CredentialFactoryBean;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.EncodingUtils;
+import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.ResourceUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 
-import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import net.shibboleth.utilities.java.support.resolver.CriteriaSet;
+import net.shibboleth.shared.codec.Base64Support;
+import net.shibboleth.shared.resolver.CriteriaSet;
+import org.apache.commons.lang3.StringUtils;
 import org.cryptacular.util.CertUtil;
 import org.opensaml.core.xml.XMLObject;
 import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
+import org.opensaml.core.xml.util.XMLObjectSupport;
 import org.opensaml.saml.common.SAMLObject;
 import org.opensaml.saml.common.SAMLObjectBuilder;
 import org.opensaml.saml.metadata.resolver.filter.impl.SignatureValidationFilter;
+import org.opensaml.saml.saml2.core.RequestAbstractType;
 import org.opensaml.security.credential.BasicCredential;
 import org.opensaml.security.credential.impl.StaticCredentialResolver;
 import org.opensaml.soap.common.SOAPObject;
@@ -48,7 +54,10 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
+import java.util.zip.Inflater;
+import java.util.zip.InflaterInputStream;
 
 /**
  * This is {@link SamlUtils}.
@@ -59,11 +68,7 @@ import java.util.Objects;
 @Slf4j
 @UtilityClass
 public class SamlUtils {
-    private static final ThreadLocal<TransformerFactory> TRANSFORMER_FACTORY_INSTANCE = new ThreadLocal<>() {
-        protected synchronized TransformerFactory initialValue() {
-            return TransformerFactory.newInstance();
-        }
-    };
+    private static final ThreadLocal<TransformerFactory> TRANSFORMER_FACTORY_INSTANCE = ThreadLocal.withInitial(TransformerFactory::newInstance);
 
     /**
      * The constant DEFAULT_ELEMENT_NAME_FIELD.
@@ -135,10 +140,11 @@ public class SamlUtils {
      * @param configBean       the config bean
      * @return the root element from
      */
-    @SneakyThrows
     public static Element getRootElementFrom(final InputStream metadataResource, final OpenSamlConfigBean configBean) {
-        val document = configBean.getParserPool().parse(metadataResource);
-        return document.getDocumentElement();
+        return FunctionUtils.doUnchecked(() -> {
+            val document = configBean.getParserPool().parse(metadataResource);
+            return document.getDocumentElement();
+        });
     }
 
     /**
@@ -321,12 +327,14 @@ public class SamlUtils {
      * @throws SamlException the saml exception
      */
     public static void logSamlObject(final OpenSamlConfigBean configBean, final XMLObject samlObject) throws SamlException {
-        if (LOGGER.isDebugEnabled()) {
+        if (LOGGER.isDebugEnabled() || LoggingUtils.isProtocolMessageLoggerEnabled()) {
             val repeat = "*".repeat(SAML_OBJECT_LOG_ASTERIXLINE_LENGTH);
             LOGGER.debug(repeat);
             try (val writer = transformSamlObject(configBean, samlObject, true)) {
                 LOGGER.debug("Logging [{}]\n\n[{}]\n\n", samlObject.getClass().getName(), writer);
                 LOGGER.debug(repeat);
+                LoggingUtils.protocolMessage("SAML " + samlObject.getClass().getName(),
+                    Map.of(), writer.toString());
             } catch (final Exception e) {
                 throw new SamlException(e.getMessage(), e);
             }
@@ -340,7 +348,7 @@ public class SamlUtils {
      * @return true/false
      */
     public static boolean isDynamicMetadataQueryConfigured(final String metadataLocation) {
-        return metadataLocation.trim().endsWith("/entities/{0}");
+        return StringUtils.isNotBlank(metadataLocation) && metadataLocation.trim().endsWith("/entities/{0}");
     }
 
     /**
@@ -364,7 +372,6 @@ public class SamlUtils {
         }
     }
 
-    @SneakyThrows
     private static CriteriaSet buildSignatureValidationFilterCriteria() {
         val criteriaSet = new CriteriaSet();
 
@@ -375,11 +382,38 @@ public class SamlUtils {
             val paramsResolver = new BasicSignatureValidationParametersResolver();
 
             val configCriteria = new CriteriaSet(new SignatureValidationConfigurationCriterion(sigConfigs));
-            val params = paramsResolver.resolveSingle(configCriteria);
+            val params = FunctionUtils.doUnchecked(() -> paramsResolver.resolveSingle(configCriteria));
             if (params != null) {
                 criteriaSet.add(new SignatureValidationParametersCriterion(params), true);
             }
         }
         return criteriaSet;
+    }
+
+    /**
+     * Convert to saml object.
+     *
+     * @param <T>                the type parameter
+     * @param openSamlConfigBean the open saml config bean
+     * @param requestValue       the request value
+     * @param clazz              the clazz
+     * @return the final xml object
+     */
+    public static <T extends RequestAbstractType> T convertToSamlObject(final OpenSamlConfigBean openSamlConfigBean,
+                                                                        final String requestValue, final Class<T> clazz) {
+        try {
+            LOGGER.trace("Retrieving SAML request from [{}]", requestValue);
+            val decodedBytes = Base64Support.decode(requestValue);
+            try (val is = new InflaterInputStream(new ByteArrayInputStream(decodedBytes), new Inflater(true))) {
+                return clazz.cast(XMLObjectSupport.unmarshallFromInputStream(openSamlConfigBean.getParserPool(), is));
+            }
+        } catch (final Throwable e) {
+            return FunctionUtils.doUnchecked(() -> {
+                val encodedRequest = EncodingUtils.decodeBase64(requestValue.getBytes(StandardCharsets.UTF_8));
+                try (val is = new ByteArrayInputStream(encodedRequest)) {
+                    return clazz.cast(XMLObjectSupport.unmarshallFromInputStream(openSamlConfigBean.getParserPool(), is));
+                }
+            });
+        }
     }
 }

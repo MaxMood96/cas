@@ -5,11 +5,12 @@ import org.apereo.cas.configuration.model.support.jpa.AbstractJpaProperties;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+
+import java.io.Serial;
 
 /**
  * This is {@link JdbcPasswordManagementProperties}.
@@ -21,9 +22,10 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("JdbcPasswordManagementProperties")
+
 public class JdbcPasswordManagementProperties extends AbstractJpaProperties {
 
+    @Serial
     private static final long serialVersionUID = 4746591112640513465L;
 
     /**
@@ -65,6 +67,11 @@ public class JdbcPasswordManagementProperties extends AbstractJpaProperties {
      * SQL query to update security questions for the account, if any.
      */
     private String sqlUpdateSecurityQuestions;
+
+    /**
+     * SQL query to unlock accounts.
+     */
+    private String sqlUnlockAccount;
 
     /**
      * SQL query to delete security questions for the account, if any.

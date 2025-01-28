@@ -1,8 +1,9 @@
 package org.apereo.cas.ticket.refreshtoken;
 
-import org.apereo.cas.ticket.TicketState;
-import org.apereo.cas.ticket.expiration.AbstractCasExpirationPolicy;
 
+import org.apereo.cas.ticket.Ticket;
+import org.apereo.cas.ticket.TicketGrantingTicketAwareTicket;
+import org.apereo.cas.ticket.expiration.AbstractCasExpirationPolicy;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -10,11 +11,11 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-
+import java.io.Serial;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 
 /**
  * This is OAuth refresh token expiration policy (max time to live = 1 month by default).
@@ -26,8 +27,10 @@ import java.time.temporal.ChronoUnit;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
+@Slf4j
 public class OAuth20RefreshTokenExpirationPolicy extends AbstractCasExpirationPolicy {
 
+    @Serial
     private static final long serialVersionUID = -7144233906843566234L;
 
     /**
@@ -41,30 +44,23 @@ public class OAuth20RefreshTokenExpirationPolicy extends AbstractCasExpirationPo
      * @param timeToKillInSeconds the time to kill in seconds
      */
     @JsonCreator
-    public OAuth20RefreshTokenExpirationPolicy(@JsonProperty("timeToLive") final long timeToKillInSeconds) {
+    public OAuth20RefreshTokenExpirationPolicy(
+        @JsonProperty("timeToLive")
+        final long timeToKillInSeconds) {
         this.timeToKillInSeconds = timeToKillInSeconds;
     }
 
     @Override
-    public boolean isExpired(final TicketState ticketState) {
+    public boolean isExpired(final TicketGrantingTicketAwareTicket ticketState) {
         val expired = isRefreshTokenExpired(ticketState);
-        if (!expired) {
-            return super.isExpired(ticketState);
-        }
-        return expired;
+        return expired || super.isExpired(ticketState);
     }
 
     @Override
     public Long getTimeToLive() {
         return this.timeToKillInSeconds;
     }
-
-    @JsonIgnore
-    @Override
-    public Long getTimeToIdle() {
-        return 0L;
-    }
-
+    
     /**
      * Is refresh token expired ?
      *
@@ -72,35 +68,25 @@ public class OAuth20RefreshTokenExpirationPolicy extends AbstractCasExpirationPo
      * @return true/false
      */
     @JsonIgnore
-    protected boolean isRefreshTokenExpired(final TicketState ticketState) {
+    protected boolean isRefreshTokenExpired(final Ticket ticketState) {
         if (ticketState == null) {
             return true;
         }
-        val expiringTime = ticketState.getCreationTime().plus(this.timeToKillInSeconds, ChronoUnit.SECONDS);
-        return expiringTime.isBefore(ZonedDateTime.now(ZoneOffset.UTC));
+        val expiringTime = toMaximumExpirationTime(ticketState);
+        val now = ZonedDateTime.now(ZoneOffset.UTC);
+        val result = expiringTime.isBefore(now);
+        if (result) {
+            LOGGER.trace("Ticket [{}] is expired because its expiration time [{}] is before [{}]",
+                ticketState.getId(), expiringTime, now);
+        }
+        return result;
     }
 
-    /**
-     * An expiration policy that is independent from the parent ticket-granting ticket.
-     * Activated when refresh tokens are expected to live beyond the normal expiration policy
-     * of the TGT that lent a hand in issuing them. If the refresh token is considered expired
-     * by this policy, the parent ticket's expiration policy is not consulted, making the RT independent.
-     */
-    @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
-    @NoArgsConstructor
-    @EqualsAndHashCode(callSuper = true)
-    @ToString(callSuper = true)
-    public static class OAuthRefreshTokenStandaloneExpirationPolicy extends OAuth20RefreshTokenExpirationPolicy {
-        private static final long serialVersionUID = -7768661082888351104L;
-
-        @JsonCreator
-        public OAuthRefreshTokenStandaloneExpirationPolicy(@JsonProperty("timeToLive") final long timeToKillInSeconds) {
-            super(timeToKillInSeconds);
-        }
-
-        @Override
-        public boolean isExpired(final TicketState ticketState) {
-            return isRefreshTokenExpired(ticketState);
-        }
+    @JsonIgnore
+    @Override
+    public ZonedDateTime toMaximumExpirationTime(final Ticket ticketState) {
+        val creationTime = ticketState.getCreationTime();
+        return creationTime.plusSeconds(this.timeToKillInSeconds);
     }
+
 }

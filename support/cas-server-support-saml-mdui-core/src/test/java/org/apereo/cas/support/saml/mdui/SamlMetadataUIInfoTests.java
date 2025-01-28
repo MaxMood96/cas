@@ -25,9 +25,9 @@ import static org.mockito.Mockito.*;
  * @since 5.3.0
  */
 @Tag("SAMLMetadata")
-public class SamlMetadataUIInfoTests {
+class SamlMetadataUIInfoTests {
     @Test
-    public void verifyInfoNotAvailable() {
+    void verifyInfoNotAvailable() {
         val service = RegisteredServiceTestUtils.getRegisteredService();
         service.setPrivacyUrl("http://cas.example.org");
         service.setInformationUrl("http://cas.example.org");
@@ -41,7 +41,7 @@ public class SamlMetadataUIInfoTests {
     }
 
     @Test
-    public void verifyInfo() {
+    void verifyInfo() {
         val mdui = mock(UIInfo.class);
         val description = mock(Description.class);
         when(description.getValue()).thenReturn("Description");
@@ -70,8 +70,8 @@ public class SamlMetadataUIInfoTests {
 
         val service = RegisteredServiceTestUtils.getRegisteredService();
         val info = new SamlMetadataUIInfo(mdui, service);
-        assertEquals(names.getValue(), info.getDisplayName());
-        assertEquals(description.getValue(), info.getDescription());
+        assertEquals("Name", info.getDisplayName());
+        assertEquals("Description", info.getDescription());
         assertFalse(info.getDescriptions().isEmpty());
         assertFalse(info.getDisplayNames().isEmpty());
         assertFalse(info.getInformationURLs().isEmpty());

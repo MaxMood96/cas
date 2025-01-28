@@ -6,9 +6,9 @@ import org.apereo.cas.util.ssl.CompositeX509KeyManager;
 import org.apereo.cas.util.ssl.CompositeX509TrustManager;
 
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.val;
-import org.apache.http.ssl.SSLContexts;
+import org.apache.hc.core5.ssl.SSLContexts;
+import org.jooq.lambda.Unchecked;
 import org.springframework.core.io.Resource;
 
 import javax.net.ssl.HostnameVerifier;
@@ -19,6 +19,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509KeyManager;
 import javax.net.ssl.X509TrustManager;
+
 import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,7 +53,8 @@ public class DefaultCasSSLContext implements CasSSLContext {
                                 final String trustStoreType,
                                 final HttpClientProperties httpClientProperties,
                                 final HostnameVerifier hostnameVerifier) throws Exception {
-        val disabled = httpClientProperties.getHostNameVerifier().equalsIgnoreCase("none");
+
+        val disabled = "none".equalsIgnoreCase(httpClientProperties.getHostNameVerifier());
         if (disabled) {
             this.trustManagers = CasSSLContext.disabled().getTrustManagers();
             this.keyManagerFactory = CasSSLContext.disabled().getKeyManagerFactory();
@@ -88,29 +90,29 @@ public class DefaultCasSSLContext implements CasSSLContext {
         this.hostnameVerifier = hostnameVerifier;
     }
 
-    @SneakyThrows
     private static KeyManagerFactory getKeyManagerFactory(final String algorithm, final KeyStore keystore,
-                                                          final char[] password) {
+                                                          final char[] password) throws Exception {
         val factory = KeyManagerFactory.getInstance(algorithm);
         factory.init(keystore, password);
         return factory;
     }
 
-    @SneakyThrows
-    private static Collection<X509TrustManager> getTrustManager(final String algorithm, final KeyStore keystore) {
+    private static Collection<X509TrustManager> getTrustManager(final String algorithm,
+                                                                final KeyStore keystore) throws Exception {
         val factory = TrustManagerFactory.getInstance(algorithm);
         factory.init(keystore);
         return Arrays.stream(factory.getTrustManagers())
-            .filter(e -> e instanceof X509TrustManager)
+            .filter(X509TrustManager.class::isInstance)
             .map(X509TrustManager.class::cast)
             .collect(Collectors.toList());
     }
 
     @Override
-    @SneakyThrows
     public TrustManagerFactory getTrustManagerFactory() {
-        val factory = TrustManagerFactory.getInstance(ALG_NAME_PKIX);
-        factory.init(this.casTrustStore);
-        return factory;
+        return Unchecked.supplier(() -> {
+            val factory = TrustManagerFactory.getInstance(ALG_NAME_PKIX);
+            factory.init(this.casTrustStore);
+            return factory;
+        }).get();
     }
 }

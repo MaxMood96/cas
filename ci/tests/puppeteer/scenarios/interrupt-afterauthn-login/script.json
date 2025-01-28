@@ -1,14 +1,14 @@
 {
   "dependencies": "duo,interrupt-webflow",
+  "conditions": {
+    "env": "DUO_SECURITY_UNIVERSAL_PROMPT_SKEY,DUO_SECURITY_UNIVERSAL_PROMPT_IKEY,DUO_SECURITY_API_HOST,DUO_SECURITY_ADMIN_SKEY,DUO_SECURITY_ADMIN_IKEY"
+  },
   "properties": [
-    "--cas.audit.engine.enabled=false",
 
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
 
     "--cas.authn.mfa.triggers.global.global-provider-id=mfa-duo",
-
-    "--logging.level.org.apereo.cas=info",
 
     "--cas.authn.accept.users=duobypass::Mellon",
     "--cas.authn.mfa.duo[0].account-status-enabled=false",
@@ -22,7 +22,7 @@
 
     "--cas.monitor.endpoints.endpoint.defaults.access=ANONYMOUS",
     "--management.endpoints.web.exposure.include=duoAdmin",
-    "--management.endpoints.enabled-by-default=true",
+    "--management.endpoints.access.default=UNRESTRICTED",
 
     "--cas.interrupt.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/accounts.json"
   ]

@@ -4,12 +4,13 @@ import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.ticket.AbstractTicket;
 import org.apereo.cas.ticket.ExpirationPolicy;
-import org.apereo.cas.ticket.proxy.ProxyGrantingTicket;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.io.Serial;
 
 /**
  * This is {@link SamlAttributeQueryTicketImpl}.
@@ -22,6 +23,7 @@ import lombok.Setter;
 @Setter
 public class SamlAttributeQueryTicketImpl extends AbstractTicket implements SamlAttributeQueryTicket {
 
+    @Serial
     private static final long serialVersionUID = 6276140828446447398L;
 
     private String relyingParty;
@@ -48,17 +50,6 @@ public class SamlAttributeQueryTicketImpl extends AbstractTicket implements Saml
         this.relyingParty = relyingParty;
         this.object = samlObject;
         this.authentication = authentication;
-    }
-
-    @Override
-    public boolean isFromNewLogin() {
-        return true;
-    }
-
-    @Override
-    public ProxyGrantingTicket grantProxyGrantingTicket(final String id, final Authentication authentication,
-                                                        final ExpirationPolicy expirationPolicy) {
-        throw new UnsupportedOperationException("No proxy granting ticket is available");
     }
 
     @Override

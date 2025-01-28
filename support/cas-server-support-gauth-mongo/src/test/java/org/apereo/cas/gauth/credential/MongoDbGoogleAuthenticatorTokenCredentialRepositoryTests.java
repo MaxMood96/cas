@@ -1,12 +1,13 @@
 package org.apereo.cas.gauth.credential;
 
-import org.apereo.cas.config.GoogleAuthenticatorMongoDbConfiguration;
+import org.apereo.cas.config.CasGoogleAuthenticatorMongoDbAutoConfiguration;
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import lombok.Getter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,7 +22,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  * @since 5.0.0
  */
 @SpringBootTest(classes = {
-    GoogleAuthenticatorMongoDbConfiguration.class,
+    CasGoogleAuthenticatorMongoDbAutoConfiguration.class,
     BaseOneTimeTokenCredentialRepositoryTests.SharedTestConfiguration.class
 },
     properties = {
@@ -34,19 +35,20 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
         "cas.authn.mfa.gauth.mongo.database-name=gauth-token-credential",
         "cas.authn.mfa.gauth.crypto.enabled=false"
     })
-@EnableTransactionManagement
-@EnableAspectJAutoProxy
+@EnableTransactionManagement(proxyTargetClass = false)
+@EnableAspectJAutoProxy(proxyTargetClass = false)
 @EnableScheduling
-@Tag("MongoDb")
+@Tag("MongoDbMFA")
+@ExtendWith(CasTestExtension.class)
 @Getter
-@EnabledIfPortOpen(port = 27017)
-public class MongoDbGoogleAuthenticatorTokenCredentialRepositoryTests extends BaseOneTimeTokenCredentialRepositoryTests {
+@EnabledIfListeningOnPort(port = 27017)
+class MongoDbGoogleAuthenticatorTokenCredentialRepositoryTests extends BaseOneTimeTokenCredentialRepositoryTests {
     @Autowired
     @Qualifier("googleAuthenticatorAccountRegistry")
     private OneTimeTokenCredentialRepository registry;
 
     @BeforeEach
-    public void cleanUp() {
+    void cleanUp() {
         registry.deleteAll();
     }
 }

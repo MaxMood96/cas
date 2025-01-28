@@ -10,11 +10,14 @@ import org.apereo.cas.support.oauth.util.OAuth20Utils;
 import org.apereo.cas.ticket.ExpirationPolicy;
 import org.apereo.cas.ticket.ExpirationPolicyBuilder;
 import org.apereo.cas.ticket.Ticket;
-import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.UniqueTicketIdGenerator;
-import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
+import org.apereo.cas.util.crypto.CipherExecutor;
+import org.apereo.cas.util.function.FunctionUtils;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 
@@ -28,6 +31,7 @@ import java.util.Map;
  * @since 5.0.0
  */
 @RequiredArgsConstructor
+@Slf4j
 public class OAuth20DefaultOAuthCodeFactory implements OAuth20CodeFactory {
 
     /**
@@ -35,41 +39,50 @@ public class OAuth20DefaultOAuthCodeFactory implements OAuth20CodeFactory {
      */
     protected final UniqueTicketIdGenerator oAuthCodeIdGenerator;
 
-    /**
-     * ExpirationPolicy for tokens.
-     */
-    protected final ExpirationPolicyBuilder<OAuth20Code> expirationPolicy;
+    @Getter
+    protected final ExpirationPolicyBuilder<OAuth20Code> expirationPolicyBuilder;
 
     /**
      * Services manager.
      */
     protected final ServicesManager servicesManager;
 
-    public OAuth20DefaultOAuthCodeFactory(final ExpirationPolicyBuilder<OAuth20Code> expirationPolicy, final ServicesManager servicesManager) {
-        this(new DefaultUniqueTicketIdGenerator(), expirationPolicy, servicesManager);
-    }
+    /**
+     * Cipher to sign/encrypt codes, if enabled.
+     */
+    protected final CipherExecutor<String, String> cipherExecutor;
+
+    protected final TicketTrackingPolicy descendantTicketsTrackingPolicy;
 
     @Override
     public OAuth20Code create(final Service service,
                               final Authentication authentication,
-                              final TicketGrantingTicket ticketGrantingTicket,
+                              final Ticket ticketGrantingTicket,
                               final Collection<String> scopes,
                               final String codeChallenge,
                               final String codeChallengeMethod,
                               final String clientId,
                               final Map<String, Map<String, Object>> requestClaims,
                               final OAuth20ResponseTypes responseType,
-                              final OAuth20GrantTypes grantType) {
+                              final OAuth20GrantTypes grantType) throws Throwable {
 
         val expirationPolicyToUse = determineExpirationPolicyForService(clientId);
-        val codeId = this.oAuthCodeIdGenerator.getNewTicketId(OAuth20Code.PREFIX);
-        val oauthCode = new OAuth20DefaultCode(codeId, service, authentication,
+        val codeId = oAuthCodeIdGenerator.getNewTicketId(OAuth20Code.PREFIX);
+
+        val codeIdToUse = FunctionUtils.doIf(cipherExecutor.isEnabled(), () -> {
+            LOGGER.trace("Attempting to encode OAuth code [{}]", codeId);
+            val encoded = cipherExecutor.encode(codeId);
+            LOGGER.debug("Encoded OAuth code [{}]", encoded);
+            return encoded;
+        }, () -> codeId).get();
+
+        val oauthCode = new OAuth20DefaultCode(codeIdToUse, service, authentication,
             expirationPolicyToUse, ticketGrantingTicket, scopes,
             codeChallenge, codeChallengeMethod, clientId,
             requestClaims, responseType, grantType);
-        if (ticketGrantingTicket != null) {
-            ticketGrantingTicket.getDescendantTickets().add(oauthCode.getId());
-        }
+
+        descendantTicketsTrackingPolicy.trackTicket(ticketGrantingTicket, oauthCode);
+
         return oauthCode;
     }
 
@@ -85,9 +98,9 @@ public class OAuth20DefaultOAuthCodeFactory implements OAuth20CodeFactory {
             val count = policy.getNumberOfUses();
             val ttl = policy.getTimeToLive();
             if (count > 0 && StringUtils.isNotBlank(ttl)) {
-                return new OAuth20CodeExpirationPolicy(count, Beans.newDuration(ttl).getSeconds());
+                return new OAuth20CodeExpirationPolicy(count, Beans.newDuration(ttl).toSeconds());
             }
         }
-        return this.expirationPolicy.buildTicketExpirationPolicy();
+        return this.expirationPolicyBuilder.buildTicketExpirationPolicy();
     }
 }

@@ -1,19 +1,26 @@
 package org.apereo.cas.authentication;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.io.Serializable;
 
 /**
- * Describes an authentication credential. Implementations SHOULD also implement {@link CredentialMetaData} if
+ * Describes an authentication credential. Implementations SHOULD also implement {@link CredentialMetadata} if
  * no sensitive data is contained in the credential; conversely, implementations MUST NOT implement
- * {@link CredentialMetaData} if the credential contains sensitive data (e.g. password, key material).
+ * {@link CredentialMetadata} if the credential contains sensitive data (e.g. password, key material).
  *
  * @author William G. Thompson, Jr.
  * @author Marvin S. Addison
- * @see CredentialMetaData
+ * @see CredentialMetadata
  * @since 3.0.0
  */
-@FunctionalInterface
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 public interface Credential extends Serializable {
+
+    /**
+     * Empty credentials array.
+     */
+    Credential[] EMPTY_CREDENTIALS_ARRAY = new Credential[0];
+
     /**
      * Credential type, collected as metadata for authentication.
      */
@@ -34,4 +41,20 @@ public interface Credential extends Serializable {
      * is not readily available or meaningful.
      */
     String getId();
+
+    /**
+     * Gets credential metadata.
+     *
+     * @return the credential metadata
+     */
+    CredentialMetadata getCredentialMetadata();
+
+    /**
+     * Gets tenant.
+     *
+     * @return the tenant
+     */
+    default String getTenant() {
+        return getCredentialMetadata() != null ? getCredentialMetadata().getTenant() : null;
+    }
 }

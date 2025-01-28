@@ -21,6 +21,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -31,23 +33,24 @@ import static org.mockito.Mockito.*;
  * @since 6.3.0
  */
 @Tag("OAuth")
-public class OAuth20AuthenticationServiceSelectionStrategyTests extends AbstractOAuth20Tests {
+class OAuth20AuthenticationServiceSelectionStrategyTests extends AbstractOAuth20Tests {
     @Autowired
     @Qualifier("oauth20AuthenticationRequestServiceSelectionStrategy")
     private AuthenticationServiceSelectionStrategy strategy;
 
     @Test
-    public void verifyNullService() {
+    void verifyNullService() throws Throwable {
         assertNotNull(strategy.resolveServiceFrom(mock(Service.class)));
     }
 
     @Test
-    public void verifyGrantType() {
+    void verifyGrantType() throws Throwable {
+        val registeredService = addRegisteredService();
         val request = new MockHttpServletRequest();
         request.addHeader("X-" + CasProtocolConstants.PARAMETER_SERVICE, RegisteredServiceTestUtils.CONST_TEST_URL2);
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request, new MockHttpServletResponse()));
         val service = strategy.resolveServiceFrom(RegisteredServiceTestUtils.getService("https://example.org?"
-            + OAuth20Constants.CLIENT_ID + '=' + CLIENT_ID + '&'
+            + OAuth20Constants.CLIENT_ID + '=' + registeredService.getClientId() + '&'
             + OAuth20Constants.GRANT_TYPE + '=' + OAuth20GrantTypes.CLIENT_CREDENTIALS.getType()));
         assertNotNull(service);
         assertTrue(service.getAttributes().containsKey(OAuth20Constants.CLIENT_ID));
@@ -56,12 +59,13 @@ public class OAuth20AuthenticationServiceSelectionStrategyTests extends Abstract
     }
 
     @Test
-    public void verifyJwtRequest() {
+    void verifyJwtRequest() throws Throwable {
+        val registeredService = addRegisteredService();
         val claims = new JWTClaimsSet.Builder().subject("cas")
             .claim("scope", new String[]{"profile"})
             .claim("redirect_uri", REDIRECT_URI)
             .claim("grant_type", OAuth20GrantTypes.CLIENT_CREDENTIALS.getType())
-            .claim("client_id", CLIENT_ID)
+            .claim("client_id", registeredService.getClientId())
             .build();
         val jwt = new PlainJWT(claims);
         val jwtRequest = jwt.serialize();
@@ -77,11 +81,14 @@ public class OAuth20AuthenticationServiceSelectionStrategyTests extends Abstract
     }
 
     @Test
-    public void verifyBadRequest() {
+    void verifyBadRequest() throws Throwable {
         val request = new MockHttpServletRequest();
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request, new MockHttpServletResponse()));
         val service = strategy.resolveServiceFrom(RegisteredServiceTestUtils.getService("https://example.org"));
         assertNotNull(service);
-        assertTrue(service.getAttributes().isEmpty());
+        val httpRequest = (Map) service.getAttributes().get(Service.SERVICE_ATTRIBUTE_HTTP_REQUEST);
+        assertTrue(httpRequest.containsKey("%s.requestURL".formatted(HttpServletRequest.class.getName())));
+        assertTrue(httpRequest.containsKey("%s.localeName".formatted(HttpServletRequest.class.getName())));
+        assertTrue(service.getAttributes().containsKey(CasProtocolConstants.PARAMETER_SERVICE));
     }
 }

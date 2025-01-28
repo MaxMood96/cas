@@ -33,7 +33,7 @@ this auto-configuration mode are controlled by CAS properties.
 
 {% include_cached {{ version }}/hazelcast-configuration.md configKey="cas.ticket.registry.hazelcast" %}
 
-<div class="alert alert-warning"><strong>Session Monitoring</strong><p>Be aware that under 
+<div class="alert alert-warning">:warning: <strong>Session Monitoring</strong><p>Be aware that under 
 very heavy load and given a very large collection of tickets 
 over time, <a href="../monitoring/Configuring-Monitoring.html">session monitoring capabilities</a> of 
 CAS that report back ticket statistics based on the underlying Hazelcast ticket 
@@ -51,6 +51,23 @@ refer to [the Hazelcast documentation](https://docs.hazelcast.com/imdg/latest/)
 Tokens and tickets that are managed by the Hazelcast ticket registry can be signed and encrypted.                        
 
 {% include_cached casproperties.html properties="cas.ticket.registry.hazelcast.crypto" %}
+     
+## Hazelcast Map Customization
+
+The Hazelcast ticket registry implementation allows you to customize the Hazelcast `Map` that is used to store tickets.
+CAS automatically creates instances of such maps for ticket storage for each known ticket type. If you do need to customize
+the map instance before it's registered with Hazelcast, you can do so by providing a bean of type `HazelcastMapCustomizer`
+in the application context. 
+
+```java
+@Bean
+public HazelcastMapCustomizer myHazelcastMapCustomizer() {
+    return new MyHazelcastMapCustomizer();
+}
+```
+
+[See this guide](../configuration/Configuration-Management-Extensions.html) to learn more about
+how to register configurations into the CAS runtime.
 
 ## Logging
 
@@ -60,8 +77,8 @@ configuration file to add the following levels:
 ```xml
 ...
 <Logger name="com.hazelcast" level="debug" additivity="false">
-    <AppenderRef ref="console"/>
-    <AppenderRef ref="file"/>
+    <AppenderRef ref="casConsole"/>
+    <AppenderRef ref="casFile"/>
 </Logger>
 ...
 ```

@@ -14,12 +14,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("OAuth")
-public class OAuth20DeviceTokenExpirationPolicyBuilderTests extends AbstractOAuth20Tests {
+@Tag("OAuthToken")
+class OAuth20DeviceTokenExpirationPolicyBuilderTests extends AbstractOAuth20Tests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val results = deviceTokenExpirationPolicy.buildTicketExpirationPolicy();
         assertNotNull(results);
-        assertEquals(OAuth20DeviceToken.class, deviceTokenExpirationPolicy.getTicketType());
     }
 }

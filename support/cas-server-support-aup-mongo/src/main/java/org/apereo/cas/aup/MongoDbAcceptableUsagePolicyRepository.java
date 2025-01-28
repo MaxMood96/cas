@@ -7,11 +7,13 @@ import org.apereo.cas.web.support.WebUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.webflow.execution.RequestContext;
+
+import java.io.Serial;
 
 /**
  * This is {@link MongoDbAcceptableUsagePolicyRepository}.
@@ -25,13 +27,14 @@ import org.springframework.webflow.execution.RequestContext;
  */
 @Slf4j
 public class MongoDbAcceptableUsagePolicyRepository extends BaseAcceptableUsagePolicyRepository {
+    @Serial
     private static final long serialVersionUID = 1600024683199961892L;
 
-    private final MongoTemplate mongoTemplate;
+    private final MongoOperations mongoTemplate;
 
     public MongoDbAcceptableUsagePolicyRepository(final TicketRegistrySupport ticketRegistrySupport,
                                                   final AcceptableUsagePolicyProperties aupProperties,
-                                                  final MongoTemplate mongoTemplate) {
+                                                  final MongoOperations mongoTemplate) {
         super(ticketRegistrySupport, aupProperties);
         this.mongoTemplate = mongoTemplate;
     }

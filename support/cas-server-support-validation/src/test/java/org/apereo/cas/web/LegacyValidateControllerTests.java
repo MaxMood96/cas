@@ -1,18 +1,18 @@
 package org.apereo.cas.web;
 
-import org.apereo.cas.BaseCasCoreTests;
-import org.apereo.cas.config.CasThymeleafConfiguration;
-import org.apereo.cas.services.web.config.CasThemesConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
+import org.apereo.cas.config.CasThymeleafAutoConfiguration;
+import org.apereo.cas.config.CasValidationAutoConfiguration;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.validation.DefaultServiceTicketValidationAuthorizersExecutionPlan;
-import org.apereo.cas.web.config.CasValidationConfiguration;
 import org.apereo.cas.web.v1.LegacyValidateController;
-
+import lombok.Getter;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.context.annotation.Import;
 
 /**
  * This is {@link LegacyValidateControllerTests}.
@@ -20,14 +20,14 @@ import org.springframework.boot.test.context.SpringBootTest;
  * @author Misagh Moayyed
  * @since 6.3.0
  */
-@SpringBootTest(classes = {
-    BaseCasCoreTests.SharedTestConfiguration.class,
-    CasThemesConfiguration.class,
-    CasThymeleafConfiguration.class,
-    CasValidationConfiguration.class
+@Import(CasPersonDirectoryTestConfiguration.class)
+@ImportAutoConfiguration({
+    CasThymeleafAutoConfiguration.class,
+    CasValidationAutoConfiguration.class
 })
 @Tag("CAS")
-public class LegacyValidateControllerTests extends AbstractServiceValidateControllerTests {
+@Getter
+class LegacyValidateControllerTests extends AbstractServiceValidateControllerTests {
     @Autowired
     @Qualifier("serviceValidationViewFactory")
     private ServiceValidationViewFactory serviceValidationViewFactory;
@@ -35,6 +35,11 @@ public class LegacyValidateControllerTests extends AbstractServiceValidateContro
     @Override
     public AbstractServiceValidateController getServiceValidateControllerInstance() {
         val context = ServiceValidateConfigurationContext.builder()
+            .applicationContext(applicationContext)
+            .casProperties(casProperties)
+            .principalFactory(getPrincipalFactory())
+            .principalResolver(getDefaultPrincipalResolver())
+            .ticketRegistry(getTicketRegistry())
             .validationSpecifications(CollectionUtils.wrapSet(getValidationSpecification()))
             .authenticationSystemSupport(getAuthenticationSystemSupport())
             .servicesManager(getServicesManager())
@@ -42,10 +47,9 @@ public class LegacyValidateControllerTests extends AbstractServiceValidateContro
             .argumentExtractor(getArgumentExtractor())
             .proxyHandler(getProxyHandler())
             .requestedContextValidator(new MockRequestedAuthenticationContextValidator())
-            .authnContextAttribute("authenticationContext")
             .validationAuthorizers(new DefaultServiceTicketValidationAuthorizersExecutionPlan())
-            .renewEnabled(true)
             .validationViewFactory(serviceValidationViewFactory)
+            .serviceFactory(getWebApplicationServiceFactory())
             .build();
         return new LegacyValidateController(context);
     }

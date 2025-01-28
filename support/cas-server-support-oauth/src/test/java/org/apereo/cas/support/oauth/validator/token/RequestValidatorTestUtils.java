@@ -6,7 +6,6 @@ import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import lombok.experimental.UtilityClass;
 import lombok.val;
 
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -19,10 +18,9 @@ import java.util.stream.Collectors;
  */
 @UtilityClass
 public class RequestValidatorTestUtils {
-    public static final String SUPPORTING_CLIENT_ID = "supporting";
-    public static final String NON_SUPPORTING_CLIENT_ID = "nonsupporting";
-    public static final String PROMISCUOUS_CLIENT_ID = "promiscuous";
+
     public static final String SHARED_SECRET = "secret";
+
     public static OAuthRegisteredService getService(final String serviceId,
                                                     final String name,
                                                     final String clientId,
@@ -34,10 +32,11 @@ public class RequestValidatorTestUtils {
         registeredService.setClientSecret(clientSecret);
         registeredService.setServiceId(serviceId);
         registeredService.setSupportedGrantTypes(grantTypes.stream()
-                .map(OAuth20GrantTypes::getType)
-                .collect(Collectors.toCollection(HashSet::new)));
+            .map(OAuth20GrantTypes::getType)
+            .collect(Collectors.toSet()));
         return registeredService;
     }
+
     public static OAuthRegisteredService getPromiscuousService(final String serviceId,
                                                                final String name,
                                                                final String clientId,

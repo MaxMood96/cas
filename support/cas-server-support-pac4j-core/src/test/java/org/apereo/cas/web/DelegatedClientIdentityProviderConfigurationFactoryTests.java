@@ -4,23 +4,22 @@ import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.authentication.principal.ClientCustomPropertyConstants;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.EncodingUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.pac4j.cas.client.CasClient;
 import org.pac4j.cas.config.CasConfiguration;
-import org.pac4j.core.context.JEEContext;
+import org.pac4j.jee.context.JEEContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -30,15 +29,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @SpringBootTest(classes = RefreshAutoConfiguration.class)
+@ExtendWith(CasTestExtension.class)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("Delegation")
-public class DelegatedClientIdentityProviderConfigurationFactoryTests {
+class DelegatedClientIdentityProviderConfigurationFactoryTests {
 
     @Autowired
     private CasConfigurationProperties casProperties;
 
     @Test
-    public void verifyRedirectUrl() {
+    void verifyRedirectUrl() {
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
 
@@ -74,7 +74,7 @@ public class DelegatedClientIdentityProviderConfigurationFactoryTests {
     }
 
     @Test
-    public void verifyRedirectUrlCorrectlyEncoded() {
+    void verifyRedirectUrlCorrectlyEncoded() {
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
         val context = new JEEContext(request, response);
@@ -84,7 +84,7 @@ public class DelegatedClientIdentityProviderConfigurationFactoryTests {
         val client = new CasClient(new CasConfiguration());
         client.setCustomProperties(Map.of(
             ClientCustomPropertyConstants.CLIENT_CUSTOM_PROPERTY_CSS_CLASS, "custom-class",
-            ClientCustomPropertyConstants.CLIENT_CUSTOM_PROPERTY_AUTO_DISPLAY_NAME, "My Great Client"));
+            ClientCustomPropertyConstants.CLIENT_CUSTOM_PROPERTY_DISPLAY_NAME, "My Great Client"));
         val factory = DelegatedClientIdentityProviderConfigurationFactory.builder()
             .casProperties(casProperties)
             .client(client)

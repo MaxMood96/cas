@@ -20,6 +20,7 @@ public class CheckRequiredModuleAnnotationReferences {
 
     private static void print(final String message, final Object... args) {
         //CHECKSTYLE:OFF
+        System.out.print("\uD83C\uDFC1 ");
         System.out.printf(message, args);
         System.out.println();
         //CHECKSTYLE:ON
@@ -34,7 +35,7 @@ public class CheckRequiredModuleAnnotationReferences {
     }
 
     protected static void checkPattern(final String location) throws IOException {
-        final var failBuild = new AtomicBoolean(false);
+        var failBuild = new AtomicBoolean(false);
         var pattern = Pattern.compile("@RequiresModule\\(name = \"(.+)\"\\)");
 
         Files.walk(Paths.get(location))

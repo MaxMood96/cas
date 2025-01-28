@@ -1,17 +1,21 @@
 package org.apereo.cas.support.events.mongo;
 
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.MongoDbEventsConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasMongoDbEventsAutoConfiguration;
+import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.support.events.AbstractCasEventRepositoryTests;
 import org.apereo.cas.support.events.CasEventRepository;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.Getter;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.web.WebProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 
 /**
  * Test cases for {@link MongoDbCasEventRepository}.
@@ -20,10 +24,11 @@ import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
  * @since 5.2.0
  */
 @Tag("MongoDb")
+@ExtendWith(CasTestExtension.class)
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    MongoDbEventsConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    RefreshAutoConfiguration.class
+    CasMongoDbEventsAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class
 },
     properties = {
         "cas.events.mongo.user-id=root",
@@ -35,10 +40,11 @@ import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
         "cas.events.mongo.drop-collection=true"
     })
 @Getter
-@EnabledIfPortOpen(port = 27017)
-public class MongoDbCasEventRepositoryTests extends AbstractCasEventRepositoryTests {
+@EnabledIfListeningOnPort(port = 27017)
+@EnableConfigurationProperties({CasConfigurationProperties.class, WebProperties.class})
+class MongoDbCasEventRepositoryTests extends AbstractCasEventRepositoryTests {
 
     @Autowired
-    @Qualifier("casEventRepository")
+    @Qualifier(CasEventRepository.BEAN_NAME)
     private CasEventRepository eventRepository;
 }

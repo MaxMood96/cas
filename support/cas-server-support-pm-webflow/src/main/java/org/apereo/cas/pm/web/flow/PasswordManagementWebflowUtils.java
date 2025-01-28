@@ -1,10 +1,14 @@
 package org.apereo.cas.pm.web.flow;
 
+import org.apereo.cas.pm.PasswordManagementService;
+import org.apereo.cas.web.flow.CasWebflowConstants;
+
 import lombok.experimental.UtilityClass;
 import lombok.val;
 import org.springframework.webflow.execution.RequestContext;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * This is {@link PasswordManagementWebflowUtils}.
@@ -15,16 +19,6 @@ import java.util.List;
 @UtilityClass
 public class PasswordManagementWebflowUtils {
     /**
-     * Param name for the token.
-     */
-    public static final String REQUEST_PARAMETER_NAME_PASSWORD_RESET_TOKEN = "pswdrst";
-
-    /**
-     * Flowscope param name for token.
-     */
-    public static final String FLOWSCOPE_PARAMETER_NAME_TOKEN = "token";
-
-    /**
      * Put password reset token.
      *
      * @param requestContext the request context
@@ -32,7 +26,7 @@ public class PasswordManagementWebflowUtils {
      */
     public void putPasswordResetToken(final RequestContext requestContext, final String token) {
         val flowScope = requestContext.getFlowScope();
-        flowScope.put(FLOWSCOPE_PARAMETER_NAME_TOKEN, token);
+        flowScope.put(PasswordManagementService.PARAMETER_TOKEN, token);
     }
 
     /**
@@ -47,14 +41,28 @@ public class PasswordManagementWebflowUtils {
     }
 
     /**
-     * Gets password reset questions.
+     * Put password reset security questions.
      *
      * @param requestContext the request context
+     * @param value          the value
+     */
+    public void putPasswordResetSecurityQuestions(final RequestContext requestContext, final Map<String, String> value) {
+        val flowScope = requestContext.getFlowScope();
+        flowScope.put("questions", value);
+    }
+
+    /**
+     * Gets password reset questions.
+     *
+     * @param <T>            the type parameter
+     * @param requestContext the request context
+     * @param clazz          the clazz
      * @return the password reset questions
      */
-    public static List<String> getPasswordResetQuestions(final RequestContext requestContext) {
+    public static <T> T getPasswordResetQuestions(final RequestContext requestContext,
+                                                  final Class<T> clazz) {
         val flowScope = requestContext.getFlowScope();
-        return flowScope.get("questions", List.class);
+        return flowScope.get("questions", clazz);
     }
 
     /**
@@ -91,6 +99,28 @@ public class PasswordManagementWebflowUtils {
     }
 
     /**
+     * Put password reset request.
+     *
+     * @param requestContext the request context
+     * @param request        the request
+     */
+    public static void putPasswordResetRequest(final RequestContext requestContext, final PasswordResetRequest request) {
+        val flowScope = requestContext.getFlowScope();
+        flowScope.put(CasWebflowConstants.ATTRIBUTE_PASSWORD_MANAGEMENT_REQUEST, request);
+    }
+
+    /**
+     * Gets password reset request.
+     *
+     * @param requestContext the request context
+     * @return the password reset request
+     */
+    public PasswordResetRequest getPasswordResetRequest(final RequestContext requestContext) {
+        val flowScope = requestContext.getFlowScope();
+        return flowScope.get(CasWebflowConstants.ATTRIBUTE_PASSWORD_MANAGEMENT_REQUEST, PasswordResetRequest.class);
+    }
+    
+    /**
      * Gets password reset username.
      *
      * @param requestContext the request context
@@ -109,6 +139,6 @@ public class PasswordManagementWebflowUtils {
      */
     public static String getPasswordResetToken(final RequestContext requestContext) {
         val flowScope = requestContext.getFlowScope();
-        return flowScope.getString(FLOWSCOPE_PARAMETER_NAME_TOKEN);
+        return flowScope.getString(PasswordManagementService.PARAMETER_TOKEN);
     }
 }

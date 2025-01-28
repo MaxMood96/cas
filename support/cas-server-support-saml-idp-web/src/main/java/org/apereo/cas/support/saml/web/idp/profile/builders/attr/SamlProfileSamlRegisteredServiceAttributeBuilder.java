@@ -1,7 +1,7 @@
 package org.apereo.cas.support.saml.web.idp.profile.builders.attr;
 
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
-import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceServiceProviderMetadataFacade;
+import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceMetadataAdaptor;
 import org.apereo.cas.support.saml.util.DefaultSaml20AttributeBuilder;
 import org.apereo.cas.support.saml.web.idp.profile.builders.enc.SamlIdPObjectEncrypter;
 
@@ -22,7 +22,7 @@ import org.opensaml.saml.saml2.core.AttributeStatement;
 public class SamlProfileSamlRegisteredServiceAttributeBuilder extends DefaultSaml20AttributeBuilder {
     private final SamlRegisteredService service;
 
-    private final SamlRegisteredServiceServiceProviderMetadataFacade adaptor;
+    private final SamlRegisteredServiceMetadataAdaptor adaptor;
 
     private final SamlIdPObjectEncrypter samlObjectEncrypter;
 
@@ -50,7 +50,7 @@ public class SamlProfileSamlRegisteredServiceAttributeBuilder extends DefaultSam
             LOGGER.debug("No explicit attribute encryption rules are defined; Attribute [{}] is selected for encryption.", attribute.getName());
             return true;
         }
-        if (encryptableAttributes.contains(attribute.getName())) {
+        if (encryptableAttributes.contains(attribute.getName()) || encryptableAttributes.contains(attribute.getFriendlyName())) {
             LOGGER.debug("Attribute encryption rules allow [{}] to be encrypted", attribute.getName());
             return true;
         }

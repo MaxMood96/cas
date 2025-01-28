@@ -1,37 +1,23 @@
 package org.apereo.cas;
 
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.CasThymeleafConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.services.web.config.CasThemesConfiguration;
-import org.apereo.cas.web.config.CasCookieConfiguration;
-import org.apereo.cas.web.flow.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasWebflowContextConfiguration;
-
+import org.apereo.cas.config.CasThemesAutoConfiguration;
+import org.apereo.cas.config.CasThymeleafAutoConfiguration;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
-import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.annotation.Import;
 
 /**
@@ -42,39 +28,25 @@ import org.springframework.context.annotation.Import;
  */
 public abstract class BaseThymeleafTests {
     @ImportAutoConfiguration({
-        MailSenderAutoConfiguration.class,
-        AopAutoConfiguration.class,
-        ThymeleafAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        RefreshAutoConfiguration.class
+        CasCoreCookieAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreWebflowAutoConfiguration.class,
+        CasCoreAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+        CasThemesAutoConfiguration.class,
+        CasThymeleafAutoConfiguration.class
     })
-    @SpringBootConfiguration
-    @Import({
-        CasCookieConfiguration.class,
-        CasCoreUtilConfiguration.class,
-        CasCoreTicketIdGeneratorsConfiguration.class,
-        CasCoreTicketsConfiguration.class,
-        CasCoreTicketCatalogConfiguration.class,
-        CasCoreLogoutConfiguration.class,
-        CasPersonDirectoryTestConfiguration.class,
-        CasCoreAuthenticationConfiguration.class,
-        CasCoreAuthenticationPrincipalConfiguration.class,
-        CasCoreAuthenticationSupportConfiguration.class,
-        CasCoreAuthenticationMetadataConfiguration.class,
-        CasWebApplicationServiceFactoryConfiguration.class,
-        CasCoreWebConfiguration.class,
-        CasCoreWebflowConfiguration.class,
-        CasWebflowContextConfiguration.class,
-        CasCoreHttpConfiguration.class,
-        CasCoreConfiguration.class,
-        CasCoreNotificationsConfiguration.class,
-        CasCoreMultifactorAuthenticationConfiguration.class,
-        CasMultifactorAuthenticationWebflowConfiguration.class,
-        CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-        CasCoreServicesConfiguration.class,
-        CasThemesConfiguration.class,
-        CasThymeleafConfiguration.class
-    })
+    @SpringBootTestAutoConfigurations
+    @SpringBootConfiguration(proxyBeanMethods = false)
+    @Import(CasPersonDirectoryTestConfiguration.class)
     public static class SharedTestConfiguration {
     }
 }
+

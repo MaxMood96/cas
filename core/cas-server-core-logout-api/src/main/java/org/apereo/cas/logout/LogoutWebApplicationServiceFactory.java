@@ -3,12 +3,15 @@ package org.apereo.cas.logout;
 import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.authentication.principal.WebApplicationServiceFactory;
 import org.apereo.cas.configuration.model.core.logout.LogoutProperties;
+import org.apereo.cas.multitenancy.TenantExtractor;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.commons.lang3.StringUtils;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+
+import java.util.Objects;
 
 /**
  * This is {@link LogoutWebApplicationServiceFactory}.
@@ -16,17 +19,27 @@ import javax.servlet.http.HttpServletRequest;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@RequiredArgsConstructor
 @Slf4j
 public class LogoutWebApplicationServiceFactory extends WebApplicationServiceFactory {
     private final LogoutProperties logoutProperties;
 
+    public LogoutWebApplicationServiceFactory(final TenantExtractor tenantExtractor, final LogoutProperties logoutProperties) {
+        super(tenantExtractor);
+        this.logoutProperties = logoutProperties;
+    }
+
     @Override
     protected String getRequestedService(final HttpServletRequest request) {
         if (request.getRequestURI().endsWith(CasProtocolConstants.ENDPOINT_LOGOUT)) {
-            val paramName = logoutProperties.getRedirectParameter();
-            LOGGER.trace("Using request parameter name [{}] to detect destination service, if any", paramName);
-            val service = request.getParameter(paramName);
+            val service = logoutProperties.getRedirectParameter()
+                .stream()
+                .map(paramName -> {
+                    LOGGER.trace("Using request parameter name [{}] to detect destination service, if any", paramName);
+                    return request.getParameter(paramName);
+                })
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(StringUtils.EMPTY);
             LOGGER.trace("Located target service [{}] for redirection after logout", service);
             return service;
         }

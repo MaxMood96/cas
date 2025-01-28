@@ -1,22 +1,19 @@
 package org.apereo.cas.trusted.authentication.storage;
 
+import org.apereo.cas.config.CasDynamoDbMultifactorAuthenticationTrustAutoConfiguration;
 import org.apereo.cas.trusted.AbstractMultifactorAuthenticationTrustStorageTests;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustRecord;
-import org.apereo.cas.trusted.config.DynamoDbMultifactorAuthenticationTrustConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import software.amazon.awssdk.core.SdkSystemSetting;
-
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -25,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@Import(DynamoDbMultifactorAuthenticationTrustConfiguration.class)
+@ImportAutoConfiguration(CasDynamoDbMultifactorAuthenticationTrustAutoConfiguration.class)
 @TestPropertySource(properties = {
     "cas.authn.mfa.trusted.dynamo-db.endpoint=http://localhost:8000",
     "cas.authn.mfa.trusted.dynamo-db.drop-tables-on-startup=true",
@@ -33,8 +30,8 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.mfa.trusted.dynamo-db.region=us-east-1"
 })
 @Tag("DynamoDb")
-@EnabledIfPortOpen(port = 8000)
-public class DynamoDbMultifactorAuthenticationTrustStorageTests extends AbstractMultifactorAuthenticationTrustStorageTests {
+@EnabledIfListeningOnPort(port = 8000)
+class DynamoDbMultifactorAuthenticationTrustStorageTests extends AbstractMultifactorAuthenticationTrustStorageTests {
 
     static {
         System.setProperty(SdkSystemSetting.AWS_ACCESS_KEY_ID.property(), "AKIAIPPIGGUNIO74C63Z");
@@ -42,12 +39,12 @@ public class DynamoDbMultifactorAuthenticationTrustStorageTests extends Abstract
     }
 
     @BeforeEach
-    public void emptyTrustEngine() {
+    void emptyTrustEngine() {
         getMfaTrustEngine().getAll().forEach(r -> getMfaTrustEngine().remove(r.getRecordKey()));
     }
 
     @Test
-    public void verifySetAnExpireByKey() {
+    void verifySetAnExpireByKey() {
         getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance("casuser",
             "geography", "fingerprint"));
         val records = getMfaTrustEngine().get("casuser");
@@ -57,7 +54,7 @@ public class DynamoDbMultifactorAuthenticationTrustStorageTests extends Abstract
     }
 
     @Test
-    public void verifyExpireByDate() {
+    void verifyExpireByDate() {
         val r = MultifactorAuthenticationTrustRecord.newInstance("castest", "geography", "fingerprint");
         val now = ZonedDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
         r.setRecordDate(now.minusDays(2));

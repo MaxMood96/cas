@@ -13,9 +13,9 @@ import lombok.val;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.PersistenceContext;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
 import java.util.Collection;
 
 /**
@@ -24,7 +24,7 @@ import java.util.Collection;
  * @author Misagh Moayyed
  * @since 5.2.0
  */
-@EnableTransactionManagement
+@EnableTransactionManagement(proxyTargetClass = false)
 @Transactional(transactionManager = "transactionManagerYubiKey")
 @Slf4j
 public class JpaYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
@@ -33,8 +33,8 @@ public class JpaYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
 
     private static final String SELECT_ACCOUNT_QUERY = SELECT_QUERY.concat(" WHERE r.username = :username");
 
-    @PersistenceContext(unitName = "yubiKeyEntityManagerFactory")
-    private transient EntityManager entityManager;
+    @PersistenceContext(unitName = "jpaYubiKeyRegistryContext")
+    private EntityManager entityManager;
 
     public JpaYubiKeyAccountRegistry(final YubiKeyAccountValidator accountValidator) {
         super(accountValidator);
@@ -68,7 +68,7 @@ public class JpaYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
     public void delete(final String username, final long deviceId) {
         try {
             val account = fetchSingleYubiKeyAccount(username);
-            if (account != null && account.getDevices().removeIf(d -> deviceId == d.getId())) {
+            if (account != null && account.getDevices().removeIf(device -> deviceId == device.getId())) {
                 entityManager.merge(account);
             }
         } catch (final NoResultException e) {

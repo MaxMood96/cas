@@ -21,17 +21,17 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.1.0
  */
 @TestPropertySource(properties = {
-    "management.endpoint.oauthTokens.enabled=true",
+    "management.endpoint.oauthTokens.access=UNRESTRICTED",
     "management.endpoints.web.exposure.include=*"
 })
-@Tag("OAuth")
-public class OAuth20TokenManagementEndpointTests extends AbstractOAuth20Tests {
+@Tag("OAuthWeb")
+class OAuth20TokenManagementEndpointTests extends AbstractOAuth20Tests {
     @Autowired
     @Qualifier("oauth20TokenManagementEndpoint")
     private OAuth20TokenManagementEndpoint tokenManagementEndpoint;
 
     @Test
-    public void verifyOperationWithJwt() {
+    void verifyOperationWithJwt() throws Throwable {
         val registeredService = getRegisteredService("example1", "secret", new LinkedHashSet<>());
         registeredService.setJwtAccessToken(true);
         servicesManager.save(registeredService);
@@ -45,7 +45,7 @@ public class OAuth20TokenManagementEndpointTests extends AbstractOAuth20Tests {
     }
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val registeredService = getRegisteredService("example2", "secret", new LinkedHashSet<>());
         servicesManager.save(registeredService);
 
@@ -56,7 +56,7 @@ public class OAuth20TokenManagementEndpointTests extends AbstractOAuth20Tests {
     }
 
     @Test
-    public void verifyBadOperation() {
+    void verifyBadOperation() {
         assertNull(tokenManagementEndpoint.getToken("unknown"));
     }
 }

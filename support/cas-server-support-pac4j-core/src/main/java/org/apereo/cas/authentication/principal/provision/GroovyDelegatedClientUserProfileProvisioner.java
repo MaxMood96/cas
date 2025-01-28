@@ -2,8 +2,8 @@ package org.apereo.cas.authentication.principal.provision;
 
 import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.principal.Principal;
-import org.apereo.cas.util.scripting.WatchableGroovyScriptResource;
-
+import org.apereo.cas.util.scripting.ExecutableCompiledScript;
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.pac4j.core.client.BaseClient;
@@ -18,15 +18,16 @@ import org.springframework.core.io.Resource;
  */
 @Slf4j
 public class GroovyDelegatedClientUserProfileProvisioner extends BaseDelegatedClientUserProfileProvisioner {
-    private final transient WatchableGroovyScriptResource watchableScript;
+    private final ExecutableCompiledScript watchableScript;
 
     public GroovyDelegatedClientUserProfileProvisioner(final Resource groovyResource) {
-        this.watchableScript = new WatchableGroovyScriptResource(groovyResource);
+        val scriptFactory = ExecutableCompiledScriptFactory.getExecutableCompiledScriptFactory();
+        this.watchableScript = scriptFactory.fromResource(groovyResource);
     }
 
     @Override
     public void execute(final Principal principal, final UserProfile profile,
-                        final BaseClient client, final Credential credential) {
+                        final BaseClient client, final Credential credential) throws Throwable {
         val args = new Object[]{principal, profile, client, LOGGER};
         watchableScript.execute(args, Void.class);
     }

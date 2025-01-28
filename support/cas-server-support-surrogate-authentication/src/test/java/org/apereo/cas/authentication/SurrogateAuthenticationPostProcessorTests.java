@@ -1,19 +1,19 @@
 package org.apereo.cas.authentication;
 
+import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
 import org.apereo.cas.authentication.surrogate.BaseSurrogateAuthenticationServiceTests;
+import org.apereo.cas.authentication.surrogate.SurrogateCredentialTrait;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ServicesManager;
-
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -25,8 +25,9 @@ import static org.mockito.Mockito.*;
  */
 @SpringBootTest(classes = BaseSurrogateAuthenticationServiceTests.SharedTestConfiguration.class,
     properties = "cas.authn.surrogate.simple.surrogates.casuser=cassurrogate")
-@Tag("Authentication")
-public class SurrogateAuthenticationPostProcessorTests {
+@Tag("Impersonation")
+@ExtendWith(CasTestExtension.class)
+class SurrogateAuthenticationPostProcessorTests {
     @Autowired
     @Qualifier("surrogateAuthenticationPostProcessor")
     private AuthenticationPostProcessor surrogateAuthenticationPostProcessor;
@@ -36,17 +37,19 @@ public class SurrogateAuthenticationPostProcessorTests {
     private ServicesManager servicesManager;
 
     @Test
-    public void verifySupports() {
+    void verifySupports() throws Throwable {
         assertFalse(surrogateAuthenticationPostProcessor.supports(CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword()));
-        assertTrue(surrogateAuthenticationPostProcessor.supports(new SurrogateUsernamePasswordCredential()));
+        val credential = new UsernamePasswordCredential();
+        credential.getCredentialMetadata().addTrait(new SurrogateCredentialTrait("something"));
+        assertTrue(surrogateAuthenticationPostProcessor.supports(credential));
     }
 
     @Test
-    public void verifySurrogateCredentialNotFound() {
-        val c = new SurrogateUsernamePasswordCredential();
-        c.setUsername("casuser");
-        c.setPassword("Mellon");
-        val transaction = new DefaultAuthenticationTransactionFactory().newTransaction(RegisteredServiceTestUtils.getService("service"), c);
+    void verifySurrogateCredentialNotFound() {
+        val credential = new UsernamePasswordCredential();
+        credential.setUsername("casuser");
+        credential.assignPassword("Mellon");
+        val transaction = CoreAuthenticationTestUtils.getAuthenticationTransactionFactory().newTransaction(RegisteredServiceTestUtils.getService("service"), credential);
         val builder = mock(AuthenticationBuilder.class);
         val principal = new SurrogatePrincipal(CoreAuthenticationTestUtils.getPrincipal("casuser"),
             CoreAuthenticationTestUtils.getPrincipal("something"));
@@ -55,26 +58,21 @@ public class SurrogateAuthenticationPostProcessorTests {
     }
 
     @Test
-    public void verifyProcessorWorks() {
-        val c = new SurrogateUsernamePasswordCredential();
-        c.setUsername("casuser");
-        c.setPassword("Mellon");
-        c.setSurrogateUsername("cassurrogate");
-        val transaction = new DefaultAuthenticationTransactionFactory().newTransaction(RegisteredServiceTestUtils.getService("https://localhost"), c);
+    void verifyProcessorWorks() {
+        val credential = new UsernamePasswordCredential();
+        credential.setUsername("casuser");
+        credential.assignPassword("Mellon");
+        credential.getCredentialMetadata().addTrait(new SurrogateCredentialTrait("cassurrogate"));
+        val transaction = CoreAuthenticationTestUtils.getAuthenticationTransactionFactory().newTransaction(RegisteredServiceTestUtils.getService("https://localhost"), credential);
         val builder = mock(AuthenticationBuilder.class);
         when(builder.build()).thenReturn(CoreAuthenticationTestUtils.getAuthentication("casuser"));
-        assertDoesNotThrow(new Executable() {
-            @Override
-            public void execute() {
-                surrogateAuthenticationPostProcessor.process(builder, transaction);
-            }
-        });
+        assertDoesNotThrow(() -> surrogateAuthenticationPostProcessor.process(builder, transaction));
     }
 
     @Test
-    public void verifyNoPrimaryCredential() {
-        val transaction = new DefaultAuthenticationTransactionFactory().newTransaction(
-            RegisteredServiceTestUtils.getService("service"), new Credential[0]);
+    void verifyNoPrimaryCredential() {
+        val transaction = CoreAuthenticationTestUtils.getAuthenticationTransactionFactory().newTransaction(
+            RegisteredServiceTestUtils.getService("service"));
         val builder = mock(AuthenticationBuilder.class);
         val principal = new SurrogatePrincipal(CoreAuthenticationTestUtils.getPrincipal("casuser"),
             CoreAuthenticationTestUtils.getPrincipal("something"));
@@ -83,37 +81,32 @@ public class SurrogateAuthenticationPostProcessorTests {
     }
 
     @Test
-    public void verifyAuthN() {
-        val c = new SurrogateUsernamePasswordCredential();
-        c.setUsername("casuser");
-        c.setPassword("Mellon");
-        c.setSurrogateUsername("cassurrogate");
+    void verifyAuthN() {
+        val credential = new UsernamePasswordCredential();
+        credential.setUsername("casuser");
+        credential.assignPassword("Mellon");
+        credential.getCredentialMetadata().addTrait(new SurrogateCredentialTrait("cassurrogate"));
         val service = RegisteredServiceTestUtils.getService("service");
         servicesManager.save(RegisteredServiceTestUtils.getRegisteredService(service.getId(), Map.of()));
 
-        val transaction = new DefaultAuthenticationTransactionFactory().newTransaction(service, c);
+        val transaction = CoreAuthenticationTestUtils.getAuthenticationTransactionFactory().newTransaction(service, credential);
         val builder = mock(AuthenticationBuilder.class);
         val principal = new SurrogatePrincipal(CoreAuthenticationTestUtils.getPrincipal("casuser"),
             CoreAuthenticationTestUtils.getPrincipal("something"));
         when(builder.build()).thenReturn(CoreAuthenticationTestUtils.getAuthentication(principal));
-        assertDoesNotThrow(new Executable() {
-            @Override
-            public void execute() {
-                surrogateAuthenticationPostProcessor.process(builder, transaction);
-            }
-        });
+        assertDoesNotThrow(() -> surrogateAuthenticationPostProcessor.process(builder, transaction));
     }
 
     @Test
-    public void verifyFailAuthN() {
-        val c = new SurrogateUsernamePasswordCredential();
-        c.setUsername("casuser");
-        c.setPassword("Mellon");
-        c.setSurrogateUsername("other-user");
+    void verifyFailAuthN() {
+        val credential = new UsernamePasswordCredential();
+        credential.setUsername("casuser");
+        credential.assignPassword("Mellon");
+        credential.getCredentialMetadata().addTrait(new SurrogateCredentialTrait("other-use"));
         val service = RegisteredServiceTestUtils.getService("service");
         servicesManager.save(RegisteredServiceTestUtils.getRegisteredService(service.getId(), Map.of()));
 
-        val transaction = new DefaultAuthenticationTransactionFactory().newTransaction(service, c);
+        val transaction = CoreAuthenticationTestUtils.getAuthenticationTransactionFactory().newTransaction(service, credential);
         val builder = mock(AuthenticationBuilder.class);
         val principal = new SurrogatePrincipal(CoreAuthenticationTestUtils.getPrincipal("casuser"),
             CoreAuthenticationTestUtils.getPrincipal("something"));

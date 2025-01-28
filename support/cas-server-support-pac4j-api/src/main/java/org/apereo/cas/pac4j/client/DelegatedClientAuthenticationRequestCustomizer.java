@@ -3,7 +3,6 @@ package org.apereo.cas.pac4j.client;
 import org.apereo.cas.authentication.principal.WebApplicationService;
 
 import org.pac4j.core.client.IndirectClient;
-import org.pac4j.core.context.JEEContext;
 import org.pac4j.core.context.WebContext;
 import org.springframework.core.Ordered;
 
@@ -20,17 +19,19 @@ public interface DelegatedClientAuthenticationRequestCustomizer extends Ordered 
      *
      * @param client     the client
      * @param webContext the web context
+     * @throws Throwable the throwable
      */
-    void customize(IndirectClient client, WebContext webContext);
+    void customize(IndirectClient client, WebContext webContext) throws Throwable;
 
     /**
      * Supports.
      *
      * @param client     the client
      * @param webContext the web context
-     * @return the boolean
+     * @return true /false
+     * @throws Throwable the throwable
      */
-    boolean supports(IndirectClient client, WebContext webContext);
+    boolean supports(IndirectClient client, WebContext webContext) throws Throwable;
 
     @Override
     default int getOrder() {
@@ -43,7 +44,8 @@ public interface DelegatedClientAuthenticationRequestCustomizer extends Ordered 
      * @param webContext     the web context
      * @param client         the client
      * @param currentService the current service
-     * @return true/false
+     * @return true /false
+     * @throws Throwable the throwable
      */
-    boolean isAuthorized(JEEContext webContext, IndirectClient client, WebApplicationService currentService);
+    boolean isAuthorized(WebContext webContext, IndirectClient client, WebApplicationService currentService) throws Throwable;
 }

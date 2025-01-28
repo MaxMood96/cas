@@ -1,41 +1,31 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.RestServiceRegistryConfiguration;
+import org.apereo.cas.config.CasRestServiceRegistryAutoConfiguration;
+import org.apereo.cas.config.CasWebAppAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-import org.apereo.cas.web.config.CasCookieConfiguration;
-import org.apereo.cas.web.flow.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasMultifactorAuthenticationWebflowConfiguration;
-
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
+import org.apereo.cas.web.CasWebSecurityConfigurer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.val;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -45,6 +35,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 /**
  * This is {@link RestfulServiceRegistryTests}.
@@ -52,38 +43,28 @@ import org.springframework.web.bind.annotation.RestController;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
+    AbstractServiceRegistryTests.SharedTestConfiguration.class,
     RestfulServiceRegistryTests.RestfulServiceRegistryTestConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    RestServiceRegistryConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    RefreshAutoConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCoreWebflowConfiguration.class,
-    CasCookieConfiguration.class,
-    CasCoreMultifactorAuthenticationConfiguration.class,
-    CasMultifactorAuthenticationWebflowConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
+    CasRestServiceRegistryAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
     CasPersonDirectoryTestConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreAuthenticationPolicyConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationHandlersConfiguration.class
+    CasCoreWebflowAutoConfiguration.class,
+    CasWebAppAutoConfiguration.class
 },
     properties = {
-        "server.port=9303",
-        "cas.service-registry.rest.url=http://localhost:9303",
+        "cas.service-registry.rest.url=http://localhost:${#applicationContext.get().getEnvironment().getProperty('local.server.port')}/casservices",
         "cas.service-registry.core.init-from-json=false"
     },
-    webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-@EnableAutoConfiguration
 @Tag("RestfulApi")
+@ExtendWith(CasTestExtension.class)
 @Getter
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class RestfulServiceRegistryTests extends AbstractServiceRegistryTests {
+class RestfulServiceRegistryTests extends AbstractServiceRegistryTests {
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
@@ -92,14 +73,23 @@ public class RestfulServiceRegistryTests extends AbstractServiceRegistryTests {
     private ServiceRegistry newServiceRegistry;
 
     @TestConfiguration(value = "RestfulServiceRegistryTestConfiguration", proxyBeanMethods = false)
-    @Lazy(false)
-    public static class RestfulServiceRegistryTestConfiguration {
+    static class RestfulServiceRegistryTestConfiguration {
 
         @Autowired
         private ConfigurableApplicationContext applicationContext;
 
+        @Bean
+        public CasWebSecurityConfigurer<Void> casServicesEndpointConfigurer() {
+            return new CasWebSecurityConfigurer<>() {
+                @Override
+                public List<String> getIgnoredEndpoints() {
+                    return List.of("/casservices");
+                }
+            };
+        }
+        
         @RestController("servicesController")
-        @RequestMapping("/")
+        @RequestMapping("/casservices")
         public class ServicesController {
             private final InMemoryServiceRegistry serviceRegistry = new InMemoryServiceRegistry(applicationContext);
 
@@ -117,16 +107,14 @@ public class RestfulServiceRegistryTests extends AbstractServiceRegistryTests {
             }
 
             @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-            @SneakyThrows
-            public ResponseEntity save(@RequestBody final String service) {
+            public ResponseEntity save(@RequestBody final String service) throws Exception {
                 val registeredService = MAPPER.readValue(service, RegisteredService.class);
                 serviceRegistry.save(registeredService);
                 return ResponseEntity.ok(MAPPER.writeValueAsString(registeredService));
             }
 
             @GetMapping(path = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-            @SneakyThrows
-            public ResponseEntity findServiceById(@PathVariable(name = "id") final String id) {
+            public ResponseEntity findServiceById(@PathVariable(name = "id") final String id) throws Exception {
                 if (NumberUtils.isParsable(id)) {
                     return ResponseEntity.ok(MAPPER.writeValueAsString(serviceRegistry.findServiceById(Long.parseLong(id))));
                 }
@@ -134,8 +122,7 @@ public class RestfulServiceRegistryTests extends AbstractServiceRegistryTests {
             }
 
             @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-            @SneakyThrows
-            public ResponseEntity load() {
+            public ResponseEntity load() throws Exception {
                 return ResponseEntity.ok(MAPPER.writeValueAsString(serviceRegistry.load()));
             }
         }

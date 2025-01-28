@@ -6,9 +6,7 @@ import com.yubico.client.v2.YubicoClient;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
 import java.util.Date;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -19,10 +17,9 @@ import static org.mockito.Mockito.*;
  * @since 5.3.0
  */
 @Tag("MFAProvider")
-@SuppressWarnings("JavaUtilDate")
-public class DefaultYubiKeyAccountValidatorTests {
+class DefaultYubiKeyAccountValidatorTests {
     @Test
-    public void verifyAction() throws Exception {
+    void verifyAction() throws Throwable {
         val client = mock(YubicoClient.class);
         val r = mock(VerificationResponse.class);
         when(client.verify(anyString())).thenReturn(r);
@@ -33,7 +30,7 @@ public class DefaultYubiKeyAccountValidatorTests {
     }
 
     @Test
-    public void verifyActionFailsStatus() throws Exception {
+    void verifyActionFailsStatus() throws Throwable {
         val client = mock(YubicoClient.class);
         val r = mock(VerificationResponse.class);
         when(client.verify(anyString())).thenReturn(r);
@@ -44,14 +41,14 @@ public class DefaultYubiKeyAccountValidatorTests {
     }
 
     @Test
-    public void verifyBadPubKey() {
+    void verifyBadPubKey() {
         val client = mock(YubicoClient.class);
         val v = new DefaultYubiKeyAccountValidator(client);
         assertFalse(v.isValid("casuser", "abcdeyf"));
     }
 
     @Test
-    public void verifyNoPubKey() {
+    void verifyNoPubKey() {
         val client = mock(YubicoClient.class);
         val v = new DefaultYubiKeyAccountValidator(client) {
             @Override

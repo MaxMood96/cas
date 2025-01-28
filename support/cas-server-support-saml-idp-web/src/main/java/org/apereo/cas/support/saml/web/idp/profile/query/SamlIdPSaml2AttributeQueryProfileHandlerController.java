@@ -6,12 +6,14 @@ import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.RegisteredServiceAttributeReleasePolicyContext;
+import org.apereo.cas.services.RegisteredServiceUsernameProviderContext;
 import org.apereo.cas.services.UnauthorizedServiceException;
 import org.apereo.cas.support.saml.SamlIdPConstants;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
-import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceServiceProviderMetadataFacade;
+import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceMetadataAdaptor;
 import org.apereo.cas.support.saml.web.idp.profile.AbstractSamlIdPProfileHandlerController;
 import org.apereo.cas.support.saml.web.idp.profile.SamlProfileHandlerConfigurationContext;
+import org.apereo.cas.support.saml.web.idp.profile.builders.SamlProfileBuilderContext;
 import org.apereo.cas.ticket.InvalidTicketException;
 import org.apereo.cas.ticket.query.SamlAttributeQueryTicket;
 import org.apereo.cas.ticket.query.SamlAttributeQueryTicketFactory;
@@ -21,15 +23,17 @@ import org.apereo.cas.util.LoggingUtils;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hc.core5.http.HttpStatus;
 import org.opensaml.saml.common.xml.SAMLConstants;
 import org.opensaml.saml.saml2.core.AttributeQuery;
 import org.springframework.web.bind.annotation.PostMapping;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * This is {@link SamlIdPSaml2AttributeQueryProfileHandlerController}.
@@ -48,18 +52,25 @@ public class SamlIdPSaml2AttributeQueryProfileHandlerController extends Abstract
      *
      * @param response the response
      * @param request  the request
+     * @throws Exception the exception
      */
     @PostMapping(path = SamlIdPConstants.ENDPOINT_SAML2_SOAP_ATTRIBUTE_QUERY)
     protected void handlePostRequest(final HttpServletResponse response,
-                                     final HttpServletRequest request) {
+                                     final HttpServletRequest request) throws Exception {
+        val enabled = configurationContext.getCasProperties().getAuthn().getSamlIdp().getCore().isAttributeQueryProfileEnabled();
+        if (!enabled) {
+            LOGGER.warn("SAML2 attribute query profile is not enabled");
+            response.setStatus(HttpStatus.SC_NOT_IMPLEMENTED);
+            return;
+        }
+
         val ctx = decodeSoapRequest(request);
         val query = (AttributeQuery) ctx.getMessage();
         try {
             val issuer = Objects.requireNonNull(query).getIssuer().getValue();
-            val registeredService = verifySamlRegisteredService(issuer);
+            val registeredService = verifySamlRegisteredService(issuer, request);
             val adaptor = getSamlMetadataFacadeFor(registeredService, query);
-            val facade = adaptor.orElseThrow(() -> new UnauthorizedServiceException(
-                UnauthorizedServiceException.CODE_UNAUTHZ_SERVICE, "Cannot find metadata linked to " + issuer));
+            val facade = adaptor.orElseThrow(() -> UnauthorizedServiceException.denied("Cannot find metadata linked to %s".formatted(issuer)));
             verifyAuthenticationContextSignature(ctx, request, query, facade, registeredService);
 
             val nameIdValue = determineNameIdForQuery(query, registeredService, facade);
@@ -76,39 +87,62 @@ public class SamlIdPSaml2AttributeQueryProfileHandlerController extends Abstract
             val authentication = ticket.getAuthentication();
 
             val principal = resolvePrincipalForAttributeQuery(authentication, registeredService);
-            val context = RegisteredServiceAttributeReleasePolicyContext.builder()
+            val releasePolicyContext = RegisteredServiceAttributeReleasePolicyContext.builder()
                 .registeredService(registeredService)
+                .applicationContext(getConfigurationContext().getOpenSamlConfigBean().getApplicationContext())
                 .service(ticket.getService())
                 .principal(principal)
                 .build();
 
-            val principalAttributes = registeredService.getAttributeReleasePolicy().getConsentableAttributes(context);
+            val principalAttributes = registeredService.getAttributeReleasePolicy().getConsentableAttributes(releasePolicyContext);
             LOGGER.debug("Initial consentable principal attributes are [{}]", principalAttributes);
 
             val authenticationAttributes = getConfigurationContext().getAuthenticationAttributeReleasePolicy()
                 .getAuthenticationAttributesForRelease(authentication, null, Map.of(), registeredService);
             val finalAttributes = CollectionUtils.merge(principalAttributes, authenticationAttributes);
 
-            val principalId = registeredService.getUsernameAttributeProvider()
-                .resolveUsername(authentication.getPrincipal(), ticket.getService(), registeredService);
+            val usernameContext = RegisteredServiceUsernameProviderContext.builder()
+                .registeredService(registeredService)
+                .service(ticket.getService())
+                .principal(authentication.getPrincipal())
+                .applicationContext(getConfigurationContext().getOpenSamlConfigBean().getApplicationContext())
+                .build();
+            
+            val principalId = registeredService.getUsernameAttributeProvider().resolveUsername(usernameContext);
             LOGGER.debug("Principal id used for attribute query response should be [{}]", principalId);
             LOGGER.debug("Final attributes to be processed for the SAML2 response are [{}]", finalAttributes);
 
             val casAssertion = buildCasAssertion(principalId, registeredService, finalAttributes);
             request.setAttribute(AttributeQuery.class.getSimpleName(), query);
-            getConfigurationContext().getResponseBuilder().build(query, request, response, casAssertion,
-                registeredService, facade, SAMLConstants.SAML2_SOAP11_BINDING_URI, ctx);
-        } catch (final Exception e) {
+
+            val buildContext = SamlProfileBuilderContext.builder()
+                .samlRequest(query)
+                .httpRequest(request)
+                .httpResponse(response)
+                .authenticatedAssertion(Optional.of(casAssertion))
+                .registeredService(registeredService)
+                .adaptor(facade)
+                .binding(SAMLConstants.SAML2_SOAP11_BINDING_URI)
+                .messageContext(ctx)
+                .build();
+            getConfigurationContext().getResponseBuilder().build(buildContext);
+        } catch (final Throwable e) {
             LoggingUtils.error(LOGGER, e);
             request.setAttribute(SamlIdPConstants.REQUEST_ATTRIBUTE_ERROR,
                 "Unable to build SOAP response: " + StringUtils.defaultString(e.getMessage()));
-            getConfigurationContext().getSamlFaultResponseBuilder().build(query, request, response,
-                null, null, null, SAMLConstants.SAML2_SOAP11_BINDING_URI, ctx);
+            val buildContext = SamlProfileBuilderContext.builder()
+                .samlRequest(query)
+                .httpRequest(request)
+                .httpResponse(response)
+                .binding(SAMLConstants.SAML2_SOAP11_BINDING_URI)
+                .messageContext(ctx)
+                .build();
+            getConfigurationContext().getSamlFaultResponseBuilder().build(buildContext);
         }
     }
 
     private Principal resolvePrincipalForAttributeQuery(final Authentication authentication,
-                                                        final RegisteredService registeredService) {
+                                                        final RegisteredService registeredService) throws Throwable {
         val repositories = new HashSet<String>(0);
         if (registeredService != null) {
             repositories.addAll(registeredService.getAttributeReleasePolicy()
@@ -129,7 +163,7 @@ public class SamlIdPSaml2AttributeQueryProfileHandlerController extends Abstract
 
     private String determineNameIdForQuery(final AttributeQuery query,
                                            final SamlRegisteredService registeredService,
-                                           final SamlRegisteredServiceServiceProviderMetadataFacade facade) {
+                                           final SamlRegisteredServiceMetadataAdaptor facade) {
         return query.getSubject().getNameID() == null
             ? getConfigurationContext().getSamlObjectEncrypter().decode(
             query.getSubject().getEncryptedID(), registeredService, facade).getValue()

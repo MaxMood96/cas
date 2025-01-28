@@ -1,14 +1,13 @@
 package org.apereo.cas.audit.spi;
 
-import org.apereo.cas.util.DateTimeUtils;
-
 import lombok.Getter;
 import lombok.val;
 import org.apereo.inspektr.audit.AuditActionContext;
 import org.apereo.inspektr.audit.AuditTrailManager;
-
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -28,13 +27,12 @@ public class MockAuditTrailManager implements AuditTrailManager {
     }
 
     @Override
-    @SuppressWarnings("JavaUtilDate")
-    public Set<? extends AuditActionContext> getAuditRecordsSince(final LocalDate localDate) {
-        val dt = DateTimeUtils.dateOf(localDate);
+    public List<? extends AuditActionContext> getAuditRecords(final Map<WhereClauseFields, Object> whereClause) {
+        val localDate = (LocalDateTime) whereClause.get(WhereClauseFields.DATE);
         return auditRecords
             .stream()
-            .filter(audit -> audit.getWhenActionWasPerformed().compareTo(dt) >= 0)
-            .collect(Collectors.toSet());
+            .filter(audit -> audit.getWhenActionWasPerformed().isAfter(localDate))
+            .collect(Collectors.toList());
     }
 
     @Override

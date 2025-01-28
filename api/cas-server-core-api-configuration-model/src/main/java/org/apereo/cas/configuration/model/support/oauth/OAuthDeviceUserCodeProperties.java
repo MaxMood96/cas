@@ -3,11 +3,11 @@ package org.apereo.cas.configuration.model.support.oauth;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -20,13 +20,14 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("OAuthDeviceUserCodeProperties")
+
 public class OAuthDeviceUserCodeProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -1232081675586528350L;
 
     /**
-     * Hard timeout to kill the access token and expire it.
+     * Hard timeout to kill the token and expire it.
      */
     @DurationCapable
     private String maxTimeToLiveInSeconds = "PT1M";

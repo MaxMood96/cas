@@ -15,14 +15,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("OAuth")
-public class OAuth20DefaultDeviceUserCodeTests extends AbstractOAuth20Tests {
+@Tag("OAuthToken")
+class OAuth20DefaultDeviceUserCodeTests extends AbstractOAuth20Tests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val devCode = defaultDeviceTokenFactory.createDeviceCode(RegisteredServiceTestUtils.getService());
         assertEquals(OAuth20DeviceToken.PREFIX, devCode.getPrefix());
 
-        val uc = defaultDeviceUserCodeFactory.createDeviceUserCode(devCode);
+        val uc = defaultDeviceUserCodeFactory.createDeviceUserCode(devCode.getService());
         assertNotNull(uc);
         assertEquals(OAuth20DeviceUserCode.PREFIX, uc.getPrefix());
     }

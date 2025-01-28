@@ -1,13 +1,13 @@
 package org.apereo.cas.support.saml;
 
-import org.apereo.cas.config.SamlIdPGitIdPMetadataConfiguration;
-import org.apereo.cas.config.SamlIdPGitRegisteredServiceMetadataConfiguration;
+import org.apereo.cas.config.CasSamlIdPGitAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.saml.idp.metadata.generator.SamlIdPMetadataGenerator;
 import org.apereo.cas.support.saml.idp.metadata.locator.SamlIdPMetadataLocator;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.resolver.SamlRegisteredServiceMetadataResolver;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -20,11 +20,11 @@ import org.springframework.boot.test.context.SpringBootTest;
  * @since 6.0.0
  */
 @SpringBootTest(classes = {
-    SamlIdPGitRegisteredServiceMetadataConfiguration.class,
-    SamlIdPGitIdPMetadataConfiguration.class,
+    CasSamlIdPGitAutoConfiguration.class,
     BaseSamlIdPMetadataTests.SharedTestConfiguration.class
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseGitSamlMetadataTests {
     @Autowired
     protected CasConfigurationProperties casProperties;
@@ -38,10 +38,10 @@ public abstract class BaseGitSamlMetadataTests {
     protected ServicesManager servicesManager;
 
     @Autowired
-    @Qualifier("samlIdPMetadataGenerator")
+    @Qualifier(SamlIdPMetadataGenerator.BEAN_NAME)
     protected SamlIdPMetadataGenerator samlIdPMetadataGenerator;
 
     @Autowired
-    @Qualifier("samlIdPMetadataLocator")
+    @Qualifier(SamlIdPMetadataLocator.BEAN_NAME)
     protected SamlIdPMetadataLocator samlIdPMetadataLocator;
 }

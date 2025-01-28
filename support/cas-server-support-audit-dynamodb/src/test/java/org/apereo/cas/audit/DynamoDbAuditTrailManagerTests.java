@@ -1,21 +1,16 @@
 package org.apereo.cas.audit;
 
 import org.apereo.cas.audit.spi.BaseAuditConfigurationTests;
-import org.apereo.cas.audit.spi.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasSupportDynamoDbAuditConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.config.CasSupportDynamoDbAuditAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import lombok.Getter;
 import org.apereo.inspektr.audit.AuditTrailManager;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import software.amazon.awssdk.core.SdkSystemSetting;
 
 /**
@@ -25,13 +20,8 @@ import software.amazon.awssdk.core.SdkSystemSetting;
  * @since 6.1.0
  */
 @SpringBootTest(classes = {
-    CasCoreAuditConfiguration.class,
-    CasSupportDynamoDbAuditConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    CasCoreWebConfiguration.class
+    BaseAuditConfigurationTests.SharedTestConfiguration.class,
+    CasSupportDynamoDbAuditAutoConfiguration.class
 },
     properties = {
         "cas.audit.dynamo-db.endpoint=http://localhost:8000",
@@ -42,9 +32,10 @@ import software.amazon.awssdk.core.SdkSystemSetting;
     }
 )
 @Tag("DynamoDb")
+@ExtendWith(CasTestExtension.class)
 @Getter
-@EnabledIfPortOpen(port = 8000)
-public class DynamoDbAuditTrailManagerTests extends BaseAuditConfigurationTests {
+@EnabledIfListeningOnPort(port = 8000)
+class DynamoDbAuditTrailManagerTests extends BaseAuditConfigurationTests {
 
     static {
         System.setProperty(SdkSystemSetting.AWS_ACCESS_KEY_ID.property(), "AKIAIPPIGGUNIO74C63Z");

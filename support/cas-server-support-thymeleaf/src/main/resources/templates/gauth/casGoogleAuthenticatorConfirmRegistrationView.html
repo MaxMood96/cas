@@ -10,23 +10,23 @@
 </head>
 
 <body id="cas">
-    <main role="main" class="container mt-3 mb-3">
+    <main class="container mt-3 mb-3">
         <div layout:fragment="content" id="login" class="mdc-card card p-4 m-auto w-lg-66">
             <p>The following devices are registered for <code th:text="${principal.id}"></code>:</p>
-            
+
             <div class="card-text">
                 <div th:each="device: ${registeredDevices}" class="border-bottom py-4">
                     <form th:name="${'form-' + device.id}" th:id="${'form-' + device.id}" method="post">
                         <h4 class="d-flex align-items-center">
                             <ul style="list-style: none">
                                 <code>
-                                <li><i class="mdi mdi-laptop fas fa-laptop mr-2"></i>
+                                <li><i class="mdi mdi-laptop fas fa-laptop me-2" aria-hidden="true"></i>
                                     <span th:id="${'name-' + device.name}" th:utext="${device.name}">Device Name</span>
                                 </li>
-                                <li><i class="mdi mdi-account-clock fas fa-user-clock mr-2"></i>
+                                <li><i class="mdi mdi-account-clock fas fa-user-clock me-2" aria-hidden="true"></i>
                                     <span th:utext="${device.registrationDate}">Device Date</span>
                                 </li>
-                                <li><i class="mdi mdi-account-details fas fa-user-tag mr-2"></i>
+                                <li><i class="mdi mdi-account-details fas fa-user-tag me-2" aria-hidden="true"></i>
                                     <span th:id="${'id-' + device.id}" th:utext="${device.id}">Device Id</span>
                                 </li>
                                 </code>
@@ -37,6 +37,7 @@
                             <span class="mdc-button__label" th:text="#{screen.authentication.gauth.selectdevice}">Use</span>
                         </button>
                         <button th:id="${'delButton-' + device.id}"
+                                th:if="${#bools.isTrue(#objects.nullSafe(mfaDeviceRegistrationEnabled,true))}"
                                 onclick="$(this).parent('form').find('input[name=_eventId]').val('delete'); $(this).parent('form').submit();"
                                 class="mdc-button mdc-button--raised" th:value="#{screen.authentication.gauth.deletedevice}">
                             <span class="mdc-button__label" th:text="#{screen.authentication.gauth.deletedevice}">Use</span>
@@ -48,17 +49,17 @@
                 </div>
             </div>
 
-            <form method="post" id="fm2" th:if="${gauthMultipleDeviceRegistrationEnabled}">
+            <form method="post" id="fm2" th:if="${gauthMultipleDeviceRegistrationEnabled && #bools.isTrue(#objects.nullSafe(mfaDeviceRegistrationEnabled,true))}">
                 <p>
                 <p th:utext="#{screen.authentication.gauth.reganotherdevice}"></p>
                 <input type="hidden" name="_eventId_register" value="Register"/>
                 <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
-                <button id="register" class="mdc-button mdc-button--raised btn btn-primary mr-2" name="register" accesskey="r" value="Register">
+                <button id="register" class="mdc-button mdc-button--raised btn btn-primary me-2" name="register" accesskey="r" value="Register">
                     <span class="mdc-button__label" th:text="#{screen.welcome.button.register}">Register</span>
                 </button>
             </form>
             </p>
-            
+
         </div>
     </main>
 </body>

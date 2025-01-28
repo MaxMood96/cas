@@ -4,10 +4,12 @@ import org.apereo.cas.configuration.model.core.util.ClientCertificateProperties;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
+
+import java.io.Serial;
 
 /**
  * The Inwebo MFA properties.
@@ -19,7 +21,7 @@ import lombok.experimental.Accessors;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("InweboMultifactorProperties")
+
 public class InweboMultifactorAuthenticationProperties extends BaseMultifactorAuthenticationProviderProperties {
 
     /**
@@ -27,18 +29,17 @@ public class InweboMultifactorAuthenticationProperties extends BaseMultifactorAu
      */
     public static final String DEFAULT_IDENTIFIER = "mfa-inwebo";
 
+    @Serial
     private static final long serialVersionUID = -942637204816051814L;
 
     /**
      * The service API url.
      */
-    @RequiredProperty
     private String serviceApiUrl = "https://api.myinwebo.com/FS?";
 
     /**
      * Console admin API url.
      */
-    @RequiredProperty
     private String consoleAdminUrl = "https://api.myinwebo.com/v2/services/ConsoleAdmin";
 
     /**
@@ -50,7 +51,7 @@ public class InweboMultifactorAuthenticationProperties extends BaseMultifactorAu
     /**
      * The client certificate.
      */
-    @RequiredProperty
+    @NestedConfigurationProperty
     private ClientCertificateProperties clientCertificate = new ClientCertificateProperties();
 
     /**
@@ -69,7 +70,40 @@ public class InweboMultifactorAuthenticationProperties extends BaseMultifactorAu
      */
     private boolean trustedDeviceEnabled;
 
+    /**
+     * Whether the push notification (mobile/desktop) is enabled.
+     */
+    private boolean pushEnabled = true;
+
+    /**
+     * Whether the push authentication should happen directly (without proposing the browser authentication if defined).
+     */
+    private boolean pushAuto = true;
+
+    /**
+     * The browser authenticator to use (or none).
+     */
+    private BrowserAuthenticatorTypes browserAuthenticator = BrowserAuthenticatorTypes.VIRTUAL_AUTHENTICATOR;
+
     public InweboMultifactorAuthenticationProperties() {
         setId(DEFAULT_IDENTIFIER);
+    }
+
+    /**
+     * Browser authenticator types.
+     */
+    public enum BrowserAuthenticatorTypes {
+        /**
+         * No browser authentication.
+         */
+        NONE,
+        /**
+         * Virtual Authenticator browser authentication.
+         */
+        VIRTUAL_AUTHENTICATOR,
+        /**
+         * mAccessWeb browser authentication.
+         */
+        M_ACCESS_WEB
     }
 }

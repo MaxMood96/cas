@@ -1,39 +1,24 @@
 package org.apereo.cas.web.flow;
 
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
+import org.apereo.cas.config.CasCaptchaAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.services.web.config.CasThemesConfiguration;
-import org.apereo.cas.web.config.CasCookieConfiguration;
-import org.apereo.cas.web.flow.config.CasCaptchaConfiguration;
-import org.apereo.cas.web.flow.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.web.flow.config.CasWebflowContextConfiguration;
-
+import org.apereo.cas.config.CasThemesAutoConfiguration;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.annotation.Import;
 
 /**
@@ -43,44 +28,26 @@ import org.springframework.context.annotation.Import;
  * @since 6.2.0
  */
 public abstract class BaseCaptchaConfigurationTests {
+    @SpringBootTestAutoConfigurations
     @ImportAutoConfiguration({
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        MailSenderAutoConfiguration.class,
-        AopAutoConfiguration.class
+        CasCaptchaAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreWebflowAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+        CasCoreAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreCookieAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasThemesAutoConfiguration.class
     })
-    @SpringBootConfiguration
-    @Import({
-        CasCaptchaConfiguration.class,
-        RefreshAutoConfiguration.class,
-        MailSenderAutoConfiguration.class,
-        CasCoreAuthenticationPrincipalConfiguration.class,
-        CasCoreAuthenticationPolicyConfiguration.class,
-        CasCoreAuthenticationMetadataConfiguration.class,
-        CasCoreAuthenticationSupportConfiguration.class,
-        CasCoreAuthenticationHandlersConfiguration.class,
-        CasWebApplicationServiceFactoryConfiguration.class,
-        CasCoreHttpConfiguration.class,
-        CasCoreUtilConfiguration.class,
-        CasCoreTicketCatalogConfiguration.class,
-        CasCoreTicketsConfiguration.class,
-        CasPersonDirectoryTestConfiguration.class,
-        CasCoreAuthenticationConfiguration.class,
-        CasCoreWebConfiguration.class,
-        CasCoreServicesAuthenticationConfiguration.class,
-        CasCoreServicesConfiguration.class,
-        CasCoreWebflowConfiguration.class,
-        CasWebflowContextConfiguration.class,
-        CasCoreMultifactorAuthenticationConfiguration.class,
-        CasMultifactorAuthenticationWebflowConfiguration.class,
-        CasCoreConfiguration.class,
-        CasCoreLogoutConfiguration.class,
-        CasCookieConfiguration.class,
-        CasCoreNotificationsConfiguration.class,
-        CasThemesConfiguration.class,
-        CasCoreTicketIdGeneratorsConfiguration.class,
-        CasCoreAuthenticationServiceSelectionStrategyConfiguration.class
-    })
+    @SpringBootConfiguration(proxyBeanMethods = false)
+    @Import(CasPersonDirectoryTestConfiguration.class)
     public static class SharedTestConfiguration {
     }
 }

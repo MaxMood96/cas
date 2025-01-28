@@ -20,10 +20,10 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Tag("Simple")
-public class GeoLocationServiceTests {
+@Tag("GeoLocation")
+class GeoLocationServiceTests {
     @Test
-    public void verifyLocate() {
+    void verifyLocate() throws Throwable {
         HttpsURLConnection.setDefaultHostnameVerifier(CasSSLContext.disabled().getHostnameVerifier());
         HttpsURLConnection.setDefaultSSLSocketFactory(CasSSLContext.disabled().getSslContext().getSocketFactory());
         val svc = new DummyGeoLocationService();
@@ -32,7 +32,7 @@ public class GeoLocationServiceTests {
     }
 
     @Test
-    public void verifyLocateFails() {
+    void verifyLocateFails() throws Throwable {
         val svc = mock(AbstractGeoLocationService.class);
         when(svc.locate(anyString())).thenReturn(null);
         when(svc.locate(anyString(), any(GeoLocationRequest.class))).thenCallRealMethod();
@@ -40,7 +40,7 @@ public class GeoLocationServiceTests {
         assertNotNull(svc.locate("1.2.3.4", new GeoLocationRequest(1, 1)));
     }
 
-    private static class DummyGeoLocationService extends AbstractGeoLocationService {
+    private static final class DummyGeoLocationService extends AbstractGeoLocationService {
         @Override
         public GeoLocationResponse locate(final InetAddress address) {
             return new GeoLocationResponse()

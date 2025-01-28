@@ -3,11 +3,11 @@ package org.apereo.cas.configuration.model.support.hazelcast.discovery;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -20,7 +20,7 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("HazelcastJCloudsDiscoveryProperties")
+
 public class HazelcastJCloudsDiscoveryProperties implements Serializable {
 
     /**
@@ -83,6 +83,7 @@ public class HazelcastJCloudsDiscoveryProperties implements Serializable {
      */
     public static final String JCLOUDS_DISCOVERY_CREDENTIAL_PATH = "credentialPath";
 
+    @Serial
     private static final long serialVersionUID = -8281247687171101766L;
 
     /**

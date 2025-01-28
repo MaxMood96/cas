@@ -1,15 +1,15 @@
 package org.apereo.cas.configuration.model.support.mfa.webauthn;
 
-import org.apereo.cas.configuration.model.SpringResourceProperties;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+import org.springframework.core.io.ClassPathResource;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
 
@@ -23,8 +23,9 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("WebAuthnMultifactorAuthenticationCoreProperties")
+
 public class WebAuthnMultifactorAuthenticationCoreProperties implements Serializable {
+    @Serial
     private static final long serialVersionUID = -919073482703977440L;
 
     /**
@@ -43,7 +44,7 @@ public class WebAuthnMultifactorAuthenticationCoreProperties implements Serializ
      * to pre-seed the metadata service.
      */
     @NestedConfigurationProperty
-    private SpringResourceProperties trustedDeviceMetadata = new SpringResourceProperties();
+    private WebAuthnMultifactorAttestationTrustSourceProperties trustSource = new WebAuthnMultifactorAttestationTrustSourceProperties();
 
     /**
      * The extension input to set for the {@code appid} extension when initiating authentication operations.
@@ -95,13 +96,6 @@ public class WebAuthnMultifactorAuthenticationCoreProperties implements Serializ
     private String allowedOrigins;
 
     /**
-     * If {@code true} finish registration op and finish assertion will
-     * accept responses containing extension outputs for
-     * which there was no extension input.
-     */
-    private boolean allowUnrequestedExtensions;
-
-    /**
      * If false finish registration op will only allow
      * registrations where the attestation signature can be linked to a trusted attestation root. This excludes self
      * attestation and none attestation. Regardless of the value of this option, invalid attestation
@@ -135,4 +129,24 @@ public class WebAuthnMultifactorAuthenticationCoreProperties implements Serializ
      * using their device as the first step.
      */
     private boolean allowPrimaryAuthentication;
+
+    /**
+     * When enabled, allows the user/system to accept multiple accounts
+     * and device registrations per user, allowing one to switch between
+     * or register new devices/accounts automatically.
+     */
+    private boolean multipleDeviceRegistrationEnabled;
+
+    /**
+     * When enabled, allows the user to a scan a QR code on an external device
+     * and authenticate later on the primary device. This is useful in scenarios
+     * where the primary authentication device is not registered with CAS
+     * and the user has a secondary device that is registered and does not wish
+     * to use the primary device to authenticate for security or other practical reasons.
+     */
+    private boolean qrCodeAuthenticationEnabled;
+    
+    public WebAuthnMultifactorAuthenticationCoreProperties() {
+        trustSource.getTrustedDeviceMetadata().setLocation(new ClassPathResource("webauthn-metadata.json"));
+    }
 }

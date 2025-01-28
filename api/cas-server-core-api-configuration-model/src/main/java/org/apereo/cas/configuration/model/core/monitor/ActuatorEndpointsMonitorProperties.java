@@ -2,7 +2,6 @@ package org.apereo.cas.configuration.model.core.monitor;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -10,8 +9,11 @@ import lombok.experimental.Accessors;
 import lombok.val;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,8 +29,9 @@ import java.util.stream.Stream;
 @Setter
 @ToString
 @Accessors(chain = true)
-@JsonFilter("ActuatorEndpointsMonitorProperties")
+
 public class ActuatorEndpointsMonitorProperties implements Serializable {
+    @Serial
     private static final long serialVersionUID = -3375777593395683691L;
 
     /**
@@ -61,11 +64,26 @@ public class ActuatorEndpointsMonitorProperties implements Serializable {
     private LdapSecurityActuatorEndpointsMonitorProperties ldap = new LdapSecurityActuatorEndpointsMonitorProperties();
 
     /**
+     * Use a static JSON file to define users that have access
+     * to the actuator endpoints, etc.
+     */
+    @NestedConfigurationProperty
+    private JsonSecurityActuatorEndpointsMonitorProperties json = new JsonSecurityActuatorEndpointsMonitorProperties();
+
+    /**
      * Control whether access to endpoints can be controlled
      * via form-based login over the web via a special admin login endpoint.
      */
     private boolean formLoginEnabled;
 
+    /**
+     * List of endpoint patterns that will be added to the
+     * Spring Security's filter chain to be completed ignored
+     * and removed from security considerations and enforcements.
+     * Example: {@code /endpoint.xyz} or {@code /endpoint/**}.
+     */
+    private List<String> ignoredEndpoints = new ArrayList<>();
+    
     public ActuatorEndpointsMonitorProperties() {
         val defaultProps = new ActuatorEndpointProperties();
         defaultProps.setAccess(Stream

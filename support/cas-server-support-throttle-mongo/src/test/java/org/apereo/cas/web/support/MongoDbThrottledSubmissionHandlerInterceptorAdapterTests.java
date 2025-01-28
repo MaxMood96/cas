@@ -1,11 +1,12 @@
 package org.apereo.cas.web.support;
 
-import org.apereo.cas.config.CasMongoDbThrottlingConfiguration;
-import org.apereo.cas.config.CasSupportMongoDbAuditConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.config.CasMongoDbThrottlingAutoConfiguration;
+import org.apereo.cas.config.CasSupportMongoDbAuditAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import lombok.Getter;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,13 +18,14 @@ import org.springframework.boot.test.context.SpringBootTest;
  * @since 6.0.0
  */
 @Tag("MongoDb")
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = {
-    CasMongoDbThrottlingConfiguration.class,
-    CasSupportMongoDbAuditConfiguration.class,
+    CasMongoDbThrottlingAutoConfiguration.class,
+    CasSupportMongoDbAuditAutoConfiguration.class,
     BaseThrottledSubmissionHandlerInterceptorAdapterTests.SharedTestConfiguration.class
 },
     properties = {
-        "cas.authn.throttle.core.usernameParameter=username",
+        "cas.authn.throttle.core.username-parameter=username",
         "cas.authn.throttle.failure.range-seconds=5",
         "cas.audit.mongo.database-name=throttle",
         "cas.audit.mongo.host=localhost",
@@ -36,11 +38,11 @@ import org.springframework.boot.test.context.SpringBootTest;
         "cas.audit.mongo.asynchronous=false"
 })
 @Getter
-@EnabledIfPortOpen(port = 27017)
-public class MongoDbThrottledSubmissionHandlerInterceptorAdapterTests extends
+@EnabledIfListeningOnPort(port = 27017)
+class MongoDbThrottledSubmissionHandlerInterceptorAdapterTests extends
     BaseThrottledSubmissionHandlerInterceptorAdapterTests {
 
     @Autowired
-    @Qualifier("authenticationThrottle")
+    @Qualifier(ThrottledSubmissionHandlerInterceptor.BEAN_NAME)
     private ThrottledSubmissionHandlerInterceptor throttle;
 }

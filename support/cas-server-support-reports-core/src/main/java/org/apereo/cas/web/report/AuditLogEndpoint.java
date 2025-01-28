@@ -3,26 +3,27 @@ package org.apereo.cas.web.report;
 import org.apereo.cas.audit.AuditTrailExecutionPlan;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.support.Beans;
-import org.apereo.cas.web.BaseCasActuatorEndpoint;
-
+import org.apereo.cas.util.RegexUtils;
+import org.apereo.cas.web.BaseCasRestActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apereo.inspektr.audit.AuditActionContext;
+import org.apereo.inspektr.audit.AuditTrailManager;
+import org.apereo.inspektr.common.spi.AuditActionDateProvider;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.actuate.endpoint.Access;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
-import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
-import org.springframework.boot.actuate.endpoint.annotation.Selector;
-import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
-import org.springframework.boot.actuate.endpoint.http.ActuatorMediaType;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.MediaType;
-import org.springframework.lang.Nullable;
-
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.Date;
-import java.util.Set;
-import java.util.stream.Collectors;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Controller to handle the logging dashboard requests.
@@ -30,74 +31,81 @@ import java.util.stream.Collectors;
  * @author Misagh Moayyed
  * @since 4.2
  */
-@Endpoint(id = "auditLog", enableByDefault = false)
-public class AuditLogEndpoint extends BaseCasActuatorEndpoint {
+@Endpoint(id = "auditLog", defaultAccess = Access.NONE)
+@Slf4j
+public class AuditLogEndpoint extends BaseCasRestActuatorEndpoint {
 
-    private final AuditTrailExecutionPlan auditTrailManager;
+    private final ObjectProvider<AuditTrailExecutionPlan> auditTrailManager;
+    private final ObjectProvider<AuditActionDateProvider> auditActionDateProvider;
 
-    public AuditLogEndpoint(final AuditTrailExecutionPlan auditTrailManager,
+    public AuditLogEndpoint(final ObjectProvider<AuditTrailExecutionPlan> auditTrailManager,
+                            final ConfigurableApplicationContext applicationContext,
+                            final ObjectProvider<AuditActionDateProvider> auditActionDateProvider,
                             final CasConfigurationProperties casProperties) {
-        super(casProperties);
+        super(casProperties, applicationContext);
+        this.auditActionDateProvider = auditActionDateProvider;
         this.auditTrailManager = auditTrailManager;
     }
 
-    /**
-     * Gets Audit log for passed interval.
-     *
-     * @param interval - Interval subtracted from current time
-     * @return the auditlog
-     */
-    @ReadOperation
-    @SuppressWarnings("JavaUtilDate")
-    @Operation(summary = "Provide a report of the audit log using a given interval",
-        parameters = {@Parameter(name = "interval", description = "Accepts the duration syntax, such as PT1H")})
-    public Set<AuditActionContext> getAuditLog(@Selector final String interval) {
+    private Stream<AuditActionContext> getAuditLog(final String interval, final long count) {
         if (StringUtils.isBlank(interval)) {
-            val sinceDate = LocalDate.now(ZoneId.systemDefault())
+            val sinceDate = auditActionDateProvider.getObject().get()
                 .minusDays(casProperties.getAudit().getEngine().getNumberOfDaysInHistory());
-            return this.auditTrailManager.getAuditRecordsSince(sinceDate);
+            return auditTrailManager.getObject().getAuditRecords(Map.of(
+                AuditTrailManager.WhereClauseFields.DATE, sinceDate,
+                AuditTrailManager.WhereClauseFields.COUNT, count
+            )).parallelStream();
         }
-
         val duration = Beans.newDuration(interval);
-        val sinceTime = new Date(new Date().getTime() - duration.toMillis());
-        val days = duration.toDays();
-        val sinceDate = LocalDate.now(ZoneId.systemDefault()).minusDays(days + 1);
-        return this.auditTrailManager.getAuditRecordsSince(sinceDate).stream()
-            .filter(a -> a.getWhenActionWasPerformed().after(sinceTime))
-            .collect(Collectors.toSet());
+        val startingDate = LocalDateTime.from(duration.subtractFrom(auditActionDateProvider.getObject().get()));
+        LOGGER.debug("Fetching audit records since [{}]", startingDate);
+        val initialRecords = auditTrailManager.getObject().getAuditRecords(Map.of(AuditTrailManager.WhereClauseFields.DATE, startingDate));
+        LOGGER.debug("Filtering audit records that are after [{}]", startingDate);
+        return initialRecords
+            .parallelStream()
+            .filter(rec -> rec.getWhenActionWasPerformed().isAfter(startingDate));
     }
 
     /**
-     * Gets Audit logs for the passed interval subtracted from current time.  Entries are then filtered to those
-     * that match the regular expressions passed in the json body.
+     * Gets audit log.
      *
-     * @param interval             - Interval subtracted from current time
-     * @param actionPerformed      - actionPerformed that was logged
-     * @param clientIpAddress      - client ip address
-     * @param principal            - the user id for the log entry
-     * @param resourceOperatedUpon - resource operated on.
-     * @return - the audit log
+     * @param count                the count
+     * @param interval             the interval
+     * @param actionPerformed      the action performed
+     * @param clientIpAddress      the client ip address
+     * @param principal            the principal
+     * @param resourceOperatedUpon the resource operated upon
+     * @return the audit log
      */
-    @WriteOperation(produces = {ActuatorMediaType.V2_JSON, "application/vnd.cas.services+yaml", MediaType.APPLICATION_JSON_VALUE})
+    @GetMapping(
+        produces = MediaType.APPLICATION_JSON_VALUE,
+        consumes = {
+            MediaType.APPLICATION_JSON_VALUE,
+            MediaType.APPLICATION_FORM_URLENCODED_VALUE
+        })
     @Operation(summary = "Provide a report of the audit log. Each filter other than `interval` can accept a regular expression to match against.",
         parameters = {
+            @Parameter(name = "count", description = "Total number of records to fetch from audit log"),
             @Parameter(name = "interval", description = "Accepts the duration syntax, such as PT1H"),
-            @Parameter(name = "actionPerformed"),
-            @Parameter(name = "clientIpAddress"),
-            @Parameter(name = "principal"),
-            @Parameter(name = "resourceOperatedUpon")
+            @Parameter(name = "actionPerformed", description = "The action performed"),
+            @Parameter(name = "clientIpAddress", description = "The client IP address"),
+            @Parameter(name = "principal", description = "The principal"),
+            @Parameter(name = "resourceOperatedUpon", description = "The resource operated upon")
         })
-    public Set<AuditActionContext> getAuditLog(@Nullable final String interval,
-                                               @Nullable final String actionPerformed,
-                                               @Nullable final String clientIpAddress,
-                                               @Nullable final String principal,
-                                               @Nullable final String resourceOperatedUpon) {
-        return getAuditLog(interval)
-            .stream()
-            .filter(e -> StringUtils.isBlank(actionPerformed) || e.getActionPerformed().matches(actionPerformed))
-            .filter(e -> StringUtils.isBlank(clientIpAddress) || e.getClientIpAddress().matches(clientIpAddress))
-            .filter(e -> StringUtils.isBlank(principal) || e.getPrincipal().matches(principal))
-            .filter(e -> StringUtils.isBlank(resourceOperatedUpon) || e.getResourceOperatedUpon().matches(resourceOperatedUpon))
-            .collect(Collectors.toSet());
+    public List<AuditActionContext> getAuditLog(
+        @RequestParam(required = false, defaultValue = "10") final int count,
+        @RequestParam(required = false) final String interval,
+        @RequestParam(required = false) final String actionPerformed,
+        @RequestParam(required = false) final String clientIpAddress,
+        @RequestParam(required = false) final String principal,
+        @RequestParam(required = false) final String resourceOperatedUpon) {
+        val records = getAuditLog(interval, count)
+            .filter(e -> StringUtils.isBlank(actionPerformed) || RegexUtils.find(actionPerformed, e.getActionPerformed()))
+            .filter(e -> StringUtils.isBlank(clientIpAddress) || RegexUtils.find(clientIpAddress, e.getClientInfo().getClientIpAddress()))
+            .filter(e -> StringUtils.isBlank(principal) || RegexUtils.find(principal, e.getPrincipal()))
+            .filter(e -> StringUtils.isBlank(resourceOperatedUpon) || RegexUtils.find(resourceOperatedUpon, e.getResourceOperatedUpon()))
+            .toList();
+        LOGGER.debug("Found [{}] audit log records", records.size());
+        return records;
     }
 }

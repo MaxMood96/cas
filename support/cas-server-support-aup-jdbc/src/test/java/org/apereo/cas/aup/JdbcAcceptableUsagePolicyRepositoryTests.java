@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.acceptable-usage-policy.core.aup-attribute-name=accepted"
 })
 @Tag("JDBC")
-public class JdbcAcceptableUsagePolicyRepositoryTests extends BaseJdbcAcceptableUsagePolicyRepositoryTests {
+class JdbcAcceptableUsagePolicyRepositoryTests extends BaseJdbcAcceptableUsagePolicyRepositoryTests {
 
     @BeforeEach
-    public void initialize() throws Exception {
+    void initialize() throws Exception {
         try (val c = this.acceptableUsagePolicyDataSource.getConnection()) {
             try (val s = c.createStatement()) {
                 c.setAutoCommit(true);
@@ -46,12 +46,12 @@ public class JdbcAcceptableUsagePolicyRepositoryTests extends BaseJdbcAcceptable
     }
     
     @Test
-    public void verifyRepositoryAction() {
+    void verifyRepositoryAction() throws Throwable {
         verifyRepositoryAction("casuser", CollectionUtils.wrap("accepted", "false"));
     }
     
     @Test
-    public void determinePrincipalId() {
+    void determinePrincipalId() throws Throwable {
         val principalId = determinePrincipalId("casuser", CollectionUtils.wrap("accepted", "false"));
         assertEquals("casuser", principalId);
     }

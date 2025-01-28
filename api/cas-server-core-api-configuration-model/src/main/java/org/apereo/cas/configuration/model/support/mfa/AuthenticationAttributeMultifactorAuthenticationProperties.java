@@ -1,12 +1,13 @@
 package org.apereo.cas.configuration.model.support.mfa;
 
+import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -19,9 +20,10 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("AuthenticationAttributeMultifactorAuthenticationProperties")
+
 public class AuthenticationAttributeMultifactorAuthenticationProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 6426521468929733907L;
 
     /**
@@ -41,12 +43,14 @@ public class AuthenticationAttributeMultifactorAuthenticationProperties implemen
      * an attribute that is part of the authentication event metadata which can then trigger
      * additional multifactor authentication events.
      */
+    @RegularExpressionCapable
     private String globalAuthenticationAttributeNameTriggers;
 
     /**
-     * The regular expression that is cross matches against the authentication attribute to determine
+     * The regular expression that is cross matched against the authentication attribute to determine
      * if the account is qualified for multifactor authentication.
      */
+    @RegularExpressionCapable
     private String globalAuthenticationAttributeValueRegex;
 
 }

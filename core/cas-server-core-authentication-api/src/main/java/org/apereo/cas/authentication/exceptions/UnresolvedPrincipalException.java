@@ -3,6 +3,7 @@ package org.apereo.cas.authentication.exceptions;
 import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.PrincipalException;
 
+import java.io.Serial;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,9 +15,7 @@ import java.util.Map;
  */
 public class UnresolvedPrincipalException extends PrincipalException {
 
-    /**
-     * Serialization version marker.
-     */
+    @Serial
     private static final long serialVersionUID = 380456166081802820L;
 
     /**

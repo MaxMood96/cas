@@ -4,15 +4,17 @@ import org.apereo.cas.configuration.model.core.authentication.AuthenticationHand
 import org.apereo.cas.configuration.model.core.authentication.PasswordEncoderProperties;
 import org.apereo.cas.configuration.model.core.authentication.PasswordPolicyProperties;
 import org.apereo.cas.configuration.model.core.authentication.PrincipalTransformationProperties;
+import org.apereo.cas.configuration.support.RegularExpressionCapable;
+import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -25,9 +27,10 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("AcceptAuthenticationProperties")
+
 public class AcceptAuthenticationProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 2448007503183227617L;
 
     /**
@@ -41,13 +44,14 @@ public class AcceptAuthenticationProperties implements Serializable {
     /**
      * Accepted users for authentication, in the syntax of {@code uid::password}.
      */
+    @RequiredProperty
     private String users = StringUtils.EMPTY;
 
     /**
      * Order of the authentication handler in the chain.
      */
     private int order = Integer.MAX_VALUE;
-    
+
     /**
      * Name of the authentication handler.
      */
@@ -68,6 +72,7 @@ public class AcceptAuthenticationProperties implements Serializable {
      * <li>3) Path to an external Groovy script that implements the same interface.</li>
      * </ul>
      */
+    @RegularExpressionCapable
     private String credentialCriteria;
 
     /**

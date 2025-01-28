@@ -2,13 +2,13 @@ package org.apereo.cas.web.flow;
 
 import org.apereo.cas.web.CaptchaActivationStrategy;
 import org.apereo.cas.web.CaptchaValidator;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -20,20 +20,20 @@ import org.springframework.webflow.execution.RequestContext;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class ValidateCaptchaAction extends AbstractAction {
+public class ValidateCaptchaAction extends BaseCasWebflowAction {
     private final CaptchaValidator captchaValidator;
 
     private final CaptchaActivationStrategy captchaActivationStrategy;
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
+    protected Event doExecuteInternal(final RequestContext requestContext) {
         if (captchaActivationStrategy.shouldActivate(requestContext, captchaValidator.getRecaptchaProperties()).isEmpty()) {
             LOGGER.debug("Recaptcha is not set to activate for the current request");
             return null;
         }
 
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
-        val userAgent = WebUtils.getHttpServletRequestUserAgentFromRequestContext();
+        val userAgent = WebUtils.getHttpServletRequestUserAgentFromRequestContext(requestContext);
         val gRecaptchaResponse = captchaValidator.getRecaptchaResponse(request);
         if (StringUtils.isBlank(gRecaptchaResponse)) {
             LOGGER.warn("Recaptcha response/token is missing from the request");

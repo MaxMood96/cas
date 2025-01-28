@@ -15,10 +15,10 @@ import org.springframework.test.context.TestPropertySource;
     "cas.saml-sp.arms-software.name-id-attribute=cn",
     "cas.saml-sp.arms-software.name-id-format=transient"
 })
-public class CasSamlSPArmsSoftwareConfigurationTests extends BaseCasSamlSPConfigurationTests {
+class CasSamlSPArmsSoftwareConfigurationTests extends BaseCasSamlSPConfigurationTests {
 
     @Override
     protected String getServiceProviderId() {
-        return casProperties.getSamlSp().getArmsSoftware().getEntityIds().get(0);
+        return casProperties.getSamlSp().getArmsSoftware().getEntityIds().getFirst();
     }
 }

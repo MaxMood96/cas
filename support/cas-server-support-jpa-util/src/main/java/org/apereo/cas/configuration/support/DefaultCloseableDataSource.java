@@ -3,7 +3,6 @@ package org.apereo.cas.configuration.support;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Delegate;
-
 import javax.sql.DataSource;
 import java.io.Closeable;
 import java.io.IOException;
@@ -16,7 +15,7 @@ import java.io.IOException;
  */
 @RequiredArgsConstructor
 @Getter
-public class DefaultCloseableDataSource implements CloseableDataSource {
+public final class DefaultCloseableDataSource implements CloseableDataSource {
     @Delegate(types = DataSource.class)
     private final DataSource targetDataSource;
 

@@ -1,11 +1,12 @@
 package org.apereo.cas.support.saml.idp.metadata.locator;
 
 import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
+import org.apereo.cas.support.saml.idp.metadata.SamlIdPMetadataResolver;
 import org.apereo.cas.support.saml.idp.metadata.generator.SamlIdPMetadataGenerator;
 
 import com.google.common.collect.Iterables;
 import lombok.val;
-import net.shibboleth.utilities.java.support.resolver.CriteriaSet;
+import net.shibboleth.shared.resolver.CriteriaSet;
 import org.apache.commons.lang3.ArrayUtils;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Tag;
@@ -31,13 +32,13 @@ import static org.mockito.Mockito.*;
 @Tag("SAMLMetadata")
 @TestPropertySource(properties = {
     "cas.authn.saml-idp.core.entity-id=https://cas.example.org/idp",
-    "cas.authn.saml-idp.metadata.file-system.location=${#systemProperties['java.io.tmpdir']}/idp-metadata"
+    "cas.authn.saml-idp.metadata.file-system.location=${#systemProperties['java.io.tmpdir']}/idp-metadata99"
 })
 @EnableRetry
-public class SamlIdPMetadataResolverTests extends BaseSamlIdPConfigurationTests {
+class SamlIdPMetadataResolverTests extends BaseSamlIdPConfigurationTests {
 
     @RepeatedTest(2)
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val criteria = new CriteriaSet(new EntityIdCriterion(casProperties.getAuthn().getSamlIdp().getCore().getEntityId()));
         val result1 = casSamlIdPMetadataResolver.resolve(criteria);
         assertFalse(Iterables.isEmpty(result1));
@@ -47,7 +48,7 @@ public class SamlIdPMetadataResolverTests extends BaseSamlIdPConfigurationTests 
     }
 
     @RepeatedTest(2)
-    public void verifyOperationWithoutEntityId() throws Exception {
+    void verifyOperationWithoutEntityId() throws Throwable {
         val criteria = new CriteriaSet(new EvaluableEntityRoleEntityDescriptorCriterion(IDPSSODescriptor.DEFAULT_ELEMENT_NAME));
         val result1 = casSamlIdPMetadataResolver.resolve(criteria);
         assertFalse(Iterables.isEmpty(result1));
@@ -56,7 +57,7 @@ public class SamlIdPMetadataResolverTests extends BaseSamlIdPConfigurationTests 
     }
 
     @Test
-    public void verifyOperationWithService() throws Exception {
+    void verifyOperationWithService() throws Throwable {
         val criteria = new CriteriaSet(
             new SamlIdPSamlRegisteredServiceCriterion(getSamlRegisteredServiceFor(UUID.randomUUID().toString())),
             new EntityIdCriterion(casProperties.getAuthn().getSamlIdp().getCore().getEntityId()));
@@ -71,7 +72,7 @@ public class SamlIdPMetadataResolverTests extends BaseSamlIdPConfigurationTests 
     }
 
     @RepeatedTest(2)
-    public void verifyOperationEmpty() throws Exception {
+    void verifyOperationEmpty() throws Throwable {
         val criteria = new CriteriaSet(new EntityIdCriterion("https://example.com"));
         val result = casSamlIdPMetadataResolver.resolve(criteria);
         assertTrue(Iterables.isEmpty(result));

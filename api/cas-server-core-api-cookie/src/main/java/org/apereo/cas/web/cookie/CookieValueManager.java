@@ -1,7 +1,9 @@
 package org.apereo.cas.web.cookie;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
+import org.apereo.cas.multitenancy.TenantExtractor;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.io.Serializable;
 
 /**
@@ -15,6 +17,11 @@ import java.io.Serializable;
  */
 public interface CookieValueManager extends Serializable {
 
+    /**
+     * Default bean name.
+     */
+    String BEAN_NAME = "cookieValueManager";
+    
     /**
      * Build cookie value.
      *
@@ -44,4 +51,17 @@ public interface CookieValueManager extends Serializable {
      */
     String obtainCookieValue(String cookie, HttpServletRequest request);
 
+    /**
+     * Gets cookie same site policy.
+     *
+     * @return the cookie same site policy
+     */
+    CookieSameSitePolicy getCookieSameSitePolicy();
+
+    /**
+     * Gets tenant extractor.
+     *
+     * @return the tenant extractor
+     */
+    TenantExtractor getTenantExtractor();
 }

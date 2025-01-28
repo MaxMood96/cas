@@ -1,15 +1,18 @@
 package org.apereo.cas.ticket.registry;
 
 import org.apereo.cas.ticket.Ticket;
+import org.apereo.cas.ticket.TicketCatalog;
+import org.apereo.cas.ticket.serialization.TicketSerializationManager;
 import org.apereo.cas.util.LoggingUtils;
+import org.apereo.cas.util.crypto.CipherExecutor;
+import org.apereo.cas.util.function.FunctionUtils;
 
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import net.spy.memcached.MemcachedClientIF;
 import org.apache.commons.pool2.ObjectPool;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.context.ConfigurableApplicationContext;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,10 +27,11 @@ import java.util.function.Predicate;
  * @author Scott Battaglia
  * @author Marvin S. Addison
  * @since 3.3
+ * @deprecated Since 7.0.0
  */
 @SuppressWarnings("FutureReturnValueIgnored")
 @Slf4j
-@RequiredArgsConstructor
+@Deprecated(since = "7.0.0")
 public class MemcachedTicketRegistry extends AbstractTicketRegistry implements DisposableBean {
     private static final int THIRTY_DAYS_IN_SECONDS = 60 * 60 * 24 * 30;
 
@@ -36,8 +40,15 @@ public class MemcachedTicketRegistry extends AbstractTicketRegistry implements D
      */
     private final ObjectPool<MemcachedClientIF> connectionPool;
 
+    public MemcachedTicketRegistry(final CipherExecutor cipherExecutor, final TicketSerializationManager ticketSerializationManager,
+                                   final TicketCatalog ticketCatalog, final ConfigurableApplicationContext applicationContext,
+                                   final ObjectPool<MemcachedClientIF> connectionPool) {
+        super(cipherExecutor, ticketSerializationManager, ticketCatalog, applicationContext);
+        this.connectionPool = connectionPool;
+    }
+
     @Override
-    public Ticket updateTicket(final Ticket ticketToUpdate) {
+    public Ticket updateTicket(final Ticket ticketToUpdate) throws Exception {
         val ticket = encodeTicket(ticketToUpdate);
         LOGGER.debug("Updating ticket [{}]", ticket);
         val clientFromPool = getClientFromPool();
@@ -53,7 +64,7 @@ public class MemcachedTicketRegistry extends AbstractTicketRegistry implements D
     }
 
     @Override
-    public void addTicketInternal(final Ticket ticketToAdd) {
+    public Ticket addSingleTicket(final Ticket ticketToAdd) {
         val clientFromPool = getClientFromPool();
         try {
             val ticket = encodeTicket(ticketToAdd);
@@ -65,6 +76,7 @@ public class MemcachedTicketRegistry extends AbstractTicketRegistry implements D
         } finally {
             returnClientToPool(clientFromPool);
         }
+        return ticketToAdd;
     }
 
     @Override
@@ -74,9 +86,9 @@ public class MemcachedTicketRegistry extends AbstractTicketRegistry implements D
     }
 
     @Override
-    public boolean deleteSingleTicket(final String ticketIdToDelete) {
+    public long deleteSingleTicket(final Ticket ticketToDelete) {
         val clientFromPool = getClientFromPool();
-        val ticketId = encodeTicketId(ticketIdToDelete);
+        val ticketId = digestIdentifier(ticketToDelete.getId());
         try {
             clientFromPool.delete(ticketId);
         } catch (final Exception e) {
@@ -85,13 +97,13 @@ public class MemcachedTicketRegistry extends AbstractTicketRegistry implements D
         } finally {
             returnClientToPool(clientFromPool);
         }
-        return true;
+        return 1;
     }
 
     @Override
     public Ticket getTicket(final String ticketIdToGet, final Predicate<Ticket> predicate) {
         val clientFromPool = getClientFromPool();
-        val ticketId = encodeTicketId(ticketIdToGet);
+        val ticketId = digestIdentifier(ticketIdToGet);
         try {
             val ticketFromCache = (Ticket) clientFromPool.get(ticketId);
             if (ticketFromCache != null) {
@@ -116,9 +128,6 @@ public class MemcachedTicketRegistry extends AbstractTicketRegistry implements D
         return new ArrayList<>(0);
     }
 
-    /**
-     * Destroy the client and shut down.
-     */
     @Override
     public void destroy() {
         this.connectionPool.close();
@@ -143,9 +152,8 @@ public class MemcachedTicketRegistry extends AbstractTicketRegistry implements D
         return ttl.intValue();
     }
 
-    @SneakyThrows
     private MemcachedClientIF getClientFromPool() {
-        return this.connectionPool.borrowObject();
+        return FunctionUtils.doUnchecked(this.connectionPool::borrowObject);
     }
 
     private void returnClientToPool(final MemcachedClientIF clientFromPool) {

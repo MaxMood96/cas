@@ -1,20 +1,16 @@
 package org.apereo.cas.authentication.attribute;
 
+import org.apereo.cas.authentication.principal.Principal;
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.services.RegisteredService;
-
-import lombok.val;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
+import org.springframework.core.io.Resource;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 /**
  * This is {@link AttributeDefinitionStore}.
@@ -30,22 +26,8 @@ public interface AttributeDefinitionStore {
     String BEAN_NAME = "attributeDefinitionStore";
 
     /**
-     * The constant LOGGER.
-     */
-    Logger LOGGER = LoggerFactory.getLogger(AttributeDefinitionStore.class);
-
-    private static List<Object> determineValuesForAttributeDefinition(final Map<String, List<Object>> attributes,
-                                                                      final String entry,
-                                                                      final AttributeDefinition definition) {
-        val attributeKey = StringUtils.defaultIfBlank(definition.getAttribute(), entry);
-        if (attributes.containsKey(attributeKey)) {
-            return attributes.get(attributeKey);
-        }
-        return new ArrayList<>(0);
-    }
-
-    /**
      * Register attribute definition attribute.
+     * The definition will only be added if one does not already exist in the store.
      *
      * @param defn the defn
      * @return the attribute definition store
@@ -54,12 +36,33 @@ public interface AttributeDefinitionStore {
 
     /**
      * Register attribute definition attribute.
+     * The definition will only be added if one does not already exist in the store.
      *
      * @param key  the key
      * @param defn the defn
      * @return the attribute definition store
      */
     AttributeDefinitionStore registerAttributeDefinition(String key, AttributeDefinition defn);
+
+    /**
+     * Locate attribute definition by definition name.
+     *
+     * @param name the name
+     * @return the optional
+     */
+    Optional<AttributeDefinition> locateAttributeDefinitionByName(String name);
+
+    /**
+     * Locate attribute definition by name optional.
+     *
+     * @param <T>   the type parameter
+     * @param name  the name
+     * @param clazz the clazz
+     * @return the optional
+     */
+    default <T extends AttributeDefinition> Optional<T> locateAttributeDefinitionByName(final String name, final Class<T> clazz) {
+        return locateAttributeDefinitionByName(name).map(clazz::cast);
+    }
 
     /**
      * Removes attribute definition attribute by key.
@@ -72,10 +75,10 @@ public interface AttributeDefinitionStore {
     /**
      * Locate attribute definition.
      *
-     * @param name the name
+     * @param key the name
      * @return the optional
      */
-    Optional<AttributeDefinition> locateAttributeDefinition(String name);
+    Optional<AttributeDefinition> locateAttributeDefinition(String key);
 
     /**
      * Locate attribute definition optional.
@@ -104,60 +107,40 @@ public interface AttributeDefinitionStore {
     Collection<AttributeDefinition> getAttributeDefinitions();
 
     /**
+     * Gets attribute definitions by type.
+     *
+     * @param <T>  the type parameter
+     * @param type the type
+     * @return the attribute definitions by
+     */
+    <T extends AttributeDefinition> Stream<T> getAttributeDefinitionsBy(Class<T> type);
+
+    /**
      * Gets attribute values.
      *
-     * @param key               the key
-     * @param values            the values
-     * @param registeredService the registered service
-     * @param attributes        the attributes
+     * @param key     the key
+     * @param context the context
      * @return the attribute values
      */
-    Optional<Pair<AttributeDefinition, List<Object>>> resolveAttributeValues(String key, List<Object> values,
-                                                                             RegisteredService registeredService,
-                                                                             Map<String, List<Object>> attributes);
+    Optional<Pair<AttributeDefinition, List<Object>>> resolveAttributeValues(
+        String key, AttributeDefinitionResolutionContext context);
 
     /**
      * Gets attribute values.
      *
      * @param attributeDefinitions the attribute definitions
      * @param availableAttributes  the available attributes
+     * @param principal            the principal
      * @param registeredService    the registered service
+     * @param service              the service
      * @return the attribute values
      */
-    default Map<String, List<Object>> resolveAttributeValues(
-        final Collection<String> attributeDefinitions,
-        final Map<String, List<Object>> availableAttributes,
-        final RegisteredService registeredService) {
-        val finalAttributes = new LinkedHashMap<String, List<Object>>(attributeDefinitions.size());
-        attributeDefinitions
-            .forEach(entry -> {
-                locateAttributeDefinition(entry).ifPresentOrElse(definition -> {
-                    val attributeValues = determineValuesForAttributeDefinition(availableAttributes, entry, definition);
-                    LOGGER.trace("Resolving attribute [{}] from attribute definition store with values [{}]", entry, attributeValues);
-                    val result = resolveAttributeValues(entry, attributeValues, registeredService, availableAttributes);
-                    if (result.isPresent()) {
-                        val resolvedValues = result.get().getValue();
-                        if (!resolvedValues.isEmpty()) {
-                            LOGGER.trace("Resolving attribute [{}] based on attribute definition [{}]", entry, definition);
-                            val attributeKeys = org.springframework.util.StringUtils.commaDelimitedListToSet(
-                                StringUtils.defaultIfBlank(definition.getName(), entry));
-
-                            attributeKeys.forEach(key -> {
-                                LOGGER.trace("Determined attribute name to be [{}] with values [{}]", key, resolvedValues);
-                                finalAttributes.put(key, resolvedValues);
-                            });
-                        } else {
-                            LOGGER.warn("Unable to produce or determine attributes values for attribute definition [{}]", definition);
-                        }
-                    }
-                }, () -> {
-                    LOGGER.trace("Using already-resolved attribute name/value, as no attribute definition was found for [{}]", entry);
-                    finalAttributes.put(entry, availableAttributes.get(entry));
-                });
-            });
-        LOGGER.trace("Final collection of attributes resolved from attribute definition store is [{}]", finalAttributes);
-        return finalAttributes;
-    }
+    Map<String, List<Object>> resolveAttributeValues(
+        Collection<String> attributeDefinitions,
+        Map<String, List<Object>> availableAttributes,
+        Principal principal,
+        RegisteredService registeredService,
+        Service service);
 
     /**
      * Determine if attribute definition store is empty.
@@ -165,4 +148,12 @@ public interface AttributeDefinitionStore {
      * @return true/false
      */
     boolean isEmpty();
+
+    /**
+     * Store the definitions in a resource.
+     *
+     * @param resource the resource
+     * @return the attribute definition store
+     */
+    AttributeDefinitionStore store(Resource resource);
 }

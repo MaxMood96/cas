@@ -3,12 +3,12 @@ package org.apereo.cas.acct.webflow;
 import org.apereo.cas.acct.AccountRegistrationService;
 import org.apereo.cas.acct.AccountRegistrationUtils;
 import org.apereo.cas.util.LoggingUtils;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -22,11 +22,11 @@ import java.util.Objects;
  */
 @RequiredArgsConstructor
 @Slf4j
-public class FinalizeAccountRegistrationAction extends AbstractAction {
+public class FinalizeAccountRegistrationAction extends BaseCasWebflowAction {
     private final AccountRegistrationService accountRegistrationService;
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
+    protected Event doExecuteInternal(final RequestContext requestContext) {
         try {
             val registrationRequest = AccountRegistrationUtils.getAccountRegistrationRequest(requestContext);
             Objects.requireNonNull(registrationRequest).putProperties(requestContext.getRequestParameters().asAttributeMap().asMap());
@@ -34,7 +34,7 @@ public class FinalizeAccountRegistrationAction extends AbstractAction {
             if (response.isSuccess()) {
                 return success(response);
             }
-        } catch (final Exception e) {
+        } catch (final Throwable e) {
             LoggingUtils.error(LOGGER, e);
         }
         WebUtils.addErrorMessageToContext(requestContext, "cas.screen.acct.error.provision");

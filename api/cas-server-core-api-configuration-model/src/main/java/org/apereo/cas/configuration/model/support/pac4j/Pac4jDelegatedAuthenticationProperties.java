@@ -8,12 +8,12 @@ import org.apereo.cas.configuration.model.support.pac4j.saml.Pac4jSamlClientProp
 import org.apereo.cas.configuration.model.support.saml.idp.SamlIdPDiscoveryProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,9 +28,10 @@ import java.util.List;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("Pac4jDelegatedAuthenticationProperties")
+
 public class Pac4jDelegatedAuthenticationProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 4388567744591488495L;
 
     /**
@@ -45,6 +46,14 @@ public class Pac4jDelegatedAuthenticationProperties implements Serializable {
      */
     @NestedConfigurationProperty
     private Pac4jDelegatedAuthenticationProvisioningProperties provisioning = new Pac4jDelegatedAuthenticationProvisioningProperties();
+
+    /**
+     * Handle profile selection ops when checking for multiple profiles
+     * from external identity providers.
+     */
+    @NestedConfigurationProperty
+    private Pac4jDelegatedAuthenticationProfileSelectionProperties profileSelection = new Pac4jDelegatedAuthenticationProfileSelectionProperties();
+
 
     /**
      * Settings that deal with having Facebook as an external delegated-to authentication provider.
@@ -157,6 +166,13 @@ public class Pac4jDelegatedAuthenticationProperties implements Serializable {
      */
     @NestedConfigurationProperty
     private Pac4jDelegatedAuthenticationRestfulProperties rest = new Pac4jDelegatedAuthenticationRestfulProperties();
+
+    /**
+     * Settings that allow CAS to fetch and build clients
+     * over a SQL database.
+     */
+    @NestedConfigurationProperty
+    private Pac4jDelegatedAuthenticationJdbcProperties jdbc = new Pac4jDelegatedAuthenticationJdbcProperties();
 
     /**
      * Cookie settings to be used with delegated authentication

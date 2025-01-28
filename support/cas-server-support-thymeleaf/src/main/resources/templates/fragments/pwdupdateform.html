@@ -11,31 +11,45 @@
 </head>
 
 <body>
-<main role="main" class="container mt-3 mb-3">
+<main class="container mt-3 mb-3">
     <div id="pwdmain" th:fragment="pwdupdateform">
         <script th:inline="javascript">
             /*<![CDATA[*/
 
-            var policyPattern = /*[[${passwordPolicyPattern}]]*/;
-            var passwordStrengthI18n = {
+            let policyPattern = /*[[${passwordPolicyPattern}]]*/;
+            let passwordStrengthI18n = {
                 0: /*[[#{screen.pm.password.strength.0}]]*/,
                 1: /*[[#{screen.pm.password.strength.1}]]*/,
                 2: /*[[#{screen.pm.password.strength.2}]]*/,
                 3: /*[[#{screen.pm.password.strength.3}]]*/,
                 4: /*[[#{screen.pm.password.strength.4}]]*/
             };
+            let passwordMinimumStrength = 0;
 
             /*]]>*/
+
+            function generatePassword() {
+                let possible = /*[[${passwordPolicyCharacterSet}]]*/;
+                let text = '';
+                for(let i = 0; i < /*[[${passwordPolicyPasswordLength}]]*/; i++) {
+                    text += possible.charAt(Math.floor(Math.random() * possible.length));
+                }
+                $("#password").val(text);
+                $("#confirmedPassword").val(text);
+                
+                $('#submit').prop('disabled', "");
+                document.getElementById("password").dispatchEvent(new Event("keyup"));
+            }
+
         </script>
         <h3 th:utext="${expiredPass}
-        ? #{screen.expiredpass.heading(${credential.id})}
-        : #{screen.mustchangepass.heading(${credential.id})}">
+        ? #{screen.expiredpass.heading(${username})}
+        : #{screen.mustchangepass.heading(${username})}">
             Change Password Heading</h3>
 
         <form id="passwordManagementForm" th:if="${passwordManagementEnabled}" method="post"
               th:object="${password}">
             <div class="banner banner-danger alert alert-danger banner-dismissible my-4" th:if="${#fields.hasErrors('*')}">
-
                 <span th:each="err : ${#fields.errors('*')}" th:utext="${err}">Error text</span>
             </div>
 
@@ -61,13 +75,17 @@
                                 <span class="mdc-notched-outline__trailing"></span>
                             </span>
                         </label>
-                        <i class="mdi mdi-alert mdc-text-field__icon text-danger caps-warn"></i>
+                        <i class="mdi mdi-alert mdc-text-field__icon text-danger caps-warn" aria-hidden="true"></i>
                     </div>
                 </div>
                 <button class="reveal-password align-self-end mdc-button mdc-button--raised mdc-input-group-append mdc-icon-button btn btn-primary"
-                    tabindex="-1" type="button">
-                    <i class="mdi mdi-eye reveal-password-icon fas fa-eye"></i>
-                    <span class="visually-hidden">Toggle Password</span>
+                    tabindex="-1" type="button" th:title="#{screen.pm.password.toggle}">
+                    <i class="mdi mdi-eye reveal-password-icon fas fa-eye" aria-hidden="true"></i>
+                </button>
+
+                <button class="generate-password align-self-end mdc-button mdc-button--raised mdc-input-group-append mdc-icon-button btn btn-primary ms-1"
+                        tabindex="-1" type="button" onclick="generatePassword();" th:title="#{screen.pm.password.generate}">
+                    <i class="mdi mdi-reload fas fa-eye" aria-hidden="true"></i>
                 </button>
             </div>
 
@@ -91,7 +109,7 @@
                             <span class="mdc-notched-outline__trailing"></span>
                         </span>
                     </label>
-                    <i class="mdi mdi-alert mdc-text-field__icon bs-hide text-danger caps-warn"></i>
+                    <i class="mdi mdi-alert mdc-text-field__icon bs-hide text-danger caps-warn" aria-hidden="true"></i>
                 </div>
             </div>
 
@@ -138,7 +156,7 @@
             <div class="cas-field form-group">
                 <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
                 <input type="hidden" name="_eventId" value="submit"/>
-                <button class="mdc-button mdc-button--raised btn btn-primary mr-2"
+                <button class="mdc-button mdc-button--raised btn btn-primary me-2"
                         name="submit"
                         accesskey="s"
                         th:value="#{screen.pm.button.submit}"
@@ -146,7 +164,7 @@
                         value="SUBMIT"
                         id="submit"
                         type="submit"
-                        disabled="true">
+                        disabled>
                     <span class="mdc-button__label" th:text="#{screen.pm.button.submit}">Submit</span>
                 </button>
                 <a class="mdc-button mdc-button--outline btn btn-outline-secondary" th:href="@{/login}">
@@ -157,7 +175,7 @@
 
         <p id="pwddesc" th:unless="${passwordManagementEnabled}"
            th:utext="${expiredPass} ? #{screen.expiredpass.message('https://pwd.example.org')} : #{screen.mustchangepass.message('https://pwd.example.org')}">Expired/Must Change Password text</p>
-        
+
     </div>
 </main>
 </body>

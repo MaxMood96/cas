@@ -1,6 +1,9 @@
 package org.apereo.cas.gauth.credential;
 
-import org.apereo.cas.util.serialization.AbstractJacksonBackedStringSerializer;
+import org.apereo.cas.util.serialization.BaseJacksonSerializer;
+
+import org.springframework.context.ConfigurableApplicationContext;
+import java.io.Serial;
 
 /**
  * This is {@link GoogleAuthenticatorAccountSerializer}.
@@ -8,11 +11,11 @@ import org.apereo.cas.util.serialization.AbstractJacksonBackedStringSerializer;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-public class GoogleAuthenticatorAccountSerializer extends AbstractJacksonBackedStringSerializer<GoogleAuthenticatorAccount> {
+public class GoogleAuthenticatorAccountSerializer extends BaseJacksonSerializer<GoogleAuthenticatorAccount> {
+    @Serial
     private static final long serialVersionUID = 1466569521275630254L;
 
-    @Override
-    public Class<GoogleAuthenticatorAccount> getTypeToSerialize() {
-        return GoogleAuthenticatorAccount.class;
+    protected GoogleAuthenticatorAccountSerializer(final ConfigurableApplicationContext applicationContext) {
+        super(applicationContext, GoogleAuthenticatorAccount.class);
     }
 }

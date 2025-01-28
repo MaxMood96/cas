@@ -1,9 +1,10 @@
 package org.apereo.cas.support.saml.idp.metadata;
 
-import org.apereo.cas.redis.core.util.RedisUtils;
+
+import org.apereo.cas.redis.core.CasRedisTemplate;
 import org.apereo.cas.support.saml.BaseRedisSamlMetadataTests;
 import org.apereo.cas.support.saml.services.idp.metadata.SamlIdPMetadataDocument;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,7 +12,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.Optional;
@@ -31,22 +31,23 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.saml-idp.metadata.redis.idp-metadata-enabled=true"
 })
 @Tag("Redis")
-@EnabledIfPortOpen(port = 6379)
-public class RedisSamlIdPMetadataLocatorTests extends BaseRedisSamlMetadataTests {
+@EnabledIfListeningOnPort(port = 6379)
+class RedisSamlIdPMetadataLocatorTests extends BaseRedisSamlMetadataTests {
 
     @Autowired
     @Qualifier("redisSamlIdPMetadataTemplate")
-    protected RedisTemplate<String, SamlIdPMetadataDocument> redisSamlIdPMetadataTemplate;
+    protected CasRedisTemplate<String, SamlIdPMetadataDocument> redisSamlIdPMetadataTemplate;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         val key = RedisSamlIdPMetadataLocator.CAS_PREFIX + '*';
-        val keys = RedisUtils.keys(redisSamlIdPMetadataTemplate, key, 0).collect(Collectors.toSet());
-        redisSamlIdPMetadataTemplate.delete(keys);
+        try (val keys = redisSamlIdPMetadataTemplate.scan(key, 0L)) {
+            redisSamlIdPMetadataTemplate.delete(keys.collect(Collectors.toSet()));
+        }
     }
 
     @Test
-    public void verifySigningKeyWithoutService() {
+    void verifySigningKeyWithoutService() throws Throwable {
         assertNotNull(redisSamlIdPMetadataTemplate);
         val resource = samlIdPMetadataLocator.resolveSigningKey(Optional.empty());
         assertNotNull(resource);

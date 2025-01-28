@@ -1,10 +1,14 @@
 package org.apereo.cas.ticket.device;
 
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.ticket.AbstractTicket;
 import org.apereo.cas.ticket.ExpirationPolicy;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serial;
 
 /**
  * This is {@link OAuth20DefaultDeviceUserCode}.
@@ -14,16 +18,18 @@ import lombok.NoArgsConstructor;
  */
 @NoArgsConstructor(force = true)
 @Getter
+@Setter
 public class OAuth20DefaultDeviceUserCode extends AbstractTicket implements OAuth20DeviceUserCode {
+    @Serial
     private static final long serialVersionUID = 2339545346159721563L;
-
-    private final String deviceCode;
 
     private boolean userCodeApproved;
 
-    public OAuth20DefaultDeviceUserCode(final String id, final String deviceCode, final ExpirationPolicy expirationPolicy) {
+    private final Service service;
+    
+    public OAuth20DefaultDeviceUserCode(final String id, final Service service, final ExpirationPolicy expirationPolicy) {
         super(id, expirationPolicy);
-        this.deviceCode = deviceCode;
+        this.service = service;
     }
 
     @Override
@@ -31,8 +37,4 @@ public class OAuth20DefaultDeviceUserCode extends AbstractTicket implements OAut
         return OAuth20DeviceUserCode.PREFIX;
     }
 
-    @Override
-    public void approveUserCode() {
-        this.userCodeApproved = true;
-    }
 }

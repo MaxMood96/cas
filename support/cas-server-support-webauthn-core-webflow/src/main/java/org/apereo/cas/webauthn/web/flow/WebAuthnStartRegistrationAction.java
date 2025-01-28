@@ -32,17 +32,17 @@ public class WebAuthnStartRegistrationAction extends AbstractMultifactorAuthenti
     private final CasConfigurationProperties casProperties;
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
+    protected Event doExecuteInternal(final RequestContext requestContext) {
         val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn().getCore();
         val authn = WebUtils.getAuthentication(requestContext);
-        val principal = resolvePrincipal(authn.getPrincipal());
+        val principal = resolvePrincipal(authn.getPrincipal(), requestContext);
         val attributes = principal.getAttributes();
 
         LOGGER.debug("Starting registration sequence for [{}]", principal);
         val flowScope = requestContext.getFlowScope();
         if (attributes.containsKey(webAuthn.getDisplayNameAttribute())) {
-            flowScope.put("displayName",
-                CollectionUtils.firstElement(attributes.get(webAuthn.getDisplayNameAttribute())));
+            CollectionUtils.firstElement(attributes.get(webAuthn.getDisplayNameAttribute()))
+                .ifPresent(value -> flowScope.put("displayName", value));
         } else {
             flowScope.put("displayName", principal.getId());
         }

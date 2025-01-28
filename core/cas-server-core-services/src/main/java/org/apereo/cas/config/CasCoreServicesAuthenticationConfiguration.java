@@ -4,12 +4,12 @@ import org.apereo.cas.authentication.ProtocolAttributeEncoder;
 import org.apereo.cas.authentication.support.DefaultCasProtocolAttributeEncoder;
 import org.apereo.cas.authentication.support.NoOpProtocolAttributeEncoder;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.services.RegisteredServiceCipherExecutor;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.crypto.CipherExecutor;
-
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -24,11 +24,11 @@ import org.springframework.scheduling.annotation.EnableAsync;
  * @author Misagh Moayyed
  * @since 5.2.0
  */
-@Configuration(value = "CasCoreServicesAuthenticationConfiguration", proxyBeanMethods = false)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-@EnableAsync
-@AutoConfigureAfter(CasCoreServicesConfiguration.class)
-public class CasCoreServicesAuthenticationConfiguration {
+@EnableAsync(proxyTargetClass = false)
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.ServiceRegistry)
+@Configuration(value = "CasCoreServicesAuthenticationConfiguration", proxyBeanMethods = false)
+class CasCoreServicesAuthenticationConfiguration {
 
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)

@@ -19,10 +19,6 @@ typically upper-bound to the length of the CAS single sign-on session.
 
 {% include_cached casproperties.html properties="cas.authn.oauth.access-token" %}
 
-## OAuthJWT Access Tokens
-
-{% include_cached casproperties.html properties="cas.authn.oauth.access-token" %}
-
 ## OAuth Device Tokens
 
 {% include_cached casproperties.html properties="cas.authn.oauth.device-token" %}
@@ -40,7 +36,11 @@ typically upper-bound to the length of the CAS single sign-on session.
 The expiration policy of certain OAuth tokens can be conditionally decided on a per-application basis. The candidate service
 whose token expiration policy is to deviate from the default configuration must be designed as the following snippets demonstrate.
 
-### OAuth Code
+{% tabs oauthexppolicy %}
+
+{% tab oauthexppolicy OAuth Code %}
+
+The expiration policy of codes can be defined on a per application basis:
 
 ```json
 {
@@ -53,12 +53,16 @@ whose token expiration policy is to deviate from the default configuration must 
   "codeExpirationPolicy": {
     "@class": "org.apereo.cas.support.oauth.services.DefaultRegisteredServiceOAuthCodeExpirationPolicy",
     "numberOfUses": 1,
-    "timeToLive": "10"
+    "timeToLive": "PT10S"
   }
 }
 ```
 
-### OAuth Access Token
+{% endtab %}
+
+{% tab oauthexppolicy OAuth Access Tokens %}
+
+The expiration policy of access tokens can be defined on a per application basis:
 
 ```json
 {
@@ -70,13 +74,18 @@ whose token expiration policy is to deviate from the default configuration must 
   "id" : 100,
   "accessTokenExpirationPolicy": {
     "@class": "org.apereo.cas.support.oauth.services.DefaultRegisteredServiceOAuthAccessTokenExpirationPolicy",
-    "maxTimeToLive": "1000",
-    "timeToKill": "100"
+    "maxTimeToLive": "PT1000S",
+    "timeToKill": "PT100S",
+    "maxActiveTokens": 0
   }
 }
 ```
 
-### OAuth Device Token
+{% endtab %}
+
+{% tab oauthexppolicy OAuth Device Tokens %}
+
+The expiration policy of device tokens can be defined on a per application basis:
 
 ```json
 {
@@ -86,14 +95,18 @@ whose token expiration policy is to deviate from the default configuration must 
   "serviceId" : "^(https|imaps)://<redirect-uri>.*",
   "name" : "OAuthService",
   "id" : 100,
-  "accessTokenExpirationPolicy": {
+  "deviceTokenExpirationPolicy": {
     "@class": "org.apereo.cas.support.oauth.services.DefaultRegisteredServiceOAuthDeviceTokenExpirationPolicy",
-    "timeToKill": "100"
+    "timeToKill": "PT100S"
   }
 }
 ```
 
-### OAuth Refresh Token
+{% endtab %}
+
+{% tab oauthexppolicy OAuth Refresh Tokens %}
+
+The expiration policy of refresh tokens can be defined on a per application basis:
 
 ```json
 {
@@ -103,9 +116,14 @@ whose token expiration policy is to deviate from the default configuration must 
   "serviceId" : "^(https|imaps)://<redirect-uri>.*",
   "name" : "OAuthService",
   "id" : 100,
-  "accessTokenExpirationPolicy": {
+  "refreshTokenExpirationPolicy": {
     "@class": "org.apereo.cas.support.oauth.services.DefaultRegisteredServiceOAuthRefreshTokenExpirationPolicy",
-    "timeToKill": "100"
+    "timeToKill": "PT100S",
+    "maxActiveTokens": 0
   }
 }
 ```
+
+{% endtab %}
+
+{% endtabs %}

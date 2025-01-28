@@ -3,7 +3,7 @@ package org.apereo.cas.support.saml.services;
 import org.apereo.cas.authentication.principal.ShibbolethCompatiblePersistentIdGenerator;
 import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
 import org.apereo.cas.services.RegisteredServiceAttributeReleasePolicyContext;
-import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceServiceProviderMetadataFacade;
+import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceMetadataAdaptor;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.SamlRegisteredServiceCachingMetadataResolver;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
@@ -18,8 +18,8 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.opensaml.saml.saml2.metadata.EntityDescriptor;
-import org.springframework.context.ApplicationContext;
 
+import java.io.Serial;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +48,7 @@ public class EduPersonTargetedIdAttributeReleasePolicy extends BaseSamlRegistere
      */
     public static final String ATTRIBUTE_URN_EDU_PERSON_TARGETED_ID = "urn:oid:1.3.6.1.4.1.5923.1.1.1.10";
 
+    @Serial
     private static final long serialVersionUID = -1283755507124862357L;
 
     @JsonProperty
@@ -64,9 +65,8 @@ public class EduPersonTargetedIdAttributeReleasePolicy extends BaseSamlRegistere
     @Override
     protected Map<String, List<Object>> getAttributesForSamlRegisteredService(
         final Map<String, List<Object>> attributes,
-        final ApplicationContext applicationContext,
         final SamlRegisteredServiceCachingMetadataResolver resolver,
-        final SamlRegisteredServiceServiceProviderMetadataFacade facade,
+        final SamlRegisteredServiceMetadataAdaptor facade,
         final EntityDescriptor entityDescriptor,
         final RegisteredServiceAttributeReleasePolicyContext context) {
         val releaseAttributes = new HashMap<String, List<Object>>();

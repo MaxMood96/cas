@@ -2,7 +2,7 @@ package org.apereo.cas.authentication.principal;
 
 import org.springframework.core.Ordered;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * The {@link ServiceFactory} is responsible for creating service objects.
@@ -14,12 +14,27 @@ import javax.servlet.http.HttpServletRequest;
 public interface ServiceFactory<T extends Service> extends Ordered {
 
     /**
+     * Flag as a request attribute to indicate if the factory
+     * should collect service attributes such as request headers, cookies, etc.
+     */
+    String COLLECT_SERVICE_ATTRIBUTES = "collectServiceAttributes";
+
+    /**
      * Create service object based on the parameters of the request.
      *
      * @param request the request
      * @return the service
      */
     T createService(HttpServletRequest request);
+
+    /**
+     * Create service t.
+     *
+     * @param id      the id
+     * @param request the request
+     * @return the t
+     */
+    T createService(String id, HttpServletRequest request);
 
     /**
      * Create service based on an identifier.

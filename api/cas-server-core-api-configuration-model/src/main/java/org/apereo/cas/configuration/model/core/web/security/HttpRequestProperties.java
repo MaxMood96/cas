@@ -1,13 +1,14 @@
 package org.apereo.cas.configuration.model.core.web.security;
 
+import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,9 +23,10 @@ import java.util.Map;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("HttpRequestProperties")
+
 public class HttpRequestProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -5175966163542099866L;
 
     /**
@@ -37,13 +39,13 @@ public class HttpRequestProperties implements Serializable {
     /**
      * Parameters that are only allowed and accepted during posts.
      */
-    private String onlyPostParams = "username,password";
+    private String onlyPostParams = "password";
 
     /**
-     * Parameters to sanitize and cross-check in incoming requests.
+     * Parameters to sanitize and cross-check in incoming requests. Separate parameter names by a comma.
      * The special value * instructs the Filter to check all parameters.
      */
-    private String paramsToCheck = "ticket,service,renew,gateway,warn,method,target,SAMLart," + "pgtUrl,pgt,pgtId,pgtIou,targetService,entityId,token";
+    private String paramsToCheck = "ticket,service,renew,gateway,warn,method,target,SAMLart,pgtUrl,pgt,pgtId,pgtIou,targetService,entityId,token";
 
     /**
      * Characters to block in incoming requests.
@@ -56,6 +58,7 @@ public class HttpRequestProperties implements Serializable {
      * against the request URL. If a successful match is found,
      * the request would be blocked.
      */
+    @RegularExpressionCapable
     private String patternToBlock;
 
     /**

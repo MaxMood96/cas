@@ -13,7 +13,7 @@ import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.ws.idp.WSFederationConstants;
 
 import lombok.val;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.core5.net.URIBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -38,13 +38,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @Tag("WSFederation")
-public class WsFederationServicesManagerRegisteredServiceLocatorTests extends BaseCoreWsSecurityIdentityProviderConfigurationTests {
+class WsFederationServicesManagerRegisteredServiceLocatorTests extends BaseCoreWsSecurityIdentityProviderConfigurationTests {
     @Autowired
     @Qualifier("wsFederationServicesManagerRegisteredServiceLocator")
     private ServicesManagerRegisteredServiceLocator wsFederationServicesManagerRegisteredServiceLocator;
 
     @Autowired
-    @Qualifier("webApplicationServiceFactory")
+    @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
     private ServiceFactory<WebApplicationService> webApplicationServiceFactory;
 
     @Autowired
@@ -52,12 +52,12 @@ public class WsFederationServicesManagerRegisteredServiceLocatorTests extends Ba
     private ServicesManager servicesManager;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         servicesManager.deleteAll();
     }
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(wsFederationServicesManagerRegisteredServiceLocator);
         assertEquals(Ordered.HIGHEST_PRECEDENCE, wsFederationServicesManagerRegisteredServiceLocator.getOrder());
         val registeredService = getWsFederationRegisteredService("http://app.example.org/wsfed.*", "CAS");
@@ -81,7 +81,7 @@ public class WsFederationServicesManagerRegisteredServiceLocatorTests extends Ba
     }
 
     @Test
-    public void verifyWithCallback() throws Exception {
+    void verifyWithCallback() throws Throwable {
         val callbackUrl = "http://localhost:8443/cas" + WSFederationConstants.ENDPOINT_FEDERATION_REQUEST_CALLBACK;
         
         val service0 = RegisteredServiceTestUtils.getRegisteredService(callbackUrl + ".*");

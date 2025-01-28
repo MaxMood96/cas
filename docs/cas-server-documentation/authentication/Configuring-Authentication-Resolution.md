@@ -32,19 +32,12 @@ to narrow down the list of candidates for the current transaction. The outline o
 
 ```groovy
 def run(Object[] args) {
-    def handlers = args[0]
-    def transaction = args[1]
-    def servicesManager = args[2]
-    def logger = args[3]
-
+    def (handlers,transaction,servicesManager,logger) = args
     return handlers
 }
 
 def supports(Object[] args) {
-    def handlers = args[0]
-    def transaction = args[1]
-    def servicesManager = args[2]
-    def logger = args[3]
+    def (handlers,transaction,servicesManager,logger) = args
     true
 }
 ```
@@ -59,3 +52,5 @@ The following parameters are passed to the script:
 | `logger`          | The object responsible for issuing log messages such as `logger.info(...)`.                             |
 
 The outcome of the script should be the collection of selected handlers with the type `Set<AuthenticationHandler>`.
+
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).

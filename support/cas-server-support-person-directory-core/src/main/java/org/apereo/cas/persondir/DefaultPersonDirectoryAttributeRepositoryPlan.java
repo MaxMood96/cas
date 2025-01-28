@@ -1,14 +1,14 @@
 package org.apereo.cas.persondir;
 
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
+import org.apereo.cas.util.spring.beans.BeanSupplier;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
 import org.jooq.lambda.Unchecked;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.DisposableBean;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -23,29 +23,31 @@ import java.util.List;
 @Getter
 @RequiredArgsConstructor
 public class DefaultPersonDirectoryAttributeRepositoryPlan implements PersonDirectoryAttributeRepositoryPlan, DisposableBean {
-    private final List<IPersonAttributeDao> attributeRepositories = new ArrayList<>(0);
+    private final List<PersonAttributeDao> attributeRepositories = new ArrayList<>(0);
 
     private final List<PersonDirectoryAttributeRepositoryCustomizer> attributeRepositoryCustomizers;
 
     @Override
-    public void registerAttributeRepository(final IPersonAttributeDao repository) {
-        if (LOGGER.isTraceEnabled()) {
-            val name = AopUtils.isAopProxy(repository)
-                ? AopUtils.getTargetClass(repository).getSimpleName()
-                : repository.getClass().getSimpleName();
-            LOGGER.trace("Registering attribute repository [{}] into the person directory plan", name);
+    public void registerAttributeRepository(final PersonAttributeDao repository) {
+        if (BeanSupplier.isNotProxy(repository)) {
+            if (LOGGER.isTraceEnabled()) {
+                val name = AopUtils.isAopProxy(repository)
+                    ? AopUtils.getTargetClass(repository).getSimpleName()
+                    : repository.getClass().getSimpleName();
+                LOGGER.trace("Registering attribute repository [{}] into the person directory plan", name);
+            }
+            attributeRepositoryCustomizers.stream()
+                .sorted(Comparator.comparing(PersonDirectoryAttributeRepositoryCustomizer::getOrder))
+                .filter(cust -> cust.supports(repository))
+                .forEach(cust -> cust.customize(repository));
+            attributeRepositories.add(repository);
         }
-        attributeRepositoryCustomizers.stream()
-            .sorted(Comparator.comparing(PersonDirectoryAttributeRepositoryCustomizer::getOrder))
-            .filter(cust -> cust.supports(repository))
-            .forEach(cust -> cust.customize(repository));
-        attributeRepositories.add(repository);
     }
 
     @Override
     public void destroy() {
         LOGGER.trace("Closing attribute repositories, if any");
-        findAttributeRepositories(repo -> repo instanceof AutoCloseable)
+        findAttributeRepositories(AutoCloseable.class::isInstance)
             .map(AutoCloseable.class::cast)
             .forEach(Unchecked.consumer(AutoCloseable::close));
     }

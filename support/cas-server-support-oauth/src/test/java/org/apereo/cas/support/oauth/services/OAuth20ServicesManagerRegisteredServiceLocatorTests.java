@@ -9,8 +9,7 @@ import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.util.CollectionUtils;
 
 import lombok.val;
-import org.apache.http.client.utils.URIBuilder;
-import org.junit.jupiter.api.BeforeEach;
+import org.apache.hc.core5.net.URIBuilder;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,19 +33,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @Tag("OAuth")
-public class OAuth20ServicesManagerRegisteredServiceLocatorTests extends AbstractOAuth20Tests {
+class OAuth20ServicesManagerRegisteredServiceLocatorTests extends AbstractOAuth20Tests {
     @Autowired
     @Qualifier("oauthServicesManagerRegisteredServiceLocator")
     private ServicesManagerRegisteredServiceLocator oauthServicesManagerRegisteredServiceLocator;
-
-    @BeforeEach
-    public void setup() {
-        super.setup();
-        servicesManager.deleteAll();
-    }
     
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(oauthServicesManagerRegisteredServiceLocator);
         assertEquals(Ordered.HIGHEST_PRECEDENCE, oauthServicesManagerRegisteredServiceLocator.getOrder());
         val service = getRegisteredService("clientid123456", UUID.randomUUID().toString());
@@ -55,10 +48,11 @@ public class OAuth20ServicesManagerRegisteredServiceLocatorTests extends Abstrac
             String.format("https://oauth.example.org/whatever?%s=%s", OAuth20Constants.CLIENT_ID, service.getClientId()));
         val result = oauthServicesManagerRegisteredServiceLocator.locate(List.of(service), svc);
         assertNotNull(result);
+        assertFalse(oauthServicesManagerRegisteredServiceLocator.getRegisteredServiceIndexes().isEmpty());
     }
 
     @Test
-    public void verifyWithCallback() throws Exception {
+    void verifyWithCallback() throws Throwable {
         val callbackUrl = "http://localhost:8443/cas"
             + OAuth20Constants.BASE_OAUTH20_URL + '/' + OAuth20Constants.CALLBACK_AUTHORIZE_URL;
 

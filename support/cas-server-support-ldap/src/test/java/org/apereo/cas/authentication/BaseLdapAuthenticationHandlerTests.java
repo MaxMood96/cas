@@ -1,45 +1,38 @@
 package org.apereo.cas.authentication;
 
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryConfiguration;
-import org.apereo.cas.config.LdapAuthenticationConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
+import org.apereo.cas.authentication.principal.Service;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasLdapAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.util.spring.BeanContainer;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.beans.BeanContainer;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.jooq.lambda.Unchecked;
 import org.jooq.lambda.UncheckedException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import javax.security.auth.login.FailedLoginException;
 import java.util.Arrays;
-
 import static org.apereo.cas.util.junit.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit test for {@link LdapAuthenticationHandler}.
@@ -48,31 +41,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 4.0.0
  */
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreAuthenticationPolicyConfiguration.class,
-    CasCoreAuthenticationMetadataConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationHandlersConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasPersonDirectoryConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCoreServicesAuthenticationConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCoreConfiguration.class,
-    LdapAuthenticationConfiguration.class
-})
+@SpringBootTest(classes = BaseLdapAuthenticationHandlerTests.SharedTestConfiguration.class)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseLdapAuthenticationHandlerTests {
     @Autowired
     @Qualifier("ldapAuthenticationHandlers")
@@ -83,35 +54,53 @@ public abstract class BaseLdapAuthenticationHandlerTests {
     }
 
     @Test
-    public void verifyAuthenticateFailure() {
-        assertNotEquals(ldapAuthenticationHandlers.size(), 0);
+    void verifyAuthenticateFailure() {
+        assertNotEquals(0, ldapAuthenticationHandlers.size());
         assertThrowsWithRootCause(UncheckedException.class, FailedLoginException.class,
-            () -> ldapAuthenticationHandlers.toList()
-                .forEach(Unchecked.consumer(h -> h.authenticate(new UsernamePasswordCredential(getUsername(), getFailurePassword())))));
+            () -> ldapAuthenticationHandlers.toList().forEach(Unchecked.consumer(handler ->
+                handler.authenticate(new UsernamePasswordCredential(getUsername(), getFailurePassword()), mock(Service.class)))));
     }
 
     @Test
-    public void verifyAuthenticateSuccess() {
-        assertNotEquals(ldapAuthenticationHandlers.size(), 0);
-        ldapAuthenticationHandlers.toList().forEach(Unchecked.consumer(h -> {
+    void verifyAuthenticateSuccess() throws Throwable {
+        assertNotEquals(0, ldapAuthenticationHandlers.size());
+        for (val handler : ldapAuthenticationHandlers.toList()) {
             val credential = new UsernamePasswordCredential(getUsername(), getSuccessPassword());
-            val result = h.authenticate(credential);
+            val result = handler.authenticate(credential, mock(Service.class));
             assertNotNull(result.getPrincipal());
             assertEquals(credential.getUsername(), result.getPrincipal().getId());
             val attributes = result.getPrincipal().getAttributes();
             Arrays.stream(getPrincipalAttributes()).forEach(s -> assertTrue(attributes.containsKey(s)));
-        }));
+        }
     }
 
     String[] getPrincipalAttributes() {
         return new String[]{"cn", "description"};
     }
 
-    String getUsername() {
+    String getUsername() throws Exception {
         return "admin";
     }
 
     String getSuccessPassword() {
         return "password";
+    }
+
+    @SpringBootConfiguration(proxyBeanMethods = false)
+    @SpringBootTestAutoConfigurations
+    @ImportAutoConfiguration({
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasPersonDirectoryAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreAutoConfiguration.class,
+        CasLdapAuthenticationAutoConfiguration.class
+    })
+    public static class SharedTestConfiguration {
     }
 }

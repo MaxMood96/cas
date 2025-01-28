@@ -4,14 +4,15 @@ import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.AuthenticationServiceSelectionPlan;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.TicketGrantingTicket;
-import org.apereo.cas.ticket.TicketState;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.Unchecked;
 
 import java.util.Optional;
 
@@ -69,7 +70,7 @@ public abstract class BaseSingleSignOnParticipationStrategy implements SingleSig
      */
     protected RegisteredService getRegisteredService(final SingleSignOnParticipationRequest ssoRequest) {
         return ssoRequest.getRequestContext()
-            .map(requestContext -> WebUtils.resolveRegisteredService(requestContext, servicesManager, serviceSelectionStrategy))
+            .map(Unchecked.function(requestContext -> WebUtils.resolveRegisteredService(requestContext, servicesManager, serviceSelectionStrategy)))
             .orElseGet(() -> ssoRequest.getAttributeValue(RegisteredService.class.getName(), RegisteredService.class));
     }
 
@@ -79,8 +80,8 @@ public abstract class BaseSingleSignOnParticipationStrategy implements SingleSig
      * @param ssoRequest the sso request
      * @return the ticket state
      */
-    protected Optional<TicketState> getTicketState(final SingleSignOnParticipationRequest ssoRequest) {
+    protected Optional<Ticket> getTicketState(final SingleSignOnParticipationRequest ssoRequest) {
         val tgtId = getTicketGrantingTicketId(ssoRequest).orElse(StringUtils.EMPTY);
-        return Optional.ofNullable(ticketRegistrySupport.getTicketState(tgtId));
+        return Optional.ofNullable(ticketRegistrySupport.getTicket(tgtId));
     }
 }

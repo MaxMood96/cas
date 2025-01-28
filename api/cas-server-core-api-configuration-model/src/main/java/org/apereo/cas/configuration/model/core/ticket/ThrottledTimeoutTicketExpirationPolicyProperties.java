@@ -1,12 +1,13 @@
 package org.apereo.cas.configuration.model.core.ticket;
 
+import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -18,18 +19,21 @@ import java.io.Serializable;
 @Getter
 @RequiresModule(name = "cas-server-core-tickets", automated = true)
 @Setter
-@JsonFilter("ThrottledTimeoutTicketExpirationPolicyProperties")
+
 @Accessors(chain = true)
 public class ThrottledTimeoutTicketExpirationPolicyProperties implements Serializable {
+    @Serial
     private static final long serialVersionUID = -2370751379747804646L;
 
     /**
      * Timeout in seconds to kill the session and consider tickets expired.
      */
-    private long timeToKillInSeconds;
+    @DurationCapable
+    private String timeToKillInSeconds;
 
     /**
      * Timeout in between each attempt.
      */
-    private long timeInBetweenUsesInSeconds;
+    @DurationCapable
+    private String timeInBetweenUsesInSeconds;
 }

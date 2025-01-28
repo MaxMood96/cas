@@ -2,27 +2,26 @@ package org.apereo.cas.grouper;
 
 import org.apereo.cas.BaseGrouperConfigurationTests;
 import org.apereo.cas.authentication.attribute.PrincipalAttributeRepositoryFetcher;
+import org.apereo.cas.authentication.attribute.SimpleUsernameAttributeProvider;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
+import org.apereo.cas.persondir.GrouperPersonAttributeDao;
 import org.apereo.cas.persondir.PersonDirectoryAttributeRepositoryPlan;
 import org.apereo.cas.persondir.PersonDirectoryAttributeRepositoryPlanConfigurer;
-
+import org.apereo.cas.test.CasTestExtension;
 import edu.internet2.middleware.grouperClient.api.GcGetGroups;
 import edu.internet2.middleware.grouperClient.ws.beans.WsGetGroupsResult;
 import edu.internet2.middleware.grouperClient.ws.beans.WsGetGroupsResults;
 import edu.internet2.middleware.grouperClient.ws.beans.WsGroup;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.apereo.services.persondir.support.GrouperPersonAttributeDao;
-import org.apereo.services.persondir.support.SimpleUsernameAttributeProvider;
 import org.assertj.core.util.Arrays;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -32,7 +31,8 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("Simple")
+@Tag("Grouper")
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = {
     GrouperPersonAttributeDaoTests.GrouperPersonAttributeDaoTestConfiguration.class,
     BaseGrouperConfigurationTests.SharedTestConfiguration.class
@@ -41,17 +41,18 @@ import static org.mockito.Mockito.*;
     "cas.authn.attribute-repository.stub.attributes.givenName=apereo-cas",
     "cas.authn.attribute-repository.stub.attributes.phone=123456789"
 })
-public class GrouperPersonAttributeDaoTests {
+class GrouperPersonAttributeDaoTests {
     @Autowired
     @Qualifier("aggregatingAttributeRepository")
-    private IPersonAttributeDao aggregatingAttributeRepository;
+    private PersonAttributeDao aggregatingAttributeRepository;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val attributes = PrincipalAttributeRepositoryFetcher.builder()
             .attributeRepository(aggregatingAttributeRepository)
             .principalId("casuser")
             .build()
+            .fromAllAttributeRepositories()
             .retrieve();
         assertTrue(attributes.containsKey("grouperGroups"));
         assertTrue(attributes.containsKey("givenName"));
@@ -59,7 +60,7 @@ public class GrouperPersonAttributeDaoTests {
     }
 
     @TestConfiguration(value = "GrouperPersonAttributeDaoTestConfiguration", proxyBeanMethods = false)
-    public static class GrouperPersonAttributeDaoTestConfiguration implements PersonDirectoryAttributeRepositoryPlanConfigurer {
+    static class GrouperPersonAttributeDaoTestConfiguration implements PersonDirectoryAttributeRepositoryPlanConfigurer {
 
         @Override
         public void configureAttributeRepositoryPlan(final PersonDirectoryAttributeRepositoryPlan plan) {

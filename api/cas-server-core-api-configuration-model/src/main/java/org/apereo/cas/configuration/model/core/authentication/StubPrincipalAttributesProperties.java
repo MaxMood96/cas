@@ -2,12 +2,12 @@ package org.apereo.cas.configuration.model.core.authentication;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.core.Ordered;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,9 +22,10 @@ import java.util.Map;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("StubPrincipalAttributesProperties")
+
 public class StubPrincipalAttributesProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 7017508256487553063L;
 
     /**
@@ -33,7 +34,7 @@ public class StubPrincipalAttributesProperties implements Serializable {
      * and value is the attribute value. The key is the attribute fetched
      * from the source and the value is the attribute name CAS should
      * use for virtual renames.
-     *
+     * <p>
      * Attributes may be allowed to be virtually renamed and remapped. The key in the
      * attribute map is the original attribute,
      * and the value should be the virtually-renamed attribute.

@@ -2,23 +2,18 @@ package org.apereo.cas.web.flow;
 
 import org.apereo.cas.BaseCasGoogleAnalyticsTests;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.util.MockServletContext;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -30,19 +25,18 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(classes = BaseCasGoogleAnalyticsTests.SharedTestConfiguration.class)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("WebflowActions")
-public class RemoveGoogleAnalyticsCookieActionTests {
+@ExtendWith(CasTestExtension.class)
+class RemoveGoogleAnalyticsCookieActionTests {
     @Autowired
-    @Qualifier("removeGoogleAnalyticsCookieAction")
+    @Qualifier(CasWebflowConstants.ACTION_ID_GOOGLE_ANALYTICS_REMOVE_COOKIE)
     private Action removeGoogleAnalyticsCookieAction;
 
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+
     @Test
-    public void verifyOperation() throws Exception {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
+    void verifyOperation() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
         assertNull(removeGoogleAnalyticsCookieAction.execute(context));
     }
 }

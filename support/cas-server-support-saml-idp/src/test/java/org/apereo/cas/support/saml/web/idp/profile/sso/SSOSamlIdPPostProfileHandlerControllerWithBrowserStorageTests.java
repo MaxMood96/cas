@@ -5,7 +5,7 @@ import org.apereo.cas.support.saml.SamlProtocolConstants;
 import org.apereo.cas.support.saml.SamlUtils;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.util.EncodingUtils;
-import org.apereo.cas.web.BrowserSessionStorage;
+import org.apereo.cas.web.BrowserStorage;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 
 import lombok.val;
@@ -33,13 +33,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Tag("SAML")
+@Tag("SAML2Web")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestPropertySource(properties = {
     "cas.authn.saml-idp.metadata.file-system.location=file:src/test/resources/metadata",
-    "cas.authn.saml-idp.core.session-storage-type=BROWSER_SESSION_STORAGE"
+    "cas.authn.saml-idp.core.session-storage-type=BROWSER_STORAGE"
 })
-public class SSOSamlIdPPostProfileHandlerControllerWithBrowserStorageTests extends BaseSamlIdPConfigurationTests {
+class SSOSamlIdPPostProfileHandlerControllerWithBrowserStorageTests extends BaseSamlIdPConfigurationTests {
     @Autowired
     @Qualifier("ssoPostProfileHandlerController")
     private SSOSamlIdPPostProfileHandlerController controller;
@@ -47,26 +47,26 @@ public class SSOSamlIdPPostProfileHandlerControllerWithBrowserStorageTests exten
     private SamlRegisteredService samlRegisteredService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         samlRegisteredService = getSamlRegisteredServiceFor(false, false,
             false, "https://cassp.example.org");
         servicesManager.save(samlRegisteredService);
     }
 
     @Test
-    public void verifyPostSignRequest() throws Exception {
+    void verifyPostSignRequest() {
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
         val response = new MockHttpServletResponse();
         val xml = SamlUtils.transformSamlObject(openSamlConfigBean, getAuthnRequest()).toString();
         request.addParameter(SamlProtocolConstants.PARAMETER_SAML_REQUEST, EncodingUtils.encodeBase64(xml));
         val mv = controller.handleSaml2ProfileSsoPostRequest(response, request);
-        assertEquals(CasWebflowConstants.VIEW_ID_SESSION_STORAGE_WRITE, mv.getViewName());
-        assertTrue(mv.getModel().containsKey(BrowserSessionStorage.KEY_SESSION_STORAGE));
+        assertEquals(CasWebflowConstants.VIEW_ID_BROWSER_STORAGE_WRITE, mv.getViewName());
+        assertTrue(mv.getModel().containsKey(BrowserStorage.PARAMETER_BROWSER_STORAGE));
     }
 
     @Test
-    public void verifyUnknownBindingLocation() throws Exception {
+    void verifyUnknownBindingLocation() {
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
         val response = new MockHttpServletResponse();

@@ -8,20 +8,20 @@ category: Installation
 # External Servlet Container Configuration
 
 A CAS deployment may be deployed to any number of external servlet containers. The container **MUST** support
-the servlet specification `v4.0.0` at a minimum. In these scenarios, the following vanilla CAS web application
+the servlet specification `6.0.0` at a minimum. In these scenarios, the following vanilla CAS web application
 may be used, in the [WAR Overlay](WAR-Overlay-Installation.html) :
 
-{% include_cached casmodule.html group="org.apereo.cas" module="cas-server-webapp" %}
+{% include_cached casmodule.html group="org.apereo.cas" module="cas-server-webapp" bundled="true" %}
 
 While there is no official project support, the following containers should be compatible with a CAS deployment:
 
-* [Apache Tomcat](http://tomcat.apache.org/) (At a minimum, Apache Tomcat 9 is required)
-* [JBoss](http://www.jboss.org/)
-* [Wildfly](http://wildfly.org/)
+* [Apache Tomcat](https://tomcat.apache.org/) (At a minimum, Apache Tomcat `10` is required)
+* [JBoss](https://www.jboss.org/)
+* [Wildfly](https://wildfly.org/)
 * [Undertow](http://undertow.io/)
-* [Jetty](http://www.eclipse.org/jetty/) (At a minimum, Jetty 9.4 is required)
-* [GlassFish](http://glassfish.java.net/)
-* [WebSphere](http://www.ibm.com/software/websphere/)
+* [Jetty](https://projects.eclipse.org/projects/rt.jetty) (At a minimum, Jetty `12` is required)
+* [GlassFish](https://glassfish.java.net/)
+* [WebSphere](https://www.ibm.com/cloud/websphere-hybrid-edition)
 
 Remember that an external container's configuration is **NEVER** automated by CAS in any way which means you are 
 responsible for upgrades, maintenance and all other manners of configuration such as logging, SSL, etc. CAS does 
@@ -74,7 +74,7 @@ To disable CAS' own logging, define a `log4j2.xml` under `src/main/resources` an
     </Appenders>
     <Loggers>
         <AsyncRoot level="off">
-            <AppenderRef ref="console"/>
+            <AppenderRef ref="casConsole"/>
         </AsyncRoot>
     </Loggers>
 </Configuration>

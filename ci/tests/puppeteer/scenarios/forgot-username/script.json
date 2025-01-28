@@ -1,5 +1,9 @@
 {
   "dependencies": "pm-webflow",
+  "conditions": {
+    "docker": "true"
+  },
+
   "properties": [
     "--cas.authn.pm.core.enabled=true",
 
@@ -9,7 +13,7 @@
     "--cas.authn.attribute-repository.stub.attributes.uid=uid",
     
     "--cas.authn.pm.forgot-username.mail.from=cas@apereo.org",
-    "--cas.authn.pm.forgot-username.mail.text=To reset your password, please use %s",
+    "--cas.authn.pm.forgot-username.mail.text=To reset your password, please use ${url}",
     "--cas.authn.pm.forgot-username.mail.subject=Reset your password",
     "--cas.authn.pm.forgot-username.mail.attribute-name=mail",
 

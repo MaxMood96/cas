@@ -1,16 +1,19 @@
 package org.apereo.cas.web.flow;
 
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.test.MockRequestContext;
-
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ConfigurableApplicationContext;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -20,64 +23,50 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.1.0
  */
 @Tag("Authentication")
-public class ChainingSingleSignOnParticipationStrategyTests {
+@ExtendWith(CasTestExtension.class)
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = CasCoreWebAutoConfiguration.class)
+@EnableConfigurationProperties(CasConfigurationProperties.class)
+class ChainingSingleSignOnParticipationStrategyTests {
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+
     @Test
-    public void verifyVotesNoInChain() {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+    void verifyVotesNoInChain() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
 
         val chain = new ChainingSingleSignOnParticipationStrategy();
         chain.addStrategy(SingleSignOnParticipationStrategy.alwaysParticipating());
         chain.addStrategy(SingleSignOnParticipationStrategy.neverParticipating());
 
-        val ssoRequest = SingleSignOnParticipationRequest.builder()
-            .httpServletRequest(request)
-            .requestContext(context)
-            .build();
+        val ssoRequest = getSingleSignOnParticipationRequest(context);
         assertFalse(chain.isParticipating(ssoRequest));
     }
 
     @Test
-    public void verifyEmptyChain() {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+    void verifyEmptyChain() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
         val chain = new ChainingSingleSignOnParticipationStrategy();
         chain.addStrategy(List.of());
 
-        val ssoRequest = SingleSignOnParticipationRequest.builder()
-            .httpServletRequest(request)
-            .requestContext(context)
-            .build();
+        val ssoRequest = getSingleSignOnParticipationRequest(context);
         assertTrue(chain.isParticipating(ssoRequest));
     }
 
     @Test
-    public void verifyVotesYesInChain() {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+    void verifyVotesYesInChain() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
 
         val chain = new ChainingSingleSignOnParticipationStrategy();
         chain.addStrategy(SingleSignOnParticipationStrategy.alwaysParticipating());
 
-        val ssoRequest = SingleSignOnParticipationRequest.builder()
-            .httpServletRequest(request)
-            .requestContext(context)
-            .build();
+        val ssoRequest = getSingleSignOnParticipationRequest(context);
         assertTrue(chain.isParticipating(ssoRequest));
     }
 
     @Test
-    public void verifyVotesNoInChainWithoutSupport() {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+    void verifyVotesNoInChainWithoutSupport() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
 
         val chain = new ChainingSingleSignOnParticipationStrategy();
         chain.addStrategy(new SingleSignOnParticipationStrategy() {
@@ -93,10 +82,15 @@ public class ChainingSingleSignOnParticipationStrategyTests {
         });
         chain.addStrategy(SingleSignOnParticipationStrategy.neverParticipating());
 
-        val ssoRequest = SingleSignOnParticipationRequest.builder()
-            .httpServletRequest(request)
+        val ssoRequest = getSingleSignOnParticipationRequest(context);
+        assertFalse(chain.isParticipating(ssoRequest));
+    }
+
+    private static SingleSignOnParticipationRequest getSingleSignOnParticipationRequest(final MockRequestContext context) {
+        return SingleSignOnParticipationRequest.builder()
+            .httpServletRequest(context.getHttpServletRequest())
+            .httpServletResponse(context.getHttpServletResponse())
             .requestContext(context)
             .build();
-        assertFalse(chain.isParticipating(ssoRequest));
     }
 }

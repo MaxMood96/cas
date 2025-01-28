@@ -1,6 +1,11 @@
 description = "Apereo CAS JPA Ticket Registry Support"
 ext {
-    maxParallelForksForTests = 1
+
+    publishMetadata = true
+    projectMetadata = [
+            category: "Ticket Registries",
+            title: "JDBC Ticket Registry"
+    ]
 }
 dependencies {
     implementation libraries.springintegrationjdbc
@@ -27,6 +32,11 @@ dependencies {
     testImplementation project(":support:cas-server-support-ws-sts-api")
     testImplementation project(":support:cas-server-support-ws-sts")
     testImplementation project(":support:cas-server-support-ws-idp")
+    testImplementation project(":support:cas-server-support-oauth")
+    testImplementation project(":support:cas-server-support-oauth-api")
+
+    testImplementation project(":support:cas-server-support-oauth-core-api")
+    testImplementation project(":support:cas-server-support-saml-core")
 
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core-util")
@@ -35,17 +45,13 @@ dependencies {
     testImplementation project(":core:cas-server-core-authentication-api")
     testImplementation project(":core:cas-server-core-authentication")
     testImplementation project(":core:cas-server-core-web")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-authentication-attributes")
     testImplementation project(":core:cas-server-core-services")
     testImplementation project(":core:cas-server-core-cookie")
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-cookie-api")
     testImplementation project(":core:cas-server-core")
-
-    testImplementation project(":support:cas-server-support-oauth")
-    testImplementation project(":support:cas-server-support-oauth-api")
-    testImplementation project(":support:cas-server-support-oauth-core")
-    testImplementation project(":support:cas-server-support-oauth-core-api")
 
     testImplementation project(path: ":core:cas-server-core-util", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")

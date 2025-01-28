@@ -5,24 +5,16 @@ import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.saml.SamlIdPTestUtils;
 import org.apereo.cas.support.saml.SamlProtocolConstants;
 import org.apereo.cas.support.saml.mdui.SamlMetadataUIInfo;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
-
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -32,9 +24,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @Tag("SAMLMetadata")
-public class SamlIdPMetadataUIActionTests extends BaseSamlIdPWebflowTests {
+@TestPropertySource(properties = "cas.authn.saml-idp.metadata.file-system.location=${#systemProperties['java.io.tmpdir']}/saml8858")
+class SamlIdPMetadataUIActionTests extends BaseSamlIdPWebflowTests {
     @Autowired
-    @Qualifier("samlIdPMetadataUIParserAction")
+    @Qualifier(CasWebflowConstants.ACTION_ID_SAML_IDP_METADATA_UI_PARSER)
     private Action samlIdPMetadataUIParserAction;
 
     @Autowired
@@ -42,13 +35,8 @@ public class SamlIdPMetadataUIActionTests extends BaseSamlIdPWebflowTests {
     private ServicesManager servicesManager;
 
     @Test
-    public void verifyOperation() throws Exception {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
+    void verifyOperation() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
 
         val registeredService = SamlIdPTestUtils.getSamlRegisteredService();
         val service = RegisteredServiceTestUtils.getService(registeredService.getServiceId());
@@ -63,14 +51,8 @@ public class SamlIdPMetadataUIActionTests extends BaseSamlIdPWebflowTests {
     }
 
     @Test
-    public void verifyNoEntity() throws Exception {
-        
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
+    void verifyNoEntity() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
                      
         val registeredService = SamlIdPTestUtils.getSamlRegisteredService();
         registeredService.setServiceId("something-else");

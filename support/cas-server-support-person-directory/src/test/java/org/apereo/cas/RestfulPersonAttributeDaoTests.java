@@ -1,24 +1,22 @@
 package org.apereo.cas;
 
 import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.MockWebServer;
-
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.apereo.services.persondir.IPersonAttributeDaoFilter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -36,15 +34,16 @@ import static org.junit.jupiter.api.Assertions.*;
         "cas.authn.attribute-repository.rest[0].basic-auth-username=username"
     })
 @Tag("RestfulApi")
-public class RestfulPersonAttributeDaoTests {
+@ExtendWith(CasTestExtension.class)
+class RestfulPersonAttributeDaoTests {
     @Autowired
     @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
-    protected IPersonAttributeDao attributeRepository;
+    protected PersonAttributeDao attributeRepository;
 
     private MockWebServer webServer;
 
     @BeforeEach
-    public void initialize() {
+    void initialize() {
         val data = '{'
             + "   \"name\" :\"casuser\","
             + "\"age\" : 29,"
@@ -62,9 +61,9 @@ public class RestfulPersonAttributeDaoTests {
     }
 
     @Test
-    public void verifyGetPerson() {
+    void verifyGetPerson() {
         assertNotNull(attributeRepository);
-        val person = attributeRepository.getPerson("casuser", IPersonAttributeDaoFilter.alwaysChoose());
+        val person = attributeRepository.getPerson("casuser");
         assertNotNull(person);
         assertNotNull(person.getAttributes());
         assertFalse(person.getAttributes().isEmpty());
@@ -74,8 +73,8 @@ public class RestfulPersonAttributeDaoTests {
     }
 
     @Test
-    public void verifyGetPeople() {
-        val person = attributeRepository.getPeople(Map.of("cn", "casuser"), IPersonAttributeDaoFilter.alwaysChoose())
+    void verifyGetPeople() {
+        val person = attributeRepository.getPeople(Map.of("cn", "casuser"))
             .iterator().next();
         assertNotNull(person);
         assertNotNull(person.getAttributes());

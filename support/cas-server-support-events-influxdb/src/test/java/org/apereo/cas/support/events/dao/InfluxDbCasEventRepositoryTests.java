@@ -1,18 +1,21 @@
 package org.apereo.cas.support.events.dao;
 
+import org.apereo.cas.config.CasEventsInfluxDbRepositoryAutoConfiguration;
 import org.apereo.cas.influxdb.InfluxDbConnectionFactory;
 import org.apereo.cas.support.events.AbstractCasEventRepositoryTests;
 import org.apereo.cas.support.events.CasEventRepository;
-import org.apereo.cas.support.events.config.CasEventsInfluxDbRepositoryConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.Getter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 
 /**
  * This is {@link InfluxDbCasEventRepositoryTests}.
@@ -20,25 +23,25 @@ import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasEventsInfluxDbRepositoryConfiguration.class
-})
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = CasEventsInfluxDbRepositoryAutoConfiguration.class)
 @Tag("InfluxDb")
-@EnabledIfPortOpen(port = 8086)
+@ExtendWith(CasTestExtension.class)
+@EnabledIfListeningOnPort(port = 8086)
 @Getter
-public class InfluxDbCasEventRepositoryTests extends AbstractCasEventRepositoryTests {
+@Execution(ExecutionMode.SAME_THREAD)
+class InfluxDbCasEventRepositoryTests extends AbstractCasEventRepositoryTests {
 
     @Autowired
     @Qualifier("influxDbEventsConnectionFactory")
     private InfluxDbConnectionFactory influxDbEventsConnectionFactory;
 
     @Autowired
-    @Qualifier("casEventRepository")
+    @Qualifier(CasEventRepository.BEAN_NAME)
     private CasEventRepository eventRepository;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         influxDbEventsConnectionFactory.deleteAll();
     }
 }

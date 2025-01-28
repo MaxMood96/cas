@@ -1,27 +1,26 @@
 package org.apereo.cas.zookeeper;
 
-import org.apereo.cas.config.HazelcastZooKeeperConfiguration;
+import org.apereo.cas.config.CasHazelcastZooKeeperAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.util.lock.LockRepository;
-
-import lombok.SneakyThrows;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
+import org.jooq.lambda.Unchecked;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -31,23 +30,22 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.5.0
  */
 @Tag("ZooKeeper")
-@EnabledIfPortOpen(port = 2181)
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    HazelcastZooKeeperConfiguration.class
-}, properties = {
+@ExtendWith(CasTestExtension.class)
+@EnabledIfListeningOnPort(port = 2181)
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = CasHazelcastZooKeeperAutoConfiguration.class, properties = {
     "cas.ticket.registry.hazelcast.cluster.discovery.zookeeper.url=localhost:2181",
     "cas.ticket.registry.core.enable-locking=true"
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-public class ZookeeperLockRegistryTests {
+class ZookeeperLockRegistryTests {
 
     @Autowired
     @Qualifier("casTicketRegistryLockRepository")
     private LockRepository casTicketRegistryLockRepository;
 
     @Test
-    public void verifyRepository() throws Exception {
+    void verifyRepository() {
         val lockKey = UUID.randomUUID().toString();
 
         val container = new Container();
@@ -55,17 +53,13 @@ public class ZookeeperLockRegistryTests {
 
         val threads = new ArrayList<Thread>();
         IntStream.range(0, 10).forEach(i -> {
-            val thread = new Thread(new Runnable() {
-                @Override
-                @SneakyThrows
-                public void run() {
-                    Thread.sleep(250);
-                    casTicketRegistryLockRepository.execute(lockKey, () -> {
-                        container.values.get(lockKey).add(UUID.randomUUID().toString());
-                        return null;
-                    });
-                }
-            });
+            val thread = new Thread(Unchecked.runnable(() -> {
+                Thread.sleep(250);
+                casTicketRegistryLockRepository.execute(lockKey, () -> {
+                    container.values.get(lockKey).add(UUID.randomUUID().toString());
+                    return null;
+                });
+            }));
             thread.setName("Thread-" + i);
             threads.add(thread);
             thread.start();
@@ -80,7 +74,7 @@ public class ZookeeperLockRegistryTests {
         assertEquals(10, container.values.get(lockKey).size());
     }
 
-    private static class Container {
+    private static final class Container {
         private final Map<String, List<String>> values = new HashMap<>();
     }
 }

@@ -1,11 +1,8 @@
 package org.apereo.cas.gauth.token;
 
-import org.apereo.cas.authentication.OneTimeToken;
 import org.apereo.cas.otp.repository.token.BaseOneTimeTokenRepository;
-
 import lombok.RequiredArgsConstructor;
 import lombok.val;
-
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
@@ -16,14 +13,16 @@ import java.time.ZoneOffset;
  * @since 6.5.0
  */
 @RequiredArgsConstructor
-public class GoogleAuthenticatorDynamoDbTokenRepository extends BaseOneTimeTokenRepository {
+public class GoogleAuthenticatorDynamoDbTokenRepository extends BaseOneTimeTokenRepository<GoogleAuthenticatorToken> {
     private final GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator facilitator;
 
     private final long expireTokensInSeconds;
 
     @Override
-    public void store(final OneTimeToken token) {
-        facilitator.store(token);
+    public GoogleAuthenticatorToken store(final GoogleAuthenticatorToken token) {
+        val tokenToSave = token.assignIdIfNecessary();
+        facilitator.store(tokenToSave);
+        return (GoogleAuthenticatorToken) tokenToSave;
     }
 
     @Override

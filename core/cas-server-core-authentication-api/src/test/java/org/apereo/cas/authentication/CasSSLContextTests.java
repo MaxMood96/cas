@@ -2,12 +2,13 @@ package org.apereo.cas.authentication;
 
 import lombok.val;
 import org.apache.commons.io.IOUtils;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import javax.net.ssl.HttpsURLConnection;
-import java.net.URL;
+
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.4.0
  */
 @Tag("Authentication")
-public class CasSSLContextTests {
+class CasSSLContextTests {
     private static String contactUrl(final String addr, final CasSSLContext context) throws Exception {
-        val url = new URL(addr);
+        val url = new URI(addr).toURL();
         val connection = (HttpsURLConnection) url.openConnection();
         connection.setRequestMethod("GET");
         connection.setHostnameVerifier(NoopHostnameVerifier.INSTANCE);
@@ -32,7 +33,7 @@ public class CasSSLContextTests {
     }
 
     @Test
-    public void verifyOperationBySystem() throws Exception {
+    void verifyOperationBySystem() {
         val system = CasSSLContext.system();
         assertNotNull(system.getSslContext());
         assertNotNull(system.getKeyManagers());
@@ -40,12 +41,13 @@ public class CasSSLContextTests {
         assertNotNull(system.getHostnameVerifier());
         assertNotNull(system.getTrustManagerFactory());
         assertNotNull(system.getKeyManagerFactory());
+        assertNotNull(system.getKeyManagers());
         assertThrows(Exception.class, () -> contactUrl("https://expired.badssl.com/", system));
         assertThrows(Exception.class, () -> contactUrl("https://self-signed.badssl.com/", system));
     }
 
     @Test
-    public void verifyOperationDisabled() throws Exception {
+    void verifyOperationDisabled() throws Throwable {
         val disabled = CasSSLContext.disabled();
         assertNotNull(disabled.getSslContext());
         assertNotNull(disabled.getKeyManagers());

@@ -1,21 +1,18 @@
 package org.apereo.cas.web.flow.logout;
 
-import org.apereo.cas.CentralAuthenticationService;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.logout.LogoutExecutionPlan;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.ArgumentExtractor;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.RequiredArgsConstructor;
 import lombok.val;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
 
 /**
@@ -25,7 +22,7 @@ import java.util.Optional;
  * @since 4.0.0
  */
 @RequiredArgsConstructor
-public abstract class AbstractLogoutAction extends AbstractAction {
+public abstract class AbstractLogoutAction extends BaseCasWebflowAction {
 
     private static final String NO_CACHE = "no-cache";
 
@@ -35,7 +32,7 @@ public abstract class AbstractLogoutAction extends AbstractAction {
     /**
      * The cas service.
      */
-    protected final CentralAuthenticationService centralAuthenticationService;
+    protected final TicketRegistry ticketRegistry;
 
     /**
      * The TGT cookie generator.
@@ -63,7 +60,7 @@ public abstract class AbstractLogoutAction extends AbstractAction {
     protected final CasConfigurationProperties casProperties;
 
     @Override
-    public Event doExecute(final RequestContext context) {
+    protected Event doExecuteInternal(final RequestContext context) {
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(context);
         val response = WebUtils.getHttpServletResponseFromExternalWebflowContext(context);
         preventCaching(response);
@@ -71,23 +68,14 @@ public abstract class AbstractLogoutAction extends AbstractAction {
         Optional.ofNullable(argumentExtractor.extractService(request))
             .filter(service -> {
                 val registeredService = servicesManager.findServiceBy(service);
-                return registeredService != null && registeredService.getAccessStrategy().isServiceAccessAllowed();
+                return registeredService != null && registeredService.getAccessStrategy().isServiceAccessAllowed(registeredService, service);
             })
             .ifPresent(service -> WebUtils.putServiceIntoFlowScope(context, service));
 
-        return doInternalExecute(request, response, context);
+        return doInternalExecute(context);
     }
 
-    /**
-     * Execute the logout action after invalidating the cache.
-     *
-     * @param request  the HTTP request.
-     * @param response the HTTP response.
-     * @param context  the webflow context.
-     * @return the event triggered by this actions.
-     */
-    protected abstract Event doInternalExecute(HttpServletRequest request, HttpServletResponse response,
-                                               RequestContext context);
+    protected abstract Event doInternalExecute(RequestContext context);
 
     /**
      * Prevent caching by adding the appropriate headers.

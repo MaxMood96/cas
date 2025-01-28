@@ -1,6 +1,5 @@
 package org.apereo.cas.web.view;
 
-import org.apereo.cas.BaseCasCoreTests;
 import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.CasViewConstants;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
@@ -9,9 +8,10 @@ import org.apereo.cas.authentication.DefaultAuthenticationServiceSelectionPlan;
 import org.apereo.cas.authentication.DefaultAuthenticationServiceSelectionStrategy;
 import org.apereo.cas.authentication.ProtocolAttributeEncoder;
 import org.apereo.cas.authentication.support.DefaultCasProtocolAttributeEncoder;
-import org.apereo.cas.config.CasThymeleafConfiguration;
+import org.apereo.cas.config.CasThymeleafAutoConfiguration;
+import org.apereo.cas.config.CasValidationAutoConfiguration;
+import org.apereo.cas.services.RegisteredServicePublicKeyCipherExecutor;
 import org.apereo.cas.services.ServicesManager;
-import org.apereo.cas.services.web.config.CasThemesConfiguration;
 import org.apereo.cas.services.web.view.AbstractCasView;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.EncodingUtils;
@@ -22,38 +22,30 @@ import org.apereo.cas.web.AbstractServiceValidateControllerTests;
 import org.apereo.cas.web.MockRequestedAuthenticationContextValidator;
 import org.apereo.cas.web.ServiceValidateConfigurationContext;
 import org.apereo.cas.web.ServiceValidationViewFactory;
-import org.apereo.cas.web.config.CasValidationConfiguration;
 import org.apereo.cas.web.v2.ServiceValidateController;
 import org.apereo.cas.web.view.attributes.DefaultCas30ProtocolAttributesRenderer;
-
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.apereo.services.persondir.support.StubPersonAttributeDao;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.context.support.GenericWebApplicationContext;
 import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.support.RequestContext;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import javax.crypto.Cipher;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-
+import java.util.Objects;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -63,19 +55,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 4.0.0
  */
 @Slf4j
-@SpringBootTest(properties = {
+@TestPropertySource(properties = {
     "cas.clearpass.cache-credential=true",
     "cas.clearpass.crypto.enabled=false"
-},
-    classes = {
-        Cas30ResponseViewTests.AttributeRepositoryTestConfiguration.class,
-        BaseCasCoreTests.SharedTestConfiguration.class,
-        CasThemesConfiguration.class,
-        CasThymeleafConfiguration.class,
-        CasValidationConfiguration.class
-    })
+})
+@ImportAutoConfiguration({
+    CasThymeleafAutoConfiguration.class,
+    CasValidationAutoConfiguration.class
+})
 @Tag("CAS")
-public class Cas30ResponseViewTests extends AbstractServiceValidateControllerTests {
+class Cas30ResponseViewTests extends AbstractServiceValidateControllerTests {
 
     @Autowired
     @Qualifier("serviceValidationViewFactory")
@@ -85,15 +74,14 @@ public class Cas30ResponseViewTests extends AbstractServiceValidateControllerTes
     @Qualifier(ServicesManager.BEAN_NAME)
     protected ServicesManager servicesManager;
 
-    @SneakyThrows
-    private static String decryptCredential(final String cred) {
+    private static String decryptCredential(final String cred) throws Throwable {
         val factory = new PrivateKeyFactoryBean();
         factory.setAlgorithm("RSA");
         factory.setLocation(new ClassPathResource("keys/RSA4096Private.p8"));
         factory.setSingleton(false);
         val privateKey = factory.getObject();
 
-        LOGGER.debug("Initializing cipher based on [{}]", privateKey.getAlgorithm());
+        LOGGER.debug("Initializing cipher based on [{}]", Objects.requireNonNull(privateKey).getAlgorithm());
         val cipher = Cipher.getInstance(privateKey.getAlgorithm());
 
         LOGGER.debug("Decoding value [{}]", cred);
@@ -124,6 +112,10 @@ public class Cas30ResponseViewTests extends AbstractServiceValidateControllerTes
     @Override
     public AbstractServiceValidateController getServiceValidateControllerInstance() {
         val context = ServiceValidateConfigurationContext.builder()
+            .applicationContext(applicationContext)
+            .principalFactory(getPrincipalFactory())
+            .ticketRegistry(getTicketRegistry())
+            .principalResolver(getDefaultPrincipalResolver())
             .validationSpecifications(CollectionUtils.wrapSet(getValidationSpecification()))
             .authenticationSystemSupport(getAuthenticationSystemSupport())
             .servicesManager(getServicesManager())
@@ -131,16 +123,16 @@ public class Cas30ResponseViewTests extends AbstractServiceValidateControllerTes
             .argumentExtractor(getArgumentExtractor())
             .proxyHandler(getProxyHandler())
             .requestedContextValidator(new MockRequestedAuthenticationContextValidator())
-            .authnContextAttribute("authenticationContext")
             .validationAuthorizers(getServiceValidationAuthorizers())
-            .renewEnabled(true)
             .validationViewFactory(serviceValidationViewFactory)
+            .casProperties(casProperties)
+            .serviceFactory(getWebApplicationServiceFactory())
             .build();
         return new ServiceValidateController(context);
     }
 
     @Test
-    public void verifyViewAuthnAttributes() throws Exception {
+    void verifyViewAuthnAttributes() throws Throwable {
         val attributes = renderView();
         assertTrue(attributes.containsKey(CasProtocolConstants.VALIDATION_CAS_MODEL_ATTRIBUTE_NAME_AUTHENTICATION_DATE));
         assertTrue(attributes.containsKey(CasProtocolConstants.VALIDATION_CAS_MODEL_ATTRIBUTE_NAME_FROM_NEW_LOGIN));
@@ -148,43 +140,45 @@ public class Cas30ResponseViewTests extends AbstractServiceValidateControllerTes
     }
 
     @Test
-    public void verifyPasswordAsAuthenticationAttributeCanDecrypt() throws Exception {
+    void verifyPasswordAsAuthenticationAttributeCanDecrypt() throws Throwable {
         val attributes = renderView();
         assertTrue(attributes.containsKey(CasViewConstants.MODEL_ATTRIBUTE_NAME_PRINCIPAL_CREDENTIAL));
 
         val encodedPsw = (String) attributes.get(CasViewConstants.MODEL_ATTRIBUTE_NAME_PRINCIPAL_CREDENTIAL);
         val password = decryptCredential(encodedPsw);
         val creds = CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword();
-        assertEquals(password, creds.getPassword());
+        assertEquals(password, creds.toPassword());
     }
 
     @Test
-    public void verifyProxyGrantingTicketAsAuthenticationAttributeCanDecrypt() throws Exception {
+    void verifyProxyGrantingTicketAsAuthenticationAttributeCanDecrypt() throws Throwable {
         val attributes = renderView();
         LOGGER.trace("Attributes are [{}]", attributes.keySet());
         assertTrue(attributes.containsKey(CasViewConstants.MODEL_ATTRIBUTE_NAME_PROXY_GRANTING_TICKET));
 
         val encodedPgt = (String) attributes.get(CasViewConstants.MODEL_ATTRIBUTE_NAME_PROXY_GRANTING_TICKET);
+        assertNotNull(encodedPgt);
         val pgt = decryptCredential(encodedPgt);
         assertNotNull(pgt);
     }
 
     @Test
-    public void verifyViewBinaryAttributes() throws Exception {
+    void verifyViewBinaryAttributes() throws Throwable {
         val attributes = renderView();
         assertTrue(attributes.containsKey("binaryAttribute"));
         val binaryAttr = attributes.get("binaryAttribute");
         assertEquals("binaryAttributeValue", EncodingUtils.decodeBase64ToString(binaryAttr.toString()));
     }
 
-    protected Map<?, ?> renderView() throws Exception {
+    protected Map<?, ?> renderView() throws Throwable {
         val modelAndView = this.getModelAndViewUponServiceValidationWithSecurePgtUrl(DEFAULT_SERVICE);
         LOGGER.debug("Retrieved model and view [{}]", modelAndView.getModel());
 
         val req = new MockHttpServletRequest(new MockServletContext());
         req.setAttribute(RequestContext.WEB_APPLICATION_CONTEXT_ATTRIBUTE, new GenericWebApplicationContext(req.getServletContext()));
 
-        val encoder = new DefaultCasProtocolAttributeEncoder(this.servicesManager, CipherExecutor.noOpOfStringToString());
+        val encoder = new DefaultCasProtocolAttributeEncoder(this.servicesManager,
+            RegisteredServicePublicKeyCipherExecutor.INSTANCE, CipherExecutor.noOpOfStringToString());
         val view = getCasViewToRender(encoder, getDelegatedView());
         val resp = new MockHttpServletResponse();
         view.render(modelAndView.getModel(), req, resp);
@@ -199,20 +193,6 @@ public class Cas30ResponseViewTests extends AbstractServiceValidateControllerTes
         return new Cas30ResponseView(true, encoder, servicesManager,
             viewDelegated, new DefaultAuthenticationAttributeReleasePolicy("attribute"),
             new DefaultAuthenticationServiceSelectionPlan(new DefaultAuthenticationServiceSelectionStrategy()),
-            new DefaultCas30ProtocolAttributesRenderer());
-    }
-
-    @TestConfiguration(value = "AttributeRepositoryTestConfiguration", proxyBeanMethods = false)
-    @Lazy(false)
-    public static class AttributeRepositoryTestConfiguration {
-        @Bean
-        public IPersonAttributeDao attributeRepository() {
-            val attrs =
-                CollectionUtils.wrap("uid", CollectionUtils.wrap("uid"),
-                    "eduPersonAffiliation", CollectionUtils.wrap("developer"),
-                    "groupMembership", CollectionUtils.wrap("adopters"),
-                    "binaryAttribute", CollectionUtils.wrap("binaryAttributeValue".getBytes(StandardCharsets.UTF_8)));
-            return new StubPersonAttributeDao((Map) attrs);
-        }
+            new DefaultCas30ProtocolAttributesRenderer(), getAttributeDefinitionStore());
     }
 }

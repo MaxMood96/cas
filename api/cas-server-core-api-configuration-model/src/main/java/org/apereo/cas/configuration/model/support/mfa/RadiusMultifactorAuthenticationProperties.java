@@ -4,11 +4,12 @@ import org.apereo.cas.configuration.model.support.radius.RadiusClientProperties;
 import org.apereo.cas.configuration.model.support.radius.RadiusServerProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+
+import java.io.Serial;
 
 /**
  * This is {@link RadiusMultifactorAuthenticationProperties}.
@@ -20,7 +21,7 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("RadiusMultifactorProperties")
+
 public class RadiusMultifactorAuthenticationProperties extends BaseMultifactorAuthenticationProviderProperties {
 
     /**
@@ -28,6 +29,7 @@ public class RadiusMultifactorAuthenticationProperties extends BaseMultifactorAu
      */
     public static final String DEFAULT_IDENTIFIER = "mfa-radius";
 
+    @Serial
     private static final long serialVersionUID = 7021301814775348087L;
 
     /**
@@ -61,7 +63,7 @@ public class RadiusMultifactorAuthenticationProperties extends BaseMultifactorAu
      * that no limit is enforced.
      */
     private long allowedAuthenticationAttempts = -1;
-    
+
     /**
      * Indicates whether this provider should support trusted devices.
      */

@@ -2,11 +2,11 @@ package org.apereo.cas.configuration.model.support.hazelcast;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -19,8 +19,11 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("HazelcastNetworkSslProperties")
+
 public class HazelcastNetworkSslProperties implements Serializable {
+    @Serial
+    private static final long serialVersionUID = -2444780336835699053L;
+
     /**
      * Name of the algorithm which is used in
      * your TLS/SSL. For the protocol property, we recommend
@@ -76,7 +79,7 @@ public class HazelcastNetworkSslProperties implements Serializable {
      * Available values are:
      * <ul>
      * <li>{@code REQUIRED} - server forces usage of a trusted client certificate</li>
-     * <li>{@code OPTIONAL} - server asks for a client certificate, but it doesn’t require it</li>
+     * <li>{@code OPTIONAL} - server asks for a client certificate, but it doesn't require it</li>
      * </ul>
      */
     private String mutualAuthentication;

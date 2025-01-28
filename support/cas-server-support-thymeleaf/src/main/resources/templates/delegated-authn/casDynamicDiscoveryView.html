@@ -10,7 +10,7 @@
 </head>
 
 <body>
-<main role="main" class="container mt-3 mb-3">
+<main class="container mt-3 mb-3">
     <div layout:fragment="content" class="mdc-card p-4 m-auto w-lg-66">
         <div class="col-xs-6 col-xs-offset-2 col-sm-offset-3">
             <h2 th:utext="#{screen.pac4j.discovery.title}">Delegated Authentication Dynamic Discovery</h2>
@@ -48,10 +48,8 @@
                     </label>
 
                     <p>
-                        <button class="mdc-button mdc-button--raised" accesskey="s" type="submit">
-                            <span class="mdc-button__label" th:text="#{screen.welcome.button.login}">Login</span>
-                        </button>
-                        <button class="mdc-button mdc-button--outlined"
+                        <div th:replace="~{fragments/submitbutton :: submitButton (messageKey='screen.welcome.button.login')}"/>
+                        <button class="mdc-button mdc-button--outlined button-cancel"
                                 name="cancel"
                                 th:value="cancel"
                                 accesskey="c"

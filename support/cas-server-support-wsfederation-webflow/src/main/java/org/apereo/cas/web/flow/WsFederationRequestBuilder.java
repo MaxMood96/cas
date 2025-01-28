@@ -2,6 +2,7 @@ package org.apereo.cas.web.flow;
 
 import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.authentication.principal.WebApplicationService;
+import org.apereo.cas.configuration.model.support.delegation.DelegationAutoRedirectTypes;
 import org.apereo.cas.support.wsfederation.WsFederationConfiguration;
 import org.apereo.cas.support.wsfederation.WsFederationHelper;
 import org.apereo.cas.support.wsfederation.web.WsFederationNavigationController;
@@ -10,13 +11,14 @@ import org.apereo.cas.web.support.WebUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.core5.net.URIBuilder;
 import org.jooq.lambda.Unchecked;
 import org.springframework.webflow.action.EventFactorySupport;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.UUID;
@@ -29,11 +31,6 @@ import java.util.UUID;
  */
 @RequiredArgsConstructor
 public class WsFederationRequestBuilder {
-    /**
-     * Flow scope parameter pointing to client instances.
-     */
-    public static final String PARAMETER_NAME_WSFED_CLIENTS = "wsfedUrls";
-
     private final Collection<WsFederationConfiguration> configurations;
 
     private final WsFederationHelper wsFederationHelper;
@@ -64,22 +61,22 @@ public class WsFederationRequestBuilder {
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(context);
         val service = (WebApplicationService) context.getFlowScope().get(CasProtocolConstants.PARAMETER_SERVICE);
         configurations.forEach(Unchecked.consumer(cfg -> {
-            val c = new WsFedClient();
-            c.setName(cfg.getName());
+            val client = new WsFedClient();
+            client.setName(cfg.getName());
             val id = UUID.randomUUID().toString();
             val rpId = wsFederationHelper.getRelyingPartyIdentifier(service, cfg);
-            c.setAuthorizationUrl(cfg.getAuthorizationUrl(rpId, id));
-            c.setReplyingPartyId(rpId);
-            c.setId(id);
-            c.setRedirectUrl(getRelativeRedirectUrlFor(cfg, service, request));
-            c.setAutoRedirect(cfg.isAutoRedirect());
-            clients.add(c);
+            client.setAuthorizationUrl(cfg.getAuthorizationUrl(rpId, id));
+            client.setReplyingPartyId(rpId);
+            client.setId(id);
+            client.setRedirectUrl(getRelativeRedirectUrlFor(cfg, service, request));
+            client.setAutoRedirectType(cfg.getAutoRedirectType());
+            clients.add(client);
 
-            if (cfg.isAutoRedirect()) {
-                WebUtils.putDelegatedAuthenticationProviderPrimary(context, cfg);
+            if (cfg.getAutoRedirectType() != DelegationAutoRedirectTypes.NONE) {
+                DelegationWebflowUtils.putDelegatedAuthenticationProviderPrimary(context, client);
             }
         }));
-        context.getFlowScope().put(PARAMETER_NAME_WSFED_CLIENTS, clients);
+        WebUtils.putWsFederationDelegatedClients(context, clients);
         return new EventFactorySupport().event(this, CasWebflowConstants.TRANSITION_ID_PROCEED);
     }
 }

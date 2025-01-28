@@ -3,11 +3,11 @@ package org.apereo.cas.configuration.model.support.surrogate;
 import org.apereo.cas.configuration.model.support.ldap.AbstractLdapSearchProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -21,8 +21,9 @@ import java.util.Map;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("SurrogateSimpleAuthenticationProperties")
+
 public class SurrogateSimpleAuthenticationProperties extends AbstractLdapSearchProperties {
+    @Serial
     private static final long serialVersionUID = 16938920863432222L;
 
     /**

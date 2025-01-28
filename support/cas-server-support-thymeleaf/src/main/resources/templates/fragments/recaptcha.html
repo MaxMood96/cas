@@ -11,10 +11,10 @@
 </head>
 
 <body>
-    <main role="main" class="container mt-3 mb-3">
+    <main class="container mt-3 mb-3">
         <div th:fragment="recaptchaToken">
             <span th:if="${recaptchaSiteKey != null AND #strings.equalsIgnoreCase(recaptchaVersion, 'GOOGLE_RECAPTCHA_V2')}" th:remove="tag">
-                <script src="//www.google.com/recaptcha/api.js"></script>
+                <script src="https://www.google.com/recaptcha/api.js"></script>
                 <script type="text/javascript"
                         th:if="${recaptchaInvisible != null AND recaptchaInvisible}"
                         th:inline="javascript">
@@ -28,27 +28,41 @@
                     <div id="g-recaptcha" class="g-recaptcha" th:attr="data-sitekey=${recaptchaSiteKey}"></div>
                 </section>
             </span>
-            
+
             <span th:if="${recaptchaSiteKey != null AND #strings.equalsIgnoreCase(recaptchaVersion, 'GOOGLE_RECAPTCHA_V3')}" id="recaptchaV3Section">
                 <script th:src="${'//www.google.com/recaptcha/api.js?render=' + recaptchaSiteKey}"></script>
                 <input type="hidden" id="g-recaptcha-token" name="g-recaptcha-token"/>
 
                 <script type="text/javascript" th:inline="javascript">
-                    grecaptcha.ready(function () {
+                    grecaptcha.ready(() => {
                         grecaptcha.execute(/*[[${recaptchaSiteKey}]]*/, { action: 'login' })
-                            .then(function (token) {
-                                $('#g-recaptcha-token').val(token);
-                            });
+                            .then(token => $("#g-recaptcha-token").val(token));
                     });
                 </script>
             </span>
 
             <span th:if="${recaptchaSiteKey != null AND #strings.equalsIgnoreCase(recaptchaVersion, 'HCAPTCHA')}" th:remove="tag">
-                <script src="//hcaptcha.com/1/api.js" async defer></script>
+                <script src="https://hcaptcha.com/1/api.js" async defer></script>
                 <section id="hcaptchaSection" class="form-group">
                     <div class="h-captcha" th:attr="data-sitekey=${recaptchaSiteKey}"></div>
                 </section>
             </span>
+
+            <span th:if="${recaptchaSiteKey != null AND #strings.equalsIgnoreCase(recaptchaVersion, 'TURNSTILE')}" th:remove="tag">
+                <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+                <section id="turnstileSection" class="form-group">
+                    <div class="cf-turnstile" th:attr="data-sitekey=${recaptchaSiteKey}"></div>
+                </section>
+            </span>
+
+            <span th:if="${recaptchaSiteKey != null AND #strings.equalsIgnoreCase(recaptchaVersion, 'FRIENDLY_CAPTCHA')}" th:remove="tag">
+                <script src="https://cdn.jsdelivr.net/npm/friendly-challenge@0.9.16/widget.min.js" async defer></script>
+
+                <section id="friendlyCaptchaSection" class="form-group">
+                    <div class="frc-captcha" th:attr="data-sitekey=${recaptchaSiteKey},data-lang=${#locale.language}"></div>
+                </section>
+            </span>
+
         </div>
     </main>
 </body>

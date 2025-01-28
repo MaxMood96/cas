@@ -1,11 +1,10 @@
 package org.apereo.cas.aup;
 
 import org.apereo.cas.adaptors.ldap.LdapIntegrationTestsOperations;
-import org.apereo.cas.config.CasAcceptableUsagePolicyLdapConfiguration;
+import org.apereo.cas.config.CasAcceptableUsagePolicyLdapAutoConfiguration;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.RandomUtils;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import lombok.Cleanup;
 import lombok.Getter;
@@ -18,17 +17,15 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.TestPropertySource;
-
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -37,9 +34,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@Tag("Ldap")
-@EnabledIfPortOpen(port = 10389)
-@Import(CasAcceptableUsagePolicyLdapConfiguration.class)
+@Tag("LdapRepository")
+@EnabledIfListeningOnPort(port = 10389)
+@ImportAutoConfiguration(CasAcceptableUsagePolicyLdapAutoConfiguration.class)
 @TestPropertySource(properties = {
     "cas.acceptable-usage-policy.ldap[0].ldap-url=ldap://localhost:10389",
     "cas.acceptable-usage-policy.ldap[0].base-dn=ou=people,dc=example,dc=org",
@@ -49,18 +46,18 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.acceptable-usage-policy.core.aup-attribute-name=carLicense"
 })
 @Getter
-public class LdapAcceptableUsagePolicyRepositoryTests extends BaseAcceptableUsagePolicyRepositoryTests {
+class LdapAcceptableUsagePolicyRepositoryTests extends BaseAcceptableUsagePolicyRepositoryTests {
     private static final String USER = RandomUtils.randomAlphabetic(10);
 
     private static final int LDAP_PORT = 10389;
 
     @Autowired
-    @Qualifier("acceptableUsagePolicyRepository")
+    @Qualifier(AcceptableUsagePolicyRepository.BEAN_NAME)
     protected AcceptableUsagePolicyRepository acceptableUsagePolicyRepository;
 
     @BeforeAll
-    public static void bootstrap() throws Exception {
-        ClientInfoHolder.setClientInfo(new ClientInfo(new MockHttpServletRequest()));
+    public static void bootstrap() throws Throwable {
+        ClientInfoHolder.setClientInfo(ClientInfo.from(new MockHttpServletRequest()));
         @Cleanup
         val localhost = new LDAPConnection("localhost", LDAP_PORT, "cn=Directory Manager", "password");
 
@@ -77,15 +74,15 @@ public class LdapAcceptableUsagePolicyRepositoryTests extends BaseAcceptableUsag
     }
 
     @Test
-    public void verifyMissingUser() {
+    void verifyMissingUser() throws Throwable {
         val actualPrincipalId = UUID.randomUUID().toString();
-        val c = getCredential(actualPrincipalId);
-        val context = getRequestContext(actualPrincipalId, Map.of(), c);
+        val credential = getCredential(actualPrincipalId);
+        val context = getRequestContext(actualPrincipalId, Map.of(), credential);
         assertFalse(getAcceptableUsagePolicyRepository().verify(context).isAccepted());
     }
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() throws Throwable {
         assertNotNull(acceptableUsagePolicyRepository);
         verifyRepositoryAction(USER,
             CollectionUtils.wrap("carLicense", List.of("false"), "email", List.of("casaupldap@example.org")));

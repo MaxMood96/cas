@@ -2,16 +2,19 @@ package org.apereo.cas.support.rest;
 
 import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.AuthenticationException;
+import org.apereo.cas.authentication.AuthenticationPolicy;
+import org.apereo.cas.authentication.AuthenticationResultBuilder;
 import org.apereo.cas.authentication.AuthenticationSystemSupport;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.Credential;
-import org.apereo.cas.authentication.DefaultAuthenticationResultBuilder;
+import org.apereo.cas.authentication.DefaultAuthenticationResultBuilderFactory;
 import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.MultifactorAuthenticationTriggerSelectionStrategy;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
 import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.principal.DefaultPrincipalElectionStrategy;
 import org.apereo.cas.authentication.principal.WebApplicationServiceFactory;
+import org.apereo.cas.multitenancy.TenantExtractor;
 import org.apereo.cas.rest.authentication.DefaultRestAuthenticationService;
 import org.apereo.cas.rest.factory.DefaultUserAuthenticationResourceEntityResponseFactory;
 import org.apereo.cas.rest.factory.UsernamePasswordRestHttpRequestCredentialFactory;
@@ -20,7 +23,6 @@ import org.apereo.cas.support.rest.resources.UserAuthenticationResource;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.validation.AuthenticationContextValidationResult;
 import org.apereo.cas.validation.RequestedAuthenticationContextValidator;
-
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -34,12 +36,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.util.MultiValueMap;
-
+import jakarta.servlet.http.HttpServletRequest;
 import javax.security.auth.login.FailedLoginException;
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
-
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -52,7 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @ExtendWith(MockitoExtension.class)
 @Tag("RestfulApiAuthentication")
-public class UserAuthenticationResourceTests {
+class UserAuthenticationResourceTests {
     private static final String TICKETS_RESOURCE_URL = "/cas/v1/users";
 
     @Mock
@@ -61,6 +61,9 @@ public class UserAuthenticationResourceTests {
     @Mock
     private ServicesManager servicesManager;
 
+    @Mock
+    private TenantExtractor tenantExtractor;
+    
     @Mock
     private MultifactorAuthenticationTriggerSelectionStrategy multifactorTriggerSelectionStrategy;
 
@@ -73,7 +76,7 @@ public class UserAuthenticationResourceTests {
     private MockMvc mockMvc;
 
     @BeforeEach
-    public void initialize() {
+    void initialize() {
         val httpRequestCredentialFactory = new UsernamePasswordRestHttpRequestCredentialFactory() {
             @Override
             public List<Credential> fromAuthentication(final HttpServletRequest request,
@@ -87,13 +90,16 @@ public class UserAuthenticationResourceTests {
             }
         };
 
+        val applicationContext = new GenericApplicationContext();
         val api = new DefaultRestAuthenticationService(authenticationSupport, httpRequestCredentialFactory,
-            new WebApplicationServiceFactory(), multifactorTriggerSelectionStrategy, servicesManager, requestedContextValidator);
-        this.userAuthenticationResource = new UserAuthenticationResource(api,
+            new WebApplicationServiceFactory(tenantExtractor), multifactorTriggerSelectionStrategy,
+            servicesManager, requestedContextValidator,
+            AuthenticationPolicy.alwaysSatisfied(), applicationContext);
+        userAuthenticationResource = new UserAuthenticationResource(api,
             new DefaultUserAuthenticationResourceEntityResponseFactory(),
-            new GenericApplicationContext());
+            applicationContext);
 
-        this.mockMvc = MockMvcBuilders.standaloneSetup(this.userAuthenticationResource)
+        mockMvc = MockMvcBuilders.standaloneSetup(userAuthenticationResource)
             .defaultRequest(get("/")
                 .contextPath("/cas")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED))
@@ -101,75 +107,83 @@ public class UserAuthenticationResourceTests {
     }
 
     @Test
-    public void verifyAuthWithMfaFails() throws Exception {
-        val builder = new DefaultAuthenticationResultBuilder().collect(CoreAuthenticationTestUtils.getAuthentication());
+    void verifyAuthWithMfaFails() throws Throwable {
+        val builder = createAuthenticationResultBuilder();
+        builder.collect(CoreAuthenticationTestUtils.getAuthentication());
+
         when(authenticationSupport.handleInitialAuthenticationTransaction(any(), any())).thenReturn(builder);
-        when(requestedContextValidator.validateAuthenticationContext(any(), any(), any(), any()))
+        when(requestedContextValidator.validateAuthenticationContext(any(), any(), any(), any(), any()))
             .thenReturn(AuthenticationContextValidationResult.builder().success(false).build());
-        when(multifactorTriggerSelectionStrategy.resolve(any(), any(), any(), any()))
+        when(multifactorTriggerSelectionStrategy.resolve(any(), any(), any(), any(), any()))
             .thenReturn(Optional.of(new TestMultifactorAuthenticationProvider("mfa-unknown")));
 
-        this.mockMvc.perform(post(TICKETS_RESOURCE_URL)
-            .param("username", "casuser")
-            .param("password", "Mellon"))
+        mockMvc.perform(post(TICKETS_RESOURCE_URL)
+                .param("username", "casuser")
+                .param("password", "Mellon"))
             .andExpect(status().is4xxClientError());
     }
 
     @Test
-    public void verifyAuthWithMfa() throws Exception {
-        val builder = new DefaultAuthenticationResultBuilder().collect(CoreAuthenticationTestUtils.getAuthentication());
-        val result = builder.build(new DefaultPrincipalElectionStrategy());
+    void verifyAuthWithMfa() throws Throwable {
+        val builder = createAuthenticationResultBuilder();
+        builder.collect(CoreAuthenticationTestUtils.getAuthentication());
+        val result = builder.build();
         when(authenticationSupport.finalizeAuthenticationTransaction(any(), anyCollection())).thenReturn(result);
         when(authenticationSupport.handleInitialAuthenticationTransaction(any(), any())).thenReturn(builder);
-        when(requestedContextValidator.validateAuthenticationContext(any(), any(), any(), any()))
+        when(requestedContextValidator.validateAuthenticationContext(any(), any(), any(), any(), any()))
             .thenReturn(AuthenticationContextValidationResult.builder().success(false).build());
-        when(multifactorTriggerSelectionStrategy.resolve(any(), any(), any(), any()))
+        when(multifactorTriggerSelectionStrategy.resolve(any(), any(), any(), any(), any()))
             .thenReturn(Optional.of(new TestMultifactorAuthenticationProvider()));
 
-        this.mockMvc.perform(post(TICKETS_RESOURCE_URL)
-            .param("username", "casuser")
-            .param("password", "Mellon"))
+        mockMvc.perform(post(TICKETS_RESOURCE_URL)
+                .param("username", "casuser")
+                .param("password", "Mellon"))
             .andExpect(status().isOk());
     }
 
     @Test
-    public void verifyStatus() throws Exception {
-        val builder = new DefaultAuthenticationResultBuilder().collect(CoreAuthenticationTestUtils.getAuthentication());
-        val result = builder.build(new DefaultPrincipalElectionStrategy());
+    void verifyStatus() throws Throwable {
+        val builder = createAuthenticationResultBuilder();
+        builder.collect(CoreAuthenticationTestUtils.getAuthentication());
+        val result = builder.build();
         lenient().when(authenticationSupport.finalizeAuthenticationTransaction(any(), anyCollection())).thenReturn(result);
         when(authenticationSupport.handleInitialAuthenticationTransaction(any(), any())).thenReturn(builder);
         when(authenticationSupport.finalizeAllAuthenticationTransactions(any(), any())).thenReturn(result);
-        when(requestedContextValidator.validateAuthenticationContext(any(), any(), any(), any()))
+        when(requestedContextValidator.validateAuthenticationContext(any(), any(), any(), any(), any()))
             .thenReturn(AuthenticationContextValidationResult.builder().success(false).build());
-        when(multifactorTriggerSelectionStrategy.resolve(any(), any(), any(), any())).thenReturn(Optional.empty());
-        this.mockMvc.perform(post(TICKETS_RESOURCE_URL)
-            .param("username", "casuser")
-            .param("password", "Mellon"))
+        when(multifactorTriggerSelectionStrategy.resolve(any(), any(), any(), any(), any())).thenReturn(Optional.empty());
+        mockMvc.perform(post(TICKETS_RESOURCE_URL)
+                .param("username", "casuser")
+                .param("password", "Mellon"))
             .andExpect(status().isOk());
     }
 
     @Test
-    public void verifyStatusAuthnFails() throws Exception {
-        this.mockMvc.perform(post(TICKETS_RESOURCE_URL)
-            .param("username", "casuser")
-            .param("password", "Mellon"))
+    void verifyStatusAuthnFails() throws Throwable {
+        mockMvc.perform(post(TICKETS_RESOURCE_URL)
+                .param("username", "casuser")
+                .param("password", "Mellon"))
             .andExpect(status().isInternalServerError());
     }
 
     @Test
-    public void verifyBadRequest() throws Exception {
-        this.mockMvc.perform(post(TICKETS_RESOURCE_URL)
-            .param("unknown-param", "casuser"))
+    void verifyBadRequest() throws Throwable {
+        mockMvc.perform(post(TICKETS_RESOURCE_URL)
+                .param("unknown-param", "casuser"))
             .andExpect(status().is4xxClientError());
     }
 
     @Test
-    public void verifyStatusAuthnException() throws Exception {
+    void verifyStatusAuthnException() throws Throwable {
         val ex = new AuthenticationException(CollectionUtils.wrap("error", new FailedLoginException()));
         when(authenticationSupport.handleInitialAuthenticationTransaction(any(), any())).thenThrow(ex);
-        this.mockMvc.perform(post(TICKETS_RESOURCE_URL)
-            .param("username", "casuser")
-            .param("password", "Mellon"))
+        mockMvc.perform(post(TICKETS_RESOURCE_URL)
+                .param("username", "casuser")
+                .param("password", "Mellon"))
             .andExpect(status().isUnauthorized());
+    }
+
+    private static AuthenticationResultBuilder createAuthenticationResultBuilder() {
+        return new DefaultAuthenticationResultBuilderFactory(new DefaultPrincipalElectionStrategy()).newBuilder();
     }
 }

@@ -24,10 +24,10 @@ import static org.mockito.Mockito.*;
  */
 
 @Tag("MFATrigger")
-public class NeverAllowMultifactorAuthenticationProviderBypassEvaluatorTests {
-    
+class NeverAllowMultifactorAuthenticationProviderBypassEvaluatorTests {
+
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
 
@@ -36,8 +36,10 @@ public class NeverAllowMultifactorAuthenticationProviderBypassEvaluatorTests {
         val authentication = CoreAuthenticationTestUtils.getAuthentication(principal);
         val registeredService = CoreAuthenticationTestUtils.getRegisteredService();
         val policy = new DefaultRegisteredServiceMultifactorPolicy();
-        when(registeredService.getMultifactorPolicy()).thenReturn(policy);
-        assertTrue(NeverAllowMultifactorAuthenticationProviderBypassEvaluator.getInstance()
-            .shouldMultifactorAuthenticationProviderExecute(authentication, registeredService, provider, new MockHttpServletRequest()));
+        when(registeredService.getMultifactorAuthenticationPolicy()).thenReturn(policy);
+
+        val eval = new NeverAllowMultifactorAuthenticationProviderBypassEvaluator(applicationContext);
+        assertTrue(eval.shouldMultifactorAuthenticationProviderExecute(authentication, registeredService,
+                provider, new MockHttpServletRequest(), CoreAuthenticationTestUtils.getService()));
     }
 }

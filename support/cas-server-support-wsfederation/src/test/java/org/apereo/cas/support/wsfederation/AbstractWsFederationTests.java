@@ -1,27 +1,21 @@
 package org.apereo.cas.support.wsfederation;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.config.CasWsFederationAuthenticationAutoConfiguration;
 import org.apereo.cas.support.saml.AbstractOpenSamlTests;
 import org.apereo.cas.support.wsfederation.authentication.principal.WsFederationCredential;
-import org.apereo.cas.support.wsfederation.config.WsFederationAuthenticationComponentSerializationConfiguration;
-import org.apereo.cas.support.wsfederation.config.WsFederationAuthenticationConfiguration;
-import org.apereo.cas.support.wsfederation.config.support.authentication.WsFedAuthenticationEventExecutionPlanConfiguration;
 import org.apereo.cas.support.wsfederation.web.WsFederationCookieManager;
-import org.apereo.cas.util.spring.BeanContainer;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.beans.BeanContainer;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.annotation.Import;
-
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
@@ -34,9 +28,9 @@ import java.util.Map;
  * @author Misagh Moayyed
  * @since 4.2
  */
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = AbstractWsFederationTests.SharedTestConfiguration.class,
     properties = {
-        "spring.main.allow-bean-definition-overriding=true",
         "cas.authn.wsfed[0].identity-provider-url=https://adfs.example.com/adfs/ls/",
         "cas.authn.wsfed[0].identity-provider-identifier=http://(iam-dev-windows.unicon.net|adfs.example.com)/adfs/services/trust",
         "cas.authn.wsfed[0].relying-party-identifier=urn:federation:cas",
@@ -66,10 +60,6 @@ public abstract class AbstractWsFederationTests extends AbstractOpenSamlTests {
     @Qualifier("wsFederationHelper")
     protected WsFederationHelper wsFederationHelper;
 
-    @Autowired
-    @Qualifier(ServicesManager.BEAN_NAME)
-    protected ServicesManager servicesManager;
-
     public static WsFederationCredential getCredential() {
         val attributes = new HashMap<>(CoreAuthenticationTestUtils.getAttributeRepository().getBackingMap());
         attributes.put("upn", List.of("cas@example.org"));
@@ -90,19 +80,10 @@ public abstract class AbstractWsFederationTests extends AbstractOpenSamlTests {
         return standardCred;
     }
 
-    @ImportAutoConfiguration({
-        RefreshAutoConfiguration.class,
-        SecurityAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        AopAutoConfiguration.class
-    })
-    @SpringBootConfiguration
-    @Import({
-        WsFederationAuthenticationConfiguration.class,
-        WsFederationAuthenticationComponentSerializationConfiguration.class,
-        WsFedAuthenticationEventExecutionPlanConfiguration.class,
-        AbstractOpenSamlTests.SharedTestConfiguration.class
-    })
+    @SpringBootTestAutoConfigurations
+    @ImportAutoConfiguration(CasWsFederationAuthenticationAutoConfiguration.class)
+    @SpringBootConfiguration(proxyBeanMethods = false)
+    @Import(AbstractOpenSamlTests.SharedTestConfiguration.class)
     public static class SharedTestConfiguration {
     }
 

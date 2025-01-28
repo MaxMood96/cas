@@ -1,18 +1,17 @@
 package org.apereo.cas.consent;
 
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -23,14 +22,15 @@ import static org.mockito.Mockito.*;
  * @since 5.2.0
  */
 @SpringBootTest(classes = BaseConsentRepositoryTests.SharedTestConfiguration.class)
-@Tag("Simple")
-public class DefaultConsentDecisionBuilderTests {
+@Tag("Consent")
+@ExtendWith(CasTestExtension.class)
+class DefaultConsentDecisionBuilderTests {
     @Autowired
-    @Qualifier("consentDecisionBuilder")
+    @Qualifier(ConsentDecisionBuilder.BEAN_NAME)
     private ConsentDecisionBuilder consentDecisionBuilder;
 
     @Test
-    public void verifyUnableToDecodeConsentDecision() {
+    void verifyUnableToDecodeConsentDecision() {
         val consentDecision = mock(ConsentDecision.class);
         when(consentDecision.getAttributes()).thenCallRealMethod();
         val builder = new DefaultConsentDecisionBuilder(CipherExecutor.noOpOfSerializableToString());
@@ -38,7 +38,7 @@ public class DefaultConsentDecisionBuilderTests {
     }
 
     @Test
-    public void verifyNewConsentDecision() {
+    void verifyNewConsentDecision() {
         val consentDecision = getConsentDecision();
         assertNotNull(consentDecision);
         assertEquals("casuser", consentDecision.getPrincipal());
@@ -46,7 +46,7 @@ public class DefaultConsentDecisionBuilderTests {
     }
 
     @Test
-    public void verifyBadDecision() {
+    void verifyBadDecision() {
         val consentDecision = new ConsentDecision();
         consentDecision.setPrincipal("casuser");
         consentDecision.setService(RegisteredServiceTestUtils.getService().getId());
@@ -57,7 +57,7 @@ public class DefaultConsentDecisionBuilderTests {
     }
 
     @Test
-    public void verifyAttributesRequireConsent() {
+    void verifyAttributesRequireConsent() {
         val consentDecision = getConsentDecision();
         assertTrue(consentDecisionBuilder.doesAttributeReleaseRequireConsent(consentDecision,
             CollectionUtils.wrap("attr2", List.of("value2"))));
@@ -66,7 +66,7 @@ public class DefaultConsentDecisionBuilderTests {
     }
 
     @Test
-    public void verifyAttributeValuesRequireConsent() {
+    void verifyAttributeValuesRequireConsent() {
         val consentDecision = getConsentDecision();
         consentDecision.setOptions(ConsentReminderOptions.ATTRIBUTE_VALUE);
         assertTrue(consentDecisionBuilder.doesAttributeReleaseRequireConsent(consentDecision,
@@ -74,11 +74,11 @@ public class DefaultConsentDecisionBuilderTests {
     }
 
     @Test
-    public void verifyAttributesAreRetrieved() {
+    void verifyAttributesAreRetrieved() {
         val consentDecision = getConsentDecision();
         val attrs = consentDecisionBuilder.getConsentableAttributesFrom(consentDecision);
         assertTrue(attrs.containsKey("attr1"));
-        assertEquals("value1", attrs.get("attr1").get(0));
+        assertEquals("value1", attrs.get("attr1").getFirst());
     }
 
     private ConsentDecision getConsentDecision() {

@@ -6,15 +6,15 @@ import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.trusted.authentication.MultifactorAuthenticationTrustedDeviceBypassEvaluator;
 import org.apereo.cas.trusted.authentication.MultifactorAuthenticationTrustedDeviceNamingStrategy;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustStorage;
+import org.apereo.cas.trusted.util.MultifactorAuthenticationTrustUtils;
 import org.apereo.cas.trusted.web.flow.fingerprint.DeviceFingerprintStrategy;
 import org.apereo.cas.web.flow.CasWebflowConstants;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -27,7 +27,7 @@ import org.springframework.webflow.execution.RequestContext;
 @Slf4j
 @RequiredArgsConstructor
 @Getter
-public class MultifactorAuthenticationPrepareTrustDeviceViewAction extends AbstractAction {
+public class MultifactorAuthenticationPrepareTrustDeviceViewAction extends BaseCasWebflowAction {
 
     private final MultifactorAuthenticationTrustStorage storage;
 
@@ -44,18 +44,22 @@ public class MultifactorAuthenticationPrepareTrustDeviceViewAction extends Abstr
     private final MultifactorAuthenticationTrustedDeviceNamingStrategy namingStrategy;
 
     @Override
-    public Event doExecute(final RequestContext requestContext) {
+    protected Event doExecuteInternal(final RequestContext requestContext) throws Throwable {
         val authn = WebUtils.getAuthentication(requestContext);
         val registeredService = WebUtils.getRegisteredService(requestContext);
         val service = WebUtils.getService(requestContext);
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
-        
-        if (bypassEvaluator.shouldBypassTrustedDevice(registeredService, service, authn)) {
-            LOGGER.debug("Trusted device registration is disabled for [{}]", registeredService);
+
+        val trustedDevicesDisabled = MultifactorAuthenticationTrustUtils.isMultifactorAuthenticationTrustedDevicesDisabled(requestContext);
+        val publicWorkstation = WebUtils.isAuthenticatingAtPublicWorkstation(requestContext);
+
+        if (trustedDevicesDisabled || publicWorkstation || !storage.isAvailable()
+            || bypassEvaluator.shouldBypassTrustedDevice(registeredService, service, authn)) {
+            LOGGER.debug("Trusted device registration store is unavailable or is disabled for [{}]", registeredService);
             return result(CasWebflowConstants.TRANSITION_ID_SKIP);
         }
         if (trustedProperties.getCore().isAutoAssignDeviceName()) {
-            WebUtils.getMultifactorAuthenticationTrustRecord(requestContext, MultifactorAuthenticationTrustBean.class)
+            MultifactorAuthenticationTrustUtils.getMultifactorAuthenticationTrustRecord(requestContext, MultifactorAuthenticationTrustBean.class)
                 .ifPresent(device -> {
                     val deviceName = namingStrategy.determineDeviceName(registeredService, service, request, authn);
                     LOGGER.debug("Auto-generated device name is [{}]", deviceName);
@@ -63,7 +67,7 @@ public class MultifactorAuthenticationPrepareTrustDeviceViewAction extends Abstr
                 });
             return result(CasWebflowConstants.TRANSITION_ID_STORE);
         }
-        
+
         return result(CasWebflowConstants.TRANSITION_ID_REGISTER);
     }
 }

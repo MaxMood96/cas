@@ -42,7 +42,7 @@ public class X509SubjectPrincipalResolver extends AbstractX509PrincipalResolver 
      * <ul><li>C</li><li>CN</li><li>DC</li><li>EMAILADDRESS</li>
      * <li>L</li><li>O</li><li>OU</li><li>SERIALNUMBER</li>
      * <li>ST</li><li>UID</li><li>UNIQUEIDENTIFIER</li></ul>
-     * For a complete list of supported attributes, see {@link org.cryptacular.x509.dn.StandardAttributeType}.
+     * For a complete list of supported attributes, see {@link StandardAttributeType}.
      */
     private String principalDescriptor;
 
@@ -51,7 +51,7 @@ public class X509SubjectPrincipalResolver extends AbstractX509PrincipalResolver 
      * create from X.509 subject DN attributes.  The descriptor is made up of
      * common X.509 attribute names prefixed by "$", which are replaced by
      * attribute values extracted from DN attribute values. (i.e. $UID@$DC.$DC)
-     *
+     * <p>
      * The resolver when applied to a certificate with the DN
      * <p>
      * <b>DC=edu, DC=vt/UID=jacky, CN=Jascarnella Ellagwonto</b></p>
@@ -66,7 +66,6 @@ public class X509SubjectPrincipalResolver extends AbstractX509PrincipalResolver 
 
     /**
      * Gets the values of the given attribute contained in the DN.
-     * <p>
      * <p><strong>NOTE:</strong> no escaping is done on special characters in the
      * values, which could be different from what would appear in the string
      * representation of the DN.</p>
@@ -111,7 +110,7 @@ public class X509SubjectPrincipalResolver extends AbstractX509PrincipalResolver 
         return sb.toString();
     }
 
-    private static class AttributeContext {
+    private static final class AttributeContext {
 
         private final Object[] values;
         private int currentIndex;
@@ -130,7 +129,9 @@ public class X509SubjectPrincipalResolver extends AbstractX509PrincipalResolver 
             if (this.currentIndex == this.values.length) {
                 throw new IllegalStateException("No values remaining for attribute");
             }
-            return this.values[this.currentIndex++].toString();
+            val value = this.values[this.currentIndex].toString();
+            this.currentIndex++;
+            return value;
         }
     }
 }

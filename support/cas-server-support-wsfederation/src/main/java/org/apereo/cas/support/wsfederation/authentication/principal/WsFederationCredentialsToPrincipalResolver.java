@@ -1,7 +1,9 @@
 package org.apereo.cas.support.wsfederation.authentication.principal;
 
+import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.principal.Principal;
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.authentication.principal.resolvers.PersonDirectoryPrincipalResolver;
 import org.apereo.cas.authentication.principal.resolvers.PrincipalResolutionContext;
 import org.apereo.cas.support.wsfederation.WsFederationConfiguration;
@@ -27,18 +29,12 @@ import java.util.Optional;
 @Setter
 @ToString(callSuper = true)
 public class WsFederationCredentialsToPrincipalResolver extends PersonDirectoryPrincipalResolver {
-    private WsFederationConfiguration configuration;
+    protected WsFederationConfiguration configuration;
 
     public WsFederationCredentialsToPrincipalResolver(final PrincipalResolutionContext context) {
         super(context);
     }
 
-    /**
-     * Extracts the principalId.
-     *
-     * @param credentials the credentials
-     * @return the principal id
-     */
     @Override
     protected String extractPrincipalId(final Credential credentials, final Optional<Principal> currentPrincipal) {
         val wsFedCredentials = (WsFederationCredential) credentials;
@@ -68,18 +64,21 @@ public class WsFederationCredentialsToPrincipalResolver extends PersonDirectoryP
     }
 
     @Override
-    protected Map<String, List<Object>> retrievePersonAttributes(final String principalId, final Credential credential,
+    protected Map<String, List<Object>> retrievePersonAttributes(final String principalId,
+                                                                 final Credential credential,
                                                                  final Optional<Principal> currentPrincipal,
-                                                                 final Map<String, List<Object>> queryAttributes) {
+                                                                 final Map<String, List<Object>> queryAttributes,
+                                                                 final Optional<Service> service,
+                                                                 final Optional<AuthenticationHandler> handler) throws Throwable {
         val wsFedCredentials = (WsFederationCredential) credential;
         if (this.configuration.getAttributesType() == WsFederationConfiguration.WsFedPrincipalResolutionAttributesType.WSFED) {
             return wsFedCredentials.getAttributes();
         }
         if (this.configuration.getAttributesType() == WsFederationConfiguration.WsFedPrincipalResolutionAttributesType.CAS) {
-            return super.retrievePersonAttributes(principalId, credential, currentPrincipal, new HashMap<>());
+            return super.retrievePersonAttributes(principalId, credential, currentPrincipal, new HashMap<>(), service, handler);
         }
         val mergedAttributes = new HashMap<>(wsFedCredentials.getAttributes());
-        mergedAttributes.putAll(super.retrievePersonAttributes(principalId, credential, currentPrincipal, new HashMap<>()));
+        mergedAttributes.putAll(super.retrievePersonAttributes(principalId, credential, currentPrincipal, new HashMap<>(), service, handler));
         return mergedAttributes;
     }
 

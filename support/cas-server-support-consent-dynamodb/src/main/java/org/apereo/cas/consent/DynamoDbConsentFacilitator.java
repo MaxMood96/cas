@@ -7,12 +7,11 @@ import org.apereo.cas.dynamodb.DynamoDbQueryBuilder;
 import org.apereo.cas.dynamodb.DynamoDbTableUtils;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.DateTimeUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -24,7 +23,6 @@ import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -40,26 +38,23 @@ import java.util.stream.Stream;
  * @since 6.5.0
  */
 @Slf4j
-@Getter
 @RequiredArgsConstructor
-@SuppressWarnings("JavaUtilDate")
+@Getter
 public class DynamoDbConsentFacilitator {
-
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(false).build().toObjectMapper();
 
     private final DynamoDbConsentProperties dynamoDbProperties;
-
     private final DynamoDbClient amazonDynamoDBClient;
 
-    @SneakyThrows
+
     private static Map<String, AttributeValue> buildTableAttributeValuesMap(final ConsentDecision record) {
         val values = new HashMap<String, AttributeValue>();
         values.put(ColumnNames.PRINCIPAL.getColumnName(), AttributeValue.builder().s(record.getPrincipal()).build());
         values.put(ColumnNames.SERVICE.getColumnName(), AttributeValue.builder().s(record.getService()).build());
         values.put(ColumnNames.ID.getColumnName(), AttributeValue.builder().n(String.valueOf(record.getId())).build());
 
-        val body = MAPPER.writeValueAsString(record);
+        val body = FunctionUtils.doUnchecked(() -> MAPPER.writeValueAsString(record));
         values.put(ColumnNames.BODY.getColumnName(), AttributeValue.builder().s(body).build());
 
         val time = DateTimeUtils.dateOf(record.getCreatedDate());
@@ -69,13 +64,12 @@ public class DynamoDbConsentFacilitator {
         return values;
     }
 
-    @SneakyThrows
     private static ConsentDecision extractAttributeValuesFrom(final Map<String, AttributeValue> item) {
         val principal = item.get(ColumnNames.PRINCIPAL.getColumnName()).s();
         val id = Long.valueOf(item.get(ColumnNames.ID.getColumnName()).n());
         val body = item.get(ColumnNames.BODY.getColumnName()).s();
         LOGGER.debug("Extracting consent decision id [{}] for [{}]", id, principal);
-        return MAPPER.readValue(body, ConsentDecision.class);
+        return FunctionUtils.doUnchecked(() -> MAPPER.readValue(body, ConsentDecision.class));
     }
 
     /**
@@ -83,7 +77,6 @@ public class DynamoDbConsentFacilitator {
      *
      * @param deleteTables the delete tables
      */
-    @SneakyThrows
     public void createTable(final boolean deleteTables) {
         val attributes = List.of(AttributeDefinition.builder()
             .attributeName(ColumnNames.ID.getColumnName())
@@ -93,8 +86,8 @@ public class DynamoDbConsentFacilitator {
             .attributeName(ColumnNames.ID.getColumnName())
             .keyType(KeyType.HASH)
             .build());
-        DynamoDbTableUtils.createTable(amazonDynamoDBClient, dynamoDbProperties,
-            dynamoDbProperties.getTableName(), deleteTables, attributes, schema);
+        FunctionUtils.doUnchecked(__ -> DynamoDbTableUtils.createTable(amazonDynamoDBClient, dynamoDbProperties,
+            dynamoDbProperties.getTableName(), deleteTables, attributes, schema));
     }
 
     /**
@@ -168,7 +161,7 @@ public class DynamoDbConsentFacilitator {
      *
      * @param id        the id
      * @param principal the principal
-     * @return the boolean
+     * @return true/false
      */
     public boolean delete(final long id, final String principal) {
         val keys = List.of(
@@ -205,7 +198,7 @@ public class DynamoDbConsentFacilitator {
      * Delete.
      *
      * @param principal the principal
-     * @return the boolean
+     * @return true/false
      */
     public boolean delete(final String principal) {
         val keys = List.of(
@@ -259,8 +252,7 @@ public class DynamoDbConsentFacilitator {
         private final String columnName;
     }
 
-    @SneakyThrows
-    private Stream<ConsentDecision> getRecordsByKeys(final List<DynamoDbQueryBuilder> queries) {
+    private Stream<ConsentDecision> getRecordsByKeys(final List<? extends DynamoDbQueryBuilder> queries) {
         return DynamoDbTableUtils.getRecordsByKeys(amazonDynamoDBClient,
             dynamoDbProperties.getTableName(),
             queries,

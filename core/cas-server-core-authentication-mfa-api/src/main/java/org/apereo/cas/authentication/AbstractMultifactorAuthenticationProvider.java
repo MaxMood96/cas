@@ -1,6 +1,7 @@
 package org.apereo.cas.authentication;
 
 import org.apereo.cas.authentication.bypass.MultifactorAuthenticationProviderBypassEvaluator;
+import org.apereo.cas.authentication.device.MultifactorAuthenticationDeviceManager;
 import org.apereo.cas.configuration.model.support.mfa.BaseMultifactorAuthenticationProviderProperties.MultifactorAuthenticationProviderFailureModes;
 import org.apereo.cas.services.RegisteredService;
 
@@ -10,7 +11,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.experimental.Accessors;
 import org.apache.commons.lang3.StringUtils;
+
+import java.io.Serial;
 
 /**
  * The {@link AbstractMultifactorAuthenticationProvider} is responsible for
@@ -24,13 +28,17 @@ import org.apache.commons.lang3.StringUtils;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(of = {"order", "id"})
+@Accessors(chain = true)
 public abstract class AbstractMultifactorAuthenticationProvider implements MultifactorAuthenticationProvider {
 
+    @Serial
     private static final long serialVersionUID = 4789727148134156909L;
 
     private MultifactorAuthenticationProviderBypassEvaluator bypassEvaluator;
 
     private MultifactorAuthenticationFailureModeEvaluator failureModeEvaluator;
+
+    private MultifactorAuthenticationDeviceManager deviceManager;
 
     private MultifactorAuthenticationProviderFailureModes failureMode = MultifactorAuthenticationProviderFailureModes.UNDEFINED;
 
@@ -45,6 +53,7 @@ public abstract class AbstractMultifactorAuthenticationProvider implements Multi
 
     @Override
     public boolean matches(final String identifier) {
-        return StringUtils.isNotBlank(getId()) && StringUtils.isNotBlank(identifier) && getId().matches(identifier);
+        return StringUtils.isNotBlank(getId()) && StringUtils.isNotBlank(identifier)
+               && StringUtils.equalsIgnoreCase(getId(), identifier);
     }
 }

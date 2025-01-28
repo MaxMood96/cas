@@ -1,6 +1,6 @@
 package org.apereo.cas.support.saml.web.idp.profile.slo;
 
-import org.apereo.cas.logout.SingleLogoutExecutionRequest;
+import org.apereo.cas.logout.slo.SingleLogoutExecutionRequest;
 import org.apereo.cas.logout.slo.SingleLogoutServiceMessageHandler;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
@@ -8,15 +8,17 @@ import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
 import org.apereo.cas.support.saml.SamlProtocolConstants;
 import org.apereo.cas.support.saml.SamlUtils;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
+import org.apereo.cas.support.saml.util.Saml20ObjectBuilder;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.EncodingUtils;
+import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.opensaml.saml.saml2.core.NameID;
+import org.opensaml.saml.saml2.core.NameIDType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -36,33 +38,40 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Tag("SAML")
-public class SamlIdPSingleLogoutServiceMessageHandlerTests extends BaseSamlIdPConfigurationTests {
+@Tag("SAMLLogout")
+class SamlIdPSingleLogoutServiceMessageHandlerTests extends BaseSamlIdPConfigurationTests {
     @Autowired
     @Qualifier("samlSingleLogoutServiceMessageHandler")
     private SingleLogoutServiceMessageHandler samlSingleLogoutServiceMessageHandler;
 
     @Autowired
     @Qualifier("samlIdPLogoutResponseObjectBuilder")
-    private SamlIdPLogoutResponseObjectBuilder samlIdPLogoutResponseObjectBuilder;
+    private Saml20ObjectBuilder samlIdPLogoutResponseObjectBuilder;
     
     private SamlRegisteredService samlRegisteredService;
 
     @BeforeEach
-    public void beforeEach() {
-        this.samlRegisteredService = getSamlRegisteredServiceForTestShib();
+    void beforeEach() {
+        samlRegisteredService = getSamlRegisteredServiceForTestShib();
         servicesManager.save(samlRegisteredService);
 
         val service = new SamlRegisteredService();
         service.setName("Mocky");
         service.setServiceId("https://mocky.io");
-        service.setId(101);
+        service.setId(RandomUtils.nextInt());
         service.setMetadataLocation("classpath:metadata/testshib-providers.xml");
         servicesManager.save(service);
+
+        val registeredService = new SamlRegisteredService();
+        registeredService.setName("MockySoap");
+        registeredService.setServiceId("urn:soap:slo:example");
+        registeredService.setId(RandomUtils.nextInt());
+        registeredService.setMetadataLocation("classpath:metadata/testshib-providers.xml");
+        servicesManager.save(registeredService);
     }
 
     @Test
-    public void verifySupports() {
+    void verifySupports() {
         val service = RegisteredServiceTestUtils.getService(samlRegisteredService.getServiceId());
         service.getAttributes().put(SamlProtocolConstants.PARAMETER_ENTITY_ID, CollectionUtils.wrapList(samlRegisteredService.getServiceId()));
         val ctx = SingleLogoutExecutionRequest.builder().ticketGrantingTicket(new MockTicketGrantingTicket("casuser")).build();
@@ -71,7 +80,7 @@ public class SamlIdPSingleLogoutServiceMessageHandlerTests extends BaseSamlIdPCo
     }
 
     @Test
-    public void verifySendByPost() {
+    void verifySendByPost() {
         val service = RegisteredServiceTestUtils.getService(samlRegisteredService.getServiceId());
         service.getAttributes().put(SamlProtocolConstants.PARAMETER_ENTITY_ID, CollectionUtils.wrapList(samlRegisteredService.getServiceId()));
 
@@ -81,7 +90,7 @@ public class SamlIdPSingleLogoutServiceMessageHandlerTests extends BaseSamlIdPCo
     }
 
     @Test
-    public void verifyNoSaml() {
+    void verifyNoSaml() {
         val registeredService = getSamlRegisteredServiceForTestShib();
         servicesManager.save(registeredService);
         val service = RegisteredServiceTestUtils.getService(registeredService.getServiceId());
@@ -92,7 +101,7 @@ public class SamlIdPSingleLogoutServiceMessageHandlerTests extends BaseSamlIdPCo
     }
 
     @Test
-    public void verifySendByRedirect() {
+    void verifySendByRedirect() {
         val service = RegisteredServiceTestUtils.getService("https://mocky.io");
         service.getAttributes().put(SamlProtocolConstants.PARAMETER_ENTITY_ID, CollectionUtils.wrapList(samlRegisteredService.getServiceId()));
         val result = samlSingleLogoutServiceMessageHandler.handle(service, "ST-1234567890",
@@ -101,7 +110,7 @@ public class SamlIdPSingleLogoutServiceMessageHandlerTests extends BaseSamlIdPCo
     }
 
     @Test
-    public void verifySkipLogoutForOriginator() throws Exception {
+    void verifySkipLogoutForOriginator() throws Throwable {
         val service = RegisteredServiceTestUtils.getService("https://mocky.io");
         service.getAttributes().put(SamlProtocolConstants.PARAMETER_ENTITY_ID, CollectionUtils.wrapList(samlRegisteredService.getServiceId()));
         
@@ -112,7 +121,7 @@ public class SamlIdPSingleLogoutServiceMessageHandlerTests extends BaseSamlIdPCo
             "https://github.com/apereo/cas",
             samlIdPLogoutResponseObjectBuilder.newIssuer(service.getId()),
             UUID.randomUUID().toString(),
-            samlIdPLogoutResponseObjectBuilder.getNameID(NameID.EMAIL, "cas@example.org"));
+            samlIdPLogoutResponseObjectBuilder.newNameID(NameIDType.EMAIL, "cas@example.org"));
         try (val writer = SamlUtils.transformSamlObject(openSamlConfigBean, logoutRequest)) {
             val encodedRequest = EncodingUtils.encodeBase64(writer.toString().getBytes(StandardCharsets.UTF_8));
             WebUtils.putSingleLogoutRequest(request, encodedRequest);
@@ -128,17 +137,9 @@ public class SamlIdPSingleLogoutServiceMessageHandlerTests extends BaseSamlIdPCo
     }
 
     @Test
-    public void verifySoap() {
+    void verifySoap() {
         val service = RegisteredServiceTestUtils.getService("urn:soap:slo:example");
-
-        val registeredService = new SamlRegisteredService();
-        registeredService.setName("MockySoap");
-        registeredService.setServiceId(service.getId());
-        registeredService.setId(101);
-        registeredService.setMetadataLocation("classpath:metadata/testshib-providers.xml");
-        servicesManager.save(registeredService);
-        service.getAttributes().put(SamlProtocolConstants.PARAMETER_ENTITY_ID, CollectionUtils.wrapList(registeredService.getServiceId()));
-
+        service.getAttributes().put(SamlProtocolConstants.PARAMETER_ENTITY_ID, CollectionUtils.wrapList(service.getId()));
         val result = samlSingleLogoutServiceMessageHandler.handle(service, "ST-1234567890",
             SingleLogoutExecutionRequest.builder().ticketGrantingTicket(new MockTicketGrantingTicket("casuser")).build());
         assertFalse(result.isEmpty());

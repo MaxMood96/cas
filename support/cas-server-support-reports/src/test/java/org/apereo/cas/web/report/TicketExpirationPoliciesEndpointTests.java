@@ -23,15 +23,15 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@TestPropertySource(properties = "management.endpoint.ticketExpirationPolicies.enabled=true")
+@TestPropertySource(properties = "management.endpoint.ticketExpirationPolicies.access=UNRESTRICTED")
 @Tag("ActuatorEndpoint")
-public class TicketExpirationPoliciesEndpointTests extends AbstractCasEndpointTests {
+class TicketExpirationPoliciesEndpointTests extends AbstractCasEndpointTests {
     @Autowired
     @Qualifier("ticketExpirationPoliciesEndpoint")
     private TicketExpirationPoliciesEndpoint ticketExpirationPoliciesEndpoint;
 
     @Test
-    public void verifyOperation() throws Exception {
+    void verifyOperation() {
         val service = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString());
         service.setTicketGrantingTicketExpirationPolicy(new DefaultRegisteredServiceTicketGrantingTicketExpirationPolicy(10));
         service.setServiceTicketExpirationPolicy(new DefaultRegisteredServiceServiceTicketExpirationPolicy(10, "PT10S"));
@@ -40,7 +40,7 @@ public class TicketExpirationPoliciesEndpointTests extends AbstractCasEndpointTe
         servicesManager.save(service);
 
         assertFalse(ticketExpirationPoliciesEndpoint.getExpirationPolicyBuilders().isEmpty());
-        assertNotNull(ticketExpirationPoliciesEndpoint.getServicesManager());
+        assertNotNull(ticketExpirationPoliciesEndpoint.getServicesManagerProvider().getObject());
         assertNotNull(ticketExpirationPoliciesEndpoint.getWebApplicationServiceFactory());
         var results = ticketExpirationPoliciesEndpoint.handle(service.getServiceId());
         assertFalse(results.isEmpty());

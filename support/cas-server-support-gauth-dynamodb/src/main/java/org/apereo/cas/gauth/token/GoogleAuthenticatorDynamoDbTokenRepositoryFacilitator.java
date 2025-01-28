@@ -5,13 +5,13 @@ import org.apereo.cas.configuration.model.support.mfa.gauth.DynamoDbGoogleAuthen
 import org.apereo.cas.dynamodb.DynamoDbQueryBuilder;
 import org.apereo.cas.dynamodb.DynamoDbTableUtils;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -49,22 +50,23 @@ public class GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator {
 
     private final DynamoDbClient amazonDynamoDBClient;
 
-    @SneakyThrows
     private static Map<String, AttributeValue> buildTableAttributeValuesMap(final OneTimeToken record) {
         val values = new HashMap<String, AttributeValue>();
         values.put(ColumnNames.ID.getColumnName(), AttributeValue.builder().n(String.valueOf(record.getId())).build());
-        values.put(ColumnNames.USERID.getColumnName(), AttributeValue.builder().s(record.getUserId().toLowerCase()).build());
-        values.put(ColumnNames.TOKEN.getColumnName(), AttributeValue.builder().n(String.valueOf(record.getToken()).toLowerCase()).build());
+        values.put(ColumnNames.USERID.getColumnName(), AttributeValue.builder().s(record.getUserId().toLowerCase(Locale.ENGLISH)).build());
+        values.put(ColumnNames.TOKEN.getColumnName(), AttributeValue.builder().n(String.valueOf(record.getToken()).toLowerCase(Locale.ENGLISH)).build());
         val time = record.getIssuedDateTime().toEpochSecond(ZoneOffset.UTC);
         values.put(ColumnNames.CREATION_TIME.getColumnName(), AttributeValue.builder().n(String.valueOf(time)).build());
-        values.put(ColumnNames.BODY.getColumnName(), AttributeValue.builder().s(MAPPER.writeValueAsString(record)).build());
+        values.put(ColumnNames.BODY.getColumnName(),
+            FunctionUtils.doUnchecked(() -> AttributeValue.builder().s(MAPPER.writeValueAsString(record)).build()));
         LOGGER.debug("Created attribute values [{}] based on [{}]", values, record);
         return values;
     }
 
-    @SneakyThrows
     private static GoogleAuthenticatorToken extractAttributeValuesFrom(final Map<String, AttributeValue> item) {
-        return MAPPER.readValue(item.get(ColumnNames.BODY.getColumnName()).s(), new TypeReference<>() {
+        return FunctionUtils.doUnchecked(() -> {
+            val bodyValue = item.get(ColumnNames.BODY.getColumnName());
+            return bodyValue != null ? MAPPER.readValue(bodyValue.s(), new TypeReference<>() {}) : null;
         });
     }
 
@@ -73,16 +75,15 @@ public class GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator {
      *
      * @param deleteTables delete existing tables
      */
-    @SneakyThrows
     public void createTable(final boolean deleteTables) {
-        DynamoDbTableUtils.createTable(amazonDynamoDBClient, dynamoDbProperties,
+        FunctionUtils.doUnchecked(__ -> DynamoDbTableUtils.createTable(amazonDynamoDBClient, dynamoDbProperties,
             dynamoDbProperties.getTokenTableName(), deleteTables,
             List.of(AttributeDefinition.builder()
                 .attributeName(ColumnNames.ID.getColumnName())
                 .attributeType(ScalarAttributeType.N).build()),
             List.of(KeySchemaElement.builder()
                 .attributeName(ColumnNames.ID.getColumnName())
-                .keyType(KeyType.HASH).build()));
+                .keyType(KeyType.HASH).build())));
     }
 
     /**
@@ -96,7 +97,7 @@ public class GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator {
         val query = List.of(
             DynamoDbQueryBuilder.builder()
                 .key(ColumnNames.USERID.getColumnName())
-                .attributeValue(List.of(AttributeValue.builder().s(uid.toLowerCase()).build()))
+                .attributeValue(List.of(AttributeValue.builder().s(uid.toLowerCase(Locale.ENGLISH)).build()))
                 .operator(ComparisonOperator.EQ)
                 .build(),
             DynamoDbQueryBuilder.builder()
@@ -112,13 +113,15 @@ public class GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator {
      * Store.
      *
      * @param token the token
+     * @return the one time token
      */
-    public void store(final OneTimeToken token) {
+    public OneTimeToken store(final OneTimeToken token) {
         val values = buildTableAttributeValuesMap(token);
         val putItemRequest = PutItemRequest.builder().tableName(dynamoDbProperties.getTokenTableName()).item(values).build();
         LOGGER.debug("Submitting put request [{}] for record [{}]", putItemRequest, token);
         val putItemResult = amazonDynamoDBClient.putItem(putItemRequest);
         LOGGER.debug("Record added with result [{}]", putItemResult);
+        return token;
     }
 
     /**
@@ -144,7 +147,7 @@ public class GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator {
         val query = List.of(
             DynamoDbQueryBuilder.builder()
                 .key(ColumnNames.USERID.getColumnName())
-                .attributeValue(List.of(AttributeValue.builder().s(uid.toLowerCase()).build()))
+                .attributeValue(List.of(AttributeValue.builder().s(uid.toLowerCase(Locale.ENGLISH)).build()))
                 .operator(ComparisonOperator.EQ)
                 .build());
         return getRecordsByKeys(query).size();
@@ -192,7 +195,7 @@ public class GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator {
         val query = List.of(
             DynamoDbQueryBuilder.builder()
                 .key(ColumnNames.USERID.getColumnName())
-                .attributeValue(List.of(AttributeValue.builder().s(uid.toLowerCase()).build()))
+                .attributeValue(List.of(AttributeValue.builder().s(uid.toLowerCase(Locale.ENGLISH)).build()))
                 .operator(ComparisonOperator.EQ)
                 .build());
         val records = getRecordsByKeys(query);
@@ -219,7 +222,7 @@ public class GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator {
         val query = List.of(
             DynamoDbQueryBuilder.builder()
                 .key(ColumnNames.USERID.getColumnName())
-                .attributeValue(List.of(AttributeValue.builder().s(uid.toLowerCase()).build()))
+                .attributeValue(List.of(AttributeValue.builder().s(uid.toLowerCase(Locale.ENGLISH)).build()))
                 .operator(ComparisonOperator.EQ)
                 .build(),
             DynamoDbQueryBuilder.builder()
@@ -257,16 +260,18 @@ public class GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator {
                     .build());
         val records = getRecordsByKeys(query);
 
-        records.forEach(record -> {
-            val del = DeleteItemRequest.builder()
+        records
+            .stream()
+            .map(record -> DeleteItemRequest.builder()
                 .tableName(dynamoDbProperties.getTokenTableName())
                 .key(CollectionUtils.wrap(ColumnNames.ID.getColumnName(),
                     AttributeValue.builder().n(String.valueOf(record.getId())).build()))
-                .build();
-            LOGGER.debug("Submitting delete request [{}] since [{}]", del, epoch);
-            val res = amazonDynamoDBClient.deleteItem(del);
-            LOGGER.debug("Delete request came back with result [{}]", res);
-        });
+                .build())
+            .forEach(del -> {
+                LOGGER.debug("Submitting delete request [{}] since [{}]", del, epoch);
+                val res = amazonDynamoDBClient.deleteItem(del);
+                LOGGER.debug("Delete request came back with result [{}]", res);
+            });
     }
 
     /**
@@ -299,7 +304,7 @@ public class GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator {
         private final String columnName;
     }
 
-    private Set<GoogleAuthenticatorToken> getRecordsByKeys(final List<DynamoDbQueryBuilder> queries) {
+    private Set<GoogleAuthenticatorToken> getRecordsByKeys(final List<? extends DynamoDbQueryBuilder> queries) {
         return DynamoDbTableUtils.getRecordsByKeys(amazonDynamoDBClient, dynamoDbProperties.getTokenTableName(),
                 queries, GoogleAuthenticatorDynamoDbTokenRepositoryFacilitator::extractAttributeValuesFrom)
             .collect(Collectors.toSet());

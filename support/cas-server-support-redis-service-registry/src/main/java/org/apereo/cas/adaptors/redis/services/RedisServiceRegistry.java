@@ -1,6 +1,6 @@
 package org.apereo.cas.adaptors.redis.services;
 
-import org.apereo.cas.redis.core.util.RedisUtils;
+import org.apereo.cas.redis.core.CasRedisTemplate;
 import org.apereo.cas.services.AbstractServiceRegistry;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.ServiceRegistryListener;
@@ -12,8 +12,8 @@ import org.apereo.cas.util.LoggingUtils;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -32,79 +32,13 @@ public class RedisServiceRegistry extends AbstractServiceRegistry {
 
     private static final String CAS_SERVICE_PREFIX = RegisteredService.class.getSimpleName() + ':';
 
-    private final RedisTemplate<String, RegisteredService> template;
-
-    private final long scanCount;
+    private final CasRedisTemplate<String, RegisteredService> template;
 
     public RedisServiceRegistry(final ConfigurableApplicationContext applicationContext,
-                                final RedisTemplate<String, RegisteredService> template,
-                                final Collection<ServiceRegistryListener> serviceRegistryListeners,
-                                final long scanCount) {
+                                final CasRedisTemplate<String, RegisteredService> template,
+                                final Collection<ServiceRegistryListener> serviceRegistryListeners) {
         super(applicationContext, serviceRegistryListeners);
         this.template = template;
-        this.scanCount = scanCount;
-    }
-                          
-    @Override
-    public RegisteredService save(final RegisteredService rs) {
-        try {
-            LOGGER.trace("Saving registered service [{}]", rs);
-            val redisKey = getRegisteredServiceRedisKey(rs);
-            invokeServiceRegistryListenerPreSave(rs);
-            this.template.boundValueOps(redisKey).set(rs);
-            LOGGER.trace("Saved registered service [{}]", rs);
-            publishEvent(new CasRegisteredServiceSavedEvent(this, rs));
-        } catch (final Exception e) {
-            LoggingUtils.error(LOGGER, e);
-        }
-        return rs;
-    }
-
-    @Override
-    public boolean delete(final RegisteredService registeredService) {
-        try {
-            LOGGER.trace("Deleting registered service [{}]", registeredService);
-            val redisKey = getRegisteredServiceRedisKey(registeredService);
-            this.template.delete(redisKey);
-            LOGGER.trace("Deleted registered service [{}]", registeredService);
-            publishEvent(new CasRegisteredServiceDeletedEvent(this, registeredService));
-            return true;
-        } catch (final Exception e) {
-            LoggingUtils.error(LOGGER, e);
-        }
-        return false;
-    }
-
-    @Override
-    public void deleteAll() {
-        getRegisteredServiceKeys().forEach(this.template::delete);
-
-    }
-
-    @Override
-    public long size() {
-        return getRegisteredServiceKeys().count();
-    }
-
-    @Override
-    public Collection<RegisteredService> load() {
-        val list = getRegisteredServiceKeys()
-            .map(redisKey -> this.template.boundValueOps(redisKey).get())
-            .filter(Objects::nonNull)
-            .map(this::invokeServiceRegistryListenerPostLoad)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
-        LOGGER.trace("Loaded registered services [{}]", list);
-        list.forEach(s -> publishEvent(new CasRegisteredServiceLoadedEvent(this, s)));
-        return list;
-    }
-
-    @Override
-    public RegisteredService findServiceById(final long id) {
-        val redisKey = getRegisteredServiceRedisKey(id);
-        val ops = this.template.boundValueOps(redisKey);
-        LOGGER.trace("Locating service by identifier [{}] using key [{}]", id, redisKey);
-        return ops.get();
     }
 
     private static String getRegisteredServiceRedisKey(final RegisteredService registeredService) {
@@ -119,7 +53,77 @@ public class RedisServiceRegistry extends AbstractServiceRegistry {
         return CAS_SERVICE_PREFIX + '*';
     }
 
+    @Override
+    public RegisteredService save(final RegisteredService rs) {
+        try {
+            rs.assignIdIfNecessary();
+            LOGGER.trace("Saving registered service [{}]", rs);
+            val redisKey = getRegisteredServiceRedisKey(rs);
+            val clientInfo = ClientInfoHolder.getClientInfo();
+            invokeServiceRegistryListenerPreSave(rs);
+            template.boundValueOps(redisKey).set(rs);
+            LOGGER.trace("Saved registered service [{}]", rs);
+            publishEvent(new CasRegisteredServiceSavedEvent(this, rs, clientInfo));
+        } catch (final Exception e) {
+            LoggingUtils.error(LOGGER, e);
+        }
+        return rs;
+    }
+
+    @Override
+    public boolean delete(final RegisteredService registeredService) {
+        try {
+            LOGGER.trace("Deleting registered service [{}]", registeredService);
+            val redisKey = getRegisteredServiceRedisKey(registeredService);
+            val clientInfo = ClientInfoHolder.getClientInfo();
+            this.template.delete(redisKey);
+            LOGGER.trace("Deleted registered service [{}]", registeredService);
+            publishEvent(new CasRegisteredServiceDeletedEvent(this, registeredService, clientInfo));
+            return true;
+        } catch (final Exception e) {
+            LoggingUtils.error(LOGGER, e);
+        }
+        return false;
+    }
+
+    @Override
+    public void deleteAll() {
+        try (val keys = getRegisteredServiceKeys()) {
+            keys.forEach(this.template::delete);
+        }
+    }
+
+    @Override
+    public long size() {
+        return getRegisteredServiceKeys().count();
+    }
+
+    @Override
+    public Collection<RegisteredService> load() {
+        val clientInfo = ClientInfoHolder.getClientInfo();
+
+        try (val keys = getRegisteredServiceKeys()) {
+            val list = keys
+                .map(redisKey -> this.template.boundValueOps(redisKey).get())
+                .filter(Objects::nonNull)
+                .map(this::invokeServiceRegistryListenerPostLoad)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+            LOGGER.trace("Loaded registered services [{}]", list);
+            list.forEach(service -> publishEvent(new CasRegisteredServiceLoadedEvent(this, service, clientInfo)));
+            return list;
+        }
+    }
+
+    @Override
+    public RegisteredService findServiceById(final long id) {
+        val redisKey = getRegisteredServiceRedisKey(id);
+        val ops = this.template.boundValueOps(redisKey);
+        LOGGER.trace("Locating service by identifier [{}] using key [{}]", id, redisKey);
+        return ops.get();
+    }
+
     private Stream<String> getRegisteredServiceKeys() {
-        return RedisUtils.keys(this.template, getPatternRegisteredServiceRedisKey(), this.scanCount);
+        return template.scan(getPatternRegisteredServiceRedisKey());
     }
 }

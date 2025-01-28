@@ -1,4 +1,11 @@
 description = "Apereo CAS YubiKey MongoDb Support"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "YubiKey Multifactor Authentication",
+            title: "YubiKey Support via MongoDb"
+    ]
+}
 dependencies {
     implementation libraries.mongo
     implementation libraries.yubicoapi
@@ -8,6 +15,7 @@ dependencies {
     implementation project(":support:cas-server-support-yubikey")
     implementation project(":support:cas-server-support-mongo-core")
     implementation project(":core:cas-server-core-webflow")
+    implementation project(":core:cas-server-core-multitenancy")
     implementation project(":core:cas-server-core-authentication-api")
     implementation project(":core:cas-server-core-webflow-mfa")
     implementation project(":core:cas-server-core-util-api")
@@ -21,6 +29,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core-notifications")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-cookie")
     testImplementation project(":core:cas-server-core-configuration")
@@ -31,6 +40,7 @@ dependencies {
 
     testImplementation project(path: ":support:cas-server-support-yubikey-core", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-yubikey", configuration: "tests")
+    testImplementation project(path: ":support:cas-server-support-person-directory-core", configuration: "tests")
 
     testImplementation project(path: ":core:cas-server-core-authentication", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")

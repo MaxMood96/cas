@@ -1,9 +1,10 @@
 package org.apereo.cas.zookeeper;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.function.FunctionUtils;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -14,18 +15,16 @@ import org.apache.zookeeper.ZooDefs;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.cloud.zookeeper.config.ZookeeperConfigAutoConfiguration;
 import org.springframework.cloud.zookeeper.config.ZookeeperConfigBootstrapConfiguration;
 import org.springframework.retry.annotation.EnableRetry;
-
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -34,8 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
     ZookeeperConfigBootstrapConfiguration.class,
     ZookeeperConfigAutoConfiguration.class
 }, properties = {
@@ -48,9 +47,10 @@ import static org.junit.jupiter.api.Assertions.*;
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("ZooKeeper")
-@EnabledIfPortOpen(port = 2181)
+@ExtendWith(CasTestExtension.class)
+@EnabledIfListeningOnPort(port = 2181)
 @EnableRetry
-public class ZooKeeperCloudConfigBootstrapConfigurationTests {
+class ZooKeeperCloudConfigBootstrapConfigurationTests {
     @Autowired
     @Qualifier("curatorFramework")
     private CuratorFramework curatorFramework;
@@ -82,7 +82,7 @@ public class ZooKeeperCloudConfigBootstrapConfigurationTests {
     }
 
     @Test
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val zk = curatorFramework.getZookeeperClient().getZooKeeper();
         assertNotNull(zk);
         assertEquals("apereocas", casProperties.getServer().getName());

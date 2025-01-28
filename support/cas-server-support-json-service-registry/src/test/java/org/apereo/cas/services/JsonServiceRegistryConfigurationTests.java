@@ -1,19 +1,13 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.JsonServiceRegistryConfiguration;
-import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
-
+import org.apereo.cas.config.CasJsonServiceRegistryAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -23,23 +17,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    JsonServiceRegistryConfiguration.class
+    CasJsonServiceRegistryAutoConfiguration.class,
+    AbstractServiceRegistryTests.SharedTestConfiguration.class
 },
-properties = "cas.service-registry.json.location=classpath:/services")
+    properties = "cas.service-registry.json.location=classpath:/services")
 @Tag("FileSystem")
-public class JsonServiceRegistryConfigurationTests {
+@ExtendWith(CasTestExtension.class)
+class JsonServiceRegistryConfigurationTests {
     @Autowired
     @Qualifier("jsonServiceRegistry")
     private ServiceRegistry serviceRegistry;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(this.serviceRegistry);
     }
 }

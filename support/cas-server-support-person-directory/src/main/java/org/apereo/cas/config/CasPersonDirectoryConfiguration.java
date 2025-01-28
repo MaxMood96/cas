@@ -1,43 +1,52 @@
 package org.apereo.cas.config;
 
 import org.apereo.cas.authentication.CoreAuthenticationUtils;
+import org.apereo.cas.authentication.attribute.AbstractAggregatingDefaultQueryPersonAttributeDao;
 import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
-import org.apereo.cas.authentication.attribute.DefaultAttributeDefinitionStore;
+import org.apereo.cas.authentication.attribute.AttributeRepositoryResolver;
+import org.apereo.cas.authentication.attribute.MergingPersonAttributeDaoImpl;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.principal.PrincipalResolutionExecutionPlanConfigurer;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
+import org.apereo.cas.authentication.principal.merger.AttributeMerger;
+import org.apereo.cas.authentication.principal.resolvers.PersonDirectoryPrincipalResolver;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.configuration.support.Beans;
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.configuration.model.core.authentication.PrincipalAttributesCoreProperties;
+import org.apereo.cas.persondir.CascadingPersonAttributeDao;
+import org.apereo.cas.persondir.DefaultAttributeRepositoryResolver;
 import org.apereo.cas.persondir.DefaultPersonDirectoryAttributeRepositoryPlan;
 import org.apereo.cas.persondir.PersonDirectoryAttributeRepositoryCustomizer;
 import org.apereo.cas.persondir.PersonDirectoryAttributeRepositoryPlan;
 import org.apereo.cas.persondir.PersonDirectoryAttributeRepositoryPlanConfigurer;
+import org.apereo.cas.persondir.cache.CachingPersonAttributeDaoImpl;
+import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.function.FunctionUtils;
-import org.apereo.cas.util.spring.BeanContainer;
-
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
+import org.apereo.cas.web.report.CasPersonDirectoryEndpoint;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.apereo.services.persondir.support.AbstractAggregatingDefaultQueryPersonAttributeDao;
-import org.apereo.services.persondir.support.CachingPersonAttributeDaoImpl;
-import org.apereo.services.persondir.support.CascadingPersonAttributeDao;
-import org.apereo.services.persondir.support.MergingPersonAttributeDaoImpl;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.actuate.autoconfigure.endpoint.condition.ConditionalOnAvailableEndpoint;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -49,30 +58,29 @@ import java.util.stream.Collectors;
  * @author Misagh Moayyed
  * @since 5.0.0
  */
-@Configuration(value = "CasPersonDirectoryConfiguration", proxyBeanMethods = false)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Slf4j
-public class CasPersonDirectoryConfiguration {
-
-    @Configuration(value = "CasPersonDirectoryAttributeDefinitionConfiguration", proxyBeanMethods = false)
-    @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasPersonDirectoryAttributeDefinitionConfiguration {
-
-        @ConditionalOnMissingBean(name = AttributeDefinitionStore.BEAN_NAME)
-        @Bean
-        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public AttributeDefinitionStore attributeDefinitionStore(final CasConfigurationProperties casProperties) throws Exception {
-            val resource = casProperties.getAuthn().getAttributeRepository().getAttributeDefinitionStore().getJson().getLocation();
-            val store = new DefaultAttributeDefinitionStore(resource);
-            store.setScope(casProperties.getServer().getScope());
-            return store;
-        }
-
-    }
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.PersonDirectory)
+@Configuration(value = "CasPersonDirectoryConfiguration", proxyBeanMethods = false)
+class CasPersonDirectoryConfiguration {
 
     @Configuration(value = "CasPersonDirectoryPrincipalResolutionConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasPersonDirectoryPrincipalResolutionConfiguration {
+    static class CasPersonDirectoryPrincipalResolutionConfiguration {
+
+        @Bean
+        @ConditionalOnAvailableEndpoint
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public CasPersonDirectoryEndpoint casPersonDirectoryEndpoint(
+            @Autowired
+            @Qualifier("cachingAttributeRepository")
+            final ObjectProvider<PersonAttributeDao> cachingAttributeRepository,
+            final ConfigurableApplicationContext applicationContext,
+            final CasConfigurationProperties casProperties) {
+            return new CasPersonDirectoryEndpoint(casProperties, applicationContext, cachingAttributeRepository);
+        }
+
+
         @ConditionalOnMissingBean(name = "personDirectoryPrincipalFactory")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -84,25 +92,27 @@ public class CasPersonDirectoryConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "personDirectoryAttributeRepositoryPrincipalResolver")
         public PrincipalResolver personDirectoryAttributeRepositoryPrincipalResolver(
+            @Qualifier(AttributeRepositoryResolver.BEAN_NAME) final AttributeRepositoryResolver attributeRepositoryResolver,
+            final ConfigurableApplicationContext applicationContext,
+            @Qualifier(AttributeDefinitionStore.BEAN_NAME) final AttributeDefinitionStore attributeDefinitionStore,
+            @Qualifier(ServicesManager.BEAN_NAME) final ServicesManager servicesManager,
+            @Qualifier("attributeRepositoryAttributeMerger") final AttributeMerger attributeRepositoryAttributeMerger,
             final CasConfigurationProperties casProperties,
-            @Qualifier("personDirectoryPrincipalFactory")
-            final PrincipalFactory personDirectoryPrincipalFactory,
-            @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
-            final IPersonAttributeDao attributeRepository) {
+            @Qualifier("personDirectoryPrincipalFactory") final PrincipalFactory personDirectoryPrincipalFactory,
+            @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY) final PersonAttributeDao attributeRepository) {
             val personDirectory = casProperties.getPersonDirectory();
-            val attributeMerger = CoreAuthenticationUtils.getAttributeMerger(casProperties.getAuthn().getAttributeRepository().getCore().getMerger());
-            return CoreAuthenticationUtils.newPersonDirectoryPrincipalResolver(personDirectoryPrincipalFactory,
-                attributeRepository, attributeMerger, personDirectory);
+            return PersonDirectoryPrincipalResolver.newPersonDirectoryPrincipalResolver(
+                applicationContext, personDirectoryPrincipalFactory,
+                attributeRepository, attributeRepositoryAttributeMerger,
+                servicesManager, attributeDefinitionStore, attributeRepositoryResolver, personDirectory);
         }
 
         @ConditionalOnMissingBean(name = "principalResolutionExecutionPlanConfigurer")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public PrincipalResolutionExecutionPlanConfigurer principalResolutionExecutionPlanConfigurer(
-            @Qualifier("personDirectoryAttributeRepositoryPlan")
-            final PersonDirectoryAttributeRepositoryPlan personDirectoryAttributeRepositoryPlan,
-            @Qualifier("personDirectoryAttributeRepositoryPrincipalResolver")
-            final PrincipalResolver personDirectoryAttributeRepositoryPrincipalResolver) {
+            @Qualifier("personDirectoryAttributeRepositoryPlan") final PersonDirectoryAttributeRepositoryPlan personDirectoryAttributeRepositoryPlan,
+            @Qualifier("personDirectoryAttributeRepositoryPrincipalResolver") final PrincipalResolver personDirectoryAttributeRepositoryPrincipalResolver) {
             return plan -> {
                 if (personDirectoryAttributeRepositoryPlan.isEmpty()) {
                     LOGGER.debug("Attribute repository sources are not available for person-directory principal resolution");
@@ -116,7 +126,7 @@ public class CasPersonDirectoryConfiguration {
 
     @Configuration(value = "CasPersonDirectoryAttributeRepositoryPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasPersonDirectoryAttributeRepositoryPlanConfiguration {
+    static class CasPersonDirectoryAttributeRepositoryPlanConfiguration {
         @ConditionalOnMissingBean(name = "personDirectoryAttributeRepositoryPlan")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -125,7 +135,7 @@ public class CasPersonDirectoryConfiguration {
             final ObjectProvider<List<PersonDirectoryAttributeRepositoryCustomizer>> customizers) {
             val plan = new DefaultPersonDirectoryAttributeRepositoryPlan(
                 Optional.ofNullable(customizers.getIfAvailable()).orElseGet(ArrayList::new));
-            configurers.forEach(c -> c.configureAttributeRepositoryPlan(plan));
+            configurers.forEach(cfg -> cfg.configureAttributeRepositoryPlan(plan));
             AnnotationAwareOrderComparator.sort(plan.getAttributeRepositories());
             LOGGER.trace("Final list of attribute repositories is [{}]", plan.getAttributeRepositories());
             return plan;
@@ -134,30 +144,34 @@ public class CasPersonDirectoryConfiguration {
 
     @Configuration(value = "CasPersonDirectoryAttributeRepositoryConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasPersonDirectoryAttributeRepositoryConfiguration {
+    static class CasPersonDirectoryAttributeRepositoryConfiguration {
         private static AbstractAggregatingDefaultQueryPersonAttributeDao getAggregateAttributeRepository(
             final CasConfigurationProperties casProperties) {
             val properties = casProperties.getAuthn().getAttributeRepository();
-            switch (properties.getCore().getAggregation()) {
-                case CASCADE:
-                    val dao = new CascadingPersonAttributeDao();
-                    dao.setAddOriginalAttributesToQuery(true);
-                    dao.setStopIfFirstDaoReturnsNull(true);
-                    return dao;
-                case MERGE:
-                default:
-                    return new MergingPersonAttributeDaoImpl();
+            if (properties.getCore().getAggregation() == PrincipalAttributesCoreProperties.AggregationStrategyTypes.CASCADE) {
+                val dao = new CascadingPersonAttributeDao();
+                dao.setAddOriginalAttributesToQuery(true);
+                dao.setStopIfFirstDaoReturnsNull(properties.getCore().isStopCascadingWhenNoInitialResults());
+                return dao;
             }
+            return new MergingPersonAttributeDaoImpl();
         }
 
+        @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        @ConditionalOnMissingBean(name = AttributeRepositoryResolver.BEAN_NAME)
+        public AttributeRepositoryResolver attributeRepositoryResolver(
+            final CasConfigurationProperties casProperties,
+            @Qualifier(ServicesManager.BEAN_NAME) final ServicesManager servicesManager) {
+            return new DefaultAttributeRepositoryResolver(servicesManager, casProperties);
+        }
 
         @Bean(name = {"cachingAttributeRepository", PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY})
         @ConditionalOnMissingBean(name = {"cachingAttributeRepository", PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY})
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public IPersonAttributeDao cachingAttributeRepository(
+        public PersonAttributeDao cachingAttributeRepository(
             final CasConfigurationProperties casProperties,
-            @Qualifier("aggregatingAttributeRepository")
-            final IPersonAttributeDao aggregatingAttributeRepository) {
+            @Qualifier("aggregatingAttributeRepository") final PersonAttributeDao aggregatingAttributeRepository) {
             val props = casProperties.getAuthn().getAttributeRepository().getCore();
             if (props.getExpirationTime() <= 0) {
                 LOGGER.warn("Attribute repository caching is disabled");
@@ -168,7 +182,7 @@ public class CasPersonDirectoryConfiguration {
             impl.setCacheNullResults(false);
             val userinfoCache = Caffeine.newBuilder()
                 .maximumSize(props.getMaximumCacheSize())
-                .expireAfterWrite(props.getExpirationTime(), TimeUnit.valueOf(props.getExpirationTimeUnit().toUpperCase()))
+                .expireAfterWrite(props.getExpirationTime(), TimeUnit.valueOf(props.getExpirationTimeUnit().toUpperCase(Locale.ENGLISH)))
                 .build();
             impl.setUserInfoCache((Map) userinfoCache.asMap());
             impl.setCachedPersonAttributesDao(aggregatingAttributeRepository);
@@ -177,22 +191,28 @@ public class CasPersonDirectoryConfiguration {
         }
 
         @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        @ConditionalOnMissingBean(name = "attributeRepositoryAttributeMerger")
+        public AttributeMerger attributeRepositoryAttributeMerger(final CasConfigurationProperties casProperties) {
+            return CoreAuthenticationUtils.getAttributeMerger(casProperties.getAuthn().getAttributeRepository().getCore().getMerger());
+        }
+
+        @Bean
         @ConditionalOnMissingBean(name = "aggregatingAttributeRepository")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public IPersonAttributeDao aggregatingAttributeRepository(
+        public PersonAttributeDao aggregatingAttributeRepository(
+            @Qualifier("attributeRepositoryAttributeMerger")
+            final AttributeMerger attributeRepositoryAttributeMerger,
             final CasConfigurationProperties casProperties,
             @Qualifier("personDirectoryAttributeRepositoryPlan")
             final PersonDirectoryAttributeRepositoryPlan personDirectoryAttributeRepositoryPlan) {
             val aggregate = getAggregateAttributeRepository(casProperties);
-
-            val properties = casProperties.getAuthn().getAttributeRepository();
-            val attributeMerger = CoreAuthenticationUtils.getAttributeMerger(properties.getCore().getMerger());
-            LOGGER.trace("Configured merging strategy for attribute sources is [{}]", attributeMerger);
-            aggregate.setMerger(attributeMerger);
+            aggregate.setAttributeMerger(attributeRepositoryAttributeMerger);
 
             val list = personDirectoryAttributeRepositoryPlan.getAttributeRepositories();
             aggregate.setPersonAttributeDaos(list);
 
+            val properties = casProperties.getAuthn().getAttributeRepository();
             aggregate.setRequireAll(properties.getCore().isRequireAllRepositorySources());
             if (list.isEmpty()) {
                 LOGGER.debug("No attribute repository sources are available/defined to merge together.");
@@ -212,58 +232,15 @@ public class CasPersonDirectoryConfiguration {
         }
 
         @Bean
+        @Lazy(false)
         public InitializingBean casPersonDirectoryInitializer(final CasConfigurationProperties casProperties) {
-            return () -> {
-                FunctionUtils.doIf(LOGGER.isInfoEnabled(), value -> {
-                    val stub = casProperties.getAuthn().getAttributeRepository().getStub();
-                    val attrs = stub.getAttributes();
-                    if (!attrs.isEmpty()) {
-                        LOGGER.info("Found and added static attributes [{}] to the list of candidate attribute repositories", attrs.keySet());
-                    }
-                }).accept(null);
-            };
-        }
-    }
-
-    @Configuration(value = "CasPersonDirectoryStaticSubAttributeRepositoryConfiguration", proxyBeanMethods = false)
-    @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasPersonDirectoryStaticSubAttributeRepositoryConfiguration {
-
-        @Configuration(value = "StubAttributeRepositoryConfiguration", proxyBeanMethods = false)
-        @EnableConfigurationProperties(CasConfigurationProperties.class)
-        public static class StubAttributeRepositoryConfiguration {
-            @ConditionalOnMissingBean(name = "stubAttributeRepositories")
-            @Bean
-            @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-            public BeanContainer<IPersonAttributeDao> stubAttributeRepositories(final CasConfigurationProperties casProperties) {
-                val list = new ArrayList<IPersonAttributeDao>();
+            return () -> FunctionUtils.doIf(LOGGER.isInfoEnabled(), value -> {
                 val stub = casProperties.getAuthn().getAttributeRepository().getStub();
                 val attrs = stub.getAttributes();
                 if (!attrs.isEmpty()) {
-                    val dao = Beans.newStubAttributeRepository(casProperties.getAuthn().getAttributeRepository());
-                    list.add(dao);
+                    LOGGER.info("Found and added static attributes [{}] to the list of candidate attribute repositories", attrs.keySet());
                 }
-                return BeanContainer.of(list);
-            }
-        }
-
-        @Configuration(value = "StubAttributeRepositoryPlanConfiguration", proxyBeanMethods = false)
-        @EnableConfigurationProperties(CasConfigurationProperties.class)
-        public static class StubAttributeRepositoryPlanConfiguration {
-            @Bean
-            @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-            @ConditionalOnMissingBean(name = "stubPersonDirectoryAttributeRepositoryPlanConfigurer")
-            public PersonDirectoryAttributeRepositoryPlanConfigurer stubPersonDirectoryAttributeRepositoryPlanConfigurer(
-                @Qualifier("stubAttributeRepositories")
-                final BeanContainer<IPersonAttributeDao> stubAttributeRepositories) {
-                return plan -> {
-                    val results = stubAttributeRepositories.toList()
-                        .stream()
-                        .filter(repo -> (Boolean) repo.getTags().get("state"))
-                        .collect(Collectors.toList());
-                    plan.registerAttributeRepositories(results);
-                };
-            }
+            }).accept(null);
         }
     }
 }

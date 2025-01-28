@@ -6,11 +6,11 @@ import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
 
 import lombok.val;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.core5.net.URIBuilder;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.pac4j.core.context.JEEContext;
 import org.pac4j.core.http.url.UrlResolver;
+import org.pac4j.jee.context.JEEContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -26,20 +26,21 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Tag("OIDC")
-public class OidcCasCallbackUrlResolverTests extends AbstractOidcTests {
+@Tag("OIDCWeb")
+class OidcCasCallbackUrlResolverTests extends AbstractOidcTests {
     @Autowired
     @Qualifier("casCallbackUrlResolver")
     private UrlResolver casCallbackUrlResolver;
 
     @Test
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
         request.addParameter(OAuth20Constants.CLIENT_ID, UUID.randomUUID().toString());
         request.addParameter(OAuth20Constants.STATE, UUID.randomUUID().toString());
         request.addParameter(OidcConstants.UI_LOCALES, "de");
         request.addParameter(OidcConstants.MAX_AGE, "100");
+        request.addParameter(OidcConstants.REQUEST_URI, UUID.randomUUID().toString());
 
         val output = casCallbackUrlResolver.compute(
             OAuth20Utils.casOAuthCallbackUrl(casProperties.getServer().getPrefix()),
@@ -51,6 +52,7 @@ public class OidcCasCallbackUrlResolverTests extends AbstractOidcTests {
         assertTrue(uri.getQueryParams().stream().anyMatch(p -> p.getName().equalsIgnoreCase(OAuth20Constants.STATE)));
         assertTrue(uri.getQueryParams().stream().anyMatch(p -> p.getName().equalsIgnoreCase(OidcConstants.UI_LOCALES)));
         assertTrue(uri.getQueryParams().stream().anyMatch(p -> p.getName().equalsIgnoreCase(OidcConstants.MAX_AGE)));
+        assertTrue(uri.getQueryParams().stream().anyMatch(p -> p.getName().equalsIgnoreCase(OidcConstants.REQUEST_URI)));
     }
 
 }

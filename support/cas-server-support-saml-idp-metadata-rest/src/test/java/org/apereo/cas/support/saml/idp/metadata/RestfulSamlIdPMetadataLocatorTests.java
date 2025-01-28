@@ -42,14 +42,14 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.saml-idp.metadata.rest.crypto.enabled=false"
 })
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class RestfulSamlIdPMetadataLocatorTests extends BaseRestfulSamlMetadataTests {
+class RestfulSamlIdPMetadataLocatorTests extends BaseRestfulSamlMetadataTests {
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
     private static MockWebServer SERVER;
 
     @Autowired
-    @Qualifier("samlIdPMetadataLocator")
+    @Qualifier(SamlIdPMetadataLocator.BEAN_NAME)
     protected SamlIdPMetadataLocator samlIdPMetadataLocator;
 
     @BeforeAll
@@ -72,7 +72,7 @@ public class RestfulSamlIdPMetadataLocatorTests extends BaseRestfulSamlMetadataT
     }
     
     @Test
-    public void verifySigningKeyWithoutService() {
+    void verifySigningKeyWithoutService() throws Throwable {
         assertNotNull(samlIdPMetadataLocator.resolveMetadata(Optional.empty()));
 
         val resource = samlIdPMetadataLocator.resolveSigningKey(Optional.empty());

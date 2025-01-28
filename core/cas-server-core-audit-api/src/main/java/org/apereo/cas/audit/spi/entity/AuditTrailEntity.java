@@ -1,14 +1,18 @@
 package org.apereo.cas.audit.spi.entity;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import lombok.ToString;
+import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
+import jakarta.persistence.Column;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
 import java.time.ZonedDateTime;
+import java.util.Locale;
 
 /**
  * This is {@link AuditTrailEntity} that represents the audit table.
@@ -17,20 +21,19 @@ import java.time.ZonedDateTime;
  * @author Misagh Moayyed
  * @since 4.2.0
  */
-@Entity(name = "COM_AUDIT_TRAIL")
+@MappedSuperclass
+@ToString
+@SuperBuilder
+@Accessors(chain = true)
 @Getter
 @Setter
+@NoArgsConstructor
 public class AuditTrailEntity {
-
-    /**
-     * Audit table name.
-     */
-    public static final String AUDIT_TRAIL_TABLE_NAME = "COM_AUDIT_TRAIL";
 
     @org.springframework.data.annotation.Id
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id = -1;
+    private long id;
 
     @Column(name = "AUD_USER")
     private String user;
@@ -41,22 +44,33 @@ public class AuditTrailEntity {
     @Column(name = "AUD_SERVER_IP")
     private String serverIp;
 
-    @Column(name = "AUD_RESOURCE", length = 2048)
+    @Column(name = "AUD_RESOURCE")
     private String resource;
 
     @Column(name = "AUD_ACTION")
     private String action;
 
+    @Column(name = "AUD_TENANT")
+    private String tenant;
+
     @Column(name = "APPLIC_CD")
     private String applicationCode;
 
-    @Column(name = "AUD_USERAGENT")
+    @Column(name = "AUD_USERAGENT", length = 512)
     private String userAgent;
+    
+    @Column(name = "AUD_GEOLOCATION")
+    private String geoLocation;
 
     @Column(name = "AUD_DATE", nullable = false)
     private ZonedDateTime recordDate;
 
-    public AuditTrailEntity() {
-        this.id = System.currentTimeMillis();
-    }
+    @Column(name = "AUD_LOCALE", nullable = false)
+    private Locale locale;
+
+    @Column(name = "AUD_HEADERS", columnDefinition = "longvarchar")
+    private String headers;
+
+    @Column(name = "AUD_EXTRA_INFO", columnDefinition = "longvarchar")
+    private String extraInfo;
 }

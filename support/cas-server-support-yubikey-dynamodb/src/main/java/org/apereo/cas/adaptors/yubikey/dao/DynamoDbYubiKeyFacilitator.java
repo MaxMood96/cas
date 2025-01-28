@@ -7,10 +7,10 @@ import org.apereo.cas.dynamodb.DynamoDbQueryBuilder;
 import org.apereo.cas.dynamodb.DynamoDbTableUtils;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.DateTimeUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -96,9 +96,8 @@ public class DynamoDbYubiKeyFacilitator {
      *
      * @param deleteTables the delete tables
      */
-    @SneakyThrows
     public void createTable(final boolean deleteTables) {
-        DynamoDbTableUtils.createTable(amazonDynamoDBClient, dynamoDbProperties,
+        FunctionUtils.doUnchecked(__ -> DynamoDbTableUtils.createTable(amazonDynamoDBClient, dynamoDbProperties,
             dynamoDbProperties.getTableName(), deleteTables,
             List.of(AttributeDefinition.builder()
                 .attributeName(ColumnNames.USERNAME.getColumnName())
@@ -107,7 +106,7 @@ public class DynamoDbYubiKeyFacilitator {
             List.of(KeySchemaElement.builder()
                 .attributeName(ColumnNames.USERNAME.getColumnName())
                 .keyType(KeyType.HASH)
-                .build()));
+                .build())));
     }
 
     /**
@@ -150,7 +149,7 @@ public class DynamoDbYubiKeyFacilitator {
     public void delete(final String username, final long deviceId) {
         val accounts = getAccounts(username);
         if (!accounts.isEmpty()) {
-            val account = accounts.get(0);
+            val account = accounts.getFirst();
             if (account != null && account.getDevices().removeIf(device -> device.getId() == deviceId)) {
                 update(account);
             }
@@ -173,7 +172,7 @@ public class DynamoDbYubiKeyFacilitator {
      * Save.
      *
      * @param registration the registration
-     * @return the boolean
+     * @return true/false
      */
     public boolean save(final YubiKeyAccount registration) {
         val values = buildTableAttributeValuesMap(registration);
@@ -188,7 +187,7 @@ public class DynamoDbYubiKeyFacilitator {
      * Save.
      *
      * @param registration the registration
-     * @return the boolean
+     * @return true/false
      */
     public boolean update(final YubiKeyAccount registration) {
         val updateRequest = UpdateItemRequest.builder()
@@ -212,7 +211,6 @@ public class DynamoDbYubiKeyFacilitator {
         private final String columnName;
     }
 
-    @SneakyThrows
     private List<YubiKeyAccount> getRecordsByKeys(final DynamoDbQueryBuilder... queries) {
         return DynamoDbTableUtils.getRecordsByKeys(amazonDynamoDBClient, dynamoDbProperties.getTableName(),
                 Arrays.stream(queries).collect(Collectors.toList()),

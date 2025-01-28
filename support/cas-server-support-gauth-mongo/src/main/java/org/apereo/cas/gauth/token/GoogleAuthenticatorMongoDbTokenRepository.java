@@ -1,6 +1,5 @@
 package org.apereo.cas.gauth.token;
 
-import org.apereo.cas.authentication.OneTimeToken;
 import org.apereo.cas.otp.repository.token.BaseOneTimeTokenRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,7 +20,7 @@ import java.util.Locale;
  * @since 5.1.0
  */
 @RequiredArgsConstructor
-public class GoogleAuthenticatorMongoDbTokenRepository extends BaseOneTimeTokenRepository {
+public class GoogleAuthenticatorMongoDbTokenRepository extends BaseOneTimeTokenRepository<GoogleAuthenticatorToken> {
     private final MongoOperations mongoTemplate;
 
     private final String collectionName;
@@ -29,8 +28,8 @@ public class GoogleAuthenticatorMongoDbTokenRepository extends BaseOneTimeTokenR
     private final long expireTokensInSeconds;
 
     @Override
-    public void store(final OneTimeToken token) {
-        this.mongoTemplate.save(token, this.collectionName);
+    public GoogleAuthenticatorToken store(final GoogleAuthenticatorToken token) {
+        return (GoogleAuthenticatorToken) mongoTemplate.save(token.assignIdIfNecessary(), this.collectionName);
     }
 
     @Override

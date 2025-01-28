@@ -5,15 +5,16 @@ import org.apereo.cas.configuration.model.core.authentication.PasswordEncoderPro
 import org.apereo.cas.configuration.model.core.authentication.PasswordPolicyProperties;
 import org.apereo.cas.configuration.model.core.authentication.PersonDirectoryPrincipalResolverProperties;
 import org.apereo.cas.configuration.model.core.authentication.PrincipalTransformationProperties;
+import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -26,9 +27,10 @@ import java.io.Serializable;
 @Setter
 @Accessors(chain = true)
 @RequiresModule(name = "cas-server-core-authentication", automated = true)
-@JsonFilter("JaasAuthenticationProperties")
+
 public class JaasAuthenticationProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 4643338626978471986L;
 
     /**
@@ -81,6 +83,7 @@ public class JaasAuthenticationProperties implements Serializable {
      * <li>3) Path to an external Groovy script that implements the same interface.</li>
      * </ul>
      */
+    @RegularExpressionCapable
     private String credentialCriteria;
 
     /**

@@ -1,24 +1,27 @@
 package org.apereo.cas.configuration.model.support.x509;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
  * This is {@link BaseAlternativePrincipalResolverProperties}.
+ *
  * @since 6.0.0
  */
 @RequiresModule(name = "cas-server-support-x509-webflow")
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("BaseAlternativePrincipalResolverProperties")
-public abstract class BaseAlternativePrincipalResolverProperties implements Serializable {
+
+public abstract class BaseAlternativePrincipalResolverProperties implements CasFeatureModule, Serializable {
+    @Serial
     private static final long serialVersionUID = 4770829035414038072L;
 
     /**

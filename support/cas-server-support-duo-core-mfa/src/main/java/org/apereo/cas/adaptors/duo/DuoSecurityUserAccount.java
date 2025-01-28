@@ -1,14 +1,20 @@
 package org.apereo.cas.adaptors.duo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.With;
+import lombok.experimental.Accessors;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -27,8 +33,13 @@ import java.util.Map;
 @Setter
 @EqualsAndHashCode
 @RequiredArgsConstructor
+@AllArgsConstructor
+@With
+@Accessors(chain = true)
+@NoArgsConstructor(force = true)
 public class DuoSecurityUserAccount implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 403995883439339241L;
 
     private final String username;
@@ -48,12 +59,17 @@ public class DuoSecurityUserAccount implements Serializable {
 
     private List<DuoSecurityUserAccountGroup> groups = new ArrayList<>();
 
+    private String userId;
+
+    private String providerId;
+
     /**
      * Add groups.
      *
      * @param group the group
      * @return the duo security user account
      */
+    @CanIgnoreReturnValue
     public DuoSecurityUserAccount addGroup(final DuoSecurityUserAccountGroup group) {
         this.groups.add(group);
         return this;
@@ -65,6 +81,7 @@ public class DuoSecurityUserAccount implements Serializable {
      * @param codes the codes
      * @return the duo security user account
      */
+    @CanIgnoreReturnValue
     public DuoSecurityUserAccount addBypassCodes(final List<DuoSecurityBypassCode> codes) {
         this.bypassCodes.addAll(codes);
         return this;
@@ -76,6 +93,7 @@ public class DuoSecurityUserAccount implements Serializable {
      * @param device the device
      * @return the duo security user account
      */
+    @CanIgnoreReturnValue
     public DuoSecurityUserAccount addDevice(final DuoSecurityUserDevice device) {
         this.devices.add(device);
         return this;
@@ -88,6 +106,7 @@ public class DuoSecurityUserAccount implements Serializable {
      * @param value the value
      * @return the duo security user account
      */
+    @CanIgnoreReturnValue
     public DuoSecurityUserAccount addAttribute(final String key, final String value) {
         if (!StringUtils.equalsAnyIgnoreCase("null", value) && StringUtils.isNotBlank(value)) {
             this.metadata.put(key, value);
@@ -116,14 +135,26 @@ public class DuoSecurityUserAccount implements Serializable {
     }
 
     public Instant getLastLogin() {
-        return Instant.ofEpochMilli(Long.valueOf(metadata.getOrDefault("last_login", "0")));
+        return Instant.ofEpochMilli(Long.parseLong(metadata.getOrDefault("last_login", "0")));
     }
 
     public Instant getCreated() {
-        return Instant.ofEpochMilli(Long.valueOf(metadata.getOrDefault("created", "0")));
+        return Instant.ofEpochMilli(Long.parseLong(metadata.getOrDefault("created", "0")));
     }
 
     public boolean isEnrolled() {
         return BooleanUtils.toBoolean(this.metadata.getOrDefault("is_enrolled", "false"));
+    }
+
+    public String getPhone() {
+        return this.devices
+            .stream()
+            .filter(device -> StringUtils.equalsIgnoreCase(device.getType(), "phone")
+                || StringUtils.equalsIgnoreCase(device.getType(), "mobile"))
+            .map(DuoSecurityUserDevice::getNumber)
+            .filter(StringUtils::isNotBlank)
+            .findFirst()
+            .orElse(StringUtils.EMPTY);
+        
     }
 }

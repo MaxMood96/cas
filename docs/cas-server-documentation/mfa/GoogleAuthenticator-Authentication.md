@@ -22,16 +22,11 @@ Support is enabled by including the following module in the overlay:
 
 {% include_cached casmodule.html group="org.apereo.cas" module="cas-server-support-gauth" %}
 
-{% include_cached casproperties.html properties="cas.authn.mfa.gauth.core" %}
+{% include_cached casproperties.html properties="cas.authn.mfa.gauth" includes=".core,.crypto" %}
 
-## Repository Cleaner
+### Bypass
 
-A background *cleaner* process is also automatically scheduled to scan the
-repository periodically and remove expired device registration records
-based on configured parameters. In the default setting, devices
-expire after a fixed period since a user registered their device.
-
-{% include_cached casproperties.html properties="cas.authn.mfa.gauth.cleaner" %}
+{% include_cached casproperties.html properties="cas.authn.mfa.gauth" includes=".bypass" %}
 
 ## Actuator Endpoints
 
@@ -46,6 +41,8 @@ tokens that are successfully used to authenticate the user.
 The repository that holds registration records and tokens is periodically 
 scanned and cleaned up so that expired and previously used tokens
 may be removed.
+
+{% include_cached casproperties.html properties="cas.authn.mfa.gauth.cleaner" %}
 
 ## Registration
 
@@ -64,16 +61,15 @@ authentication if multiple device registration records
 are found. The ability to handle multiple device registration 
 records can be controlled via CAS settings.
 
-| Storage          | Description                                         
-|------------------------------------------------------------------------------------
-| JPA              | [See this guide](GoogleAuthenticator-Authentication-Registration-JPA.html).
-| CouchDb          | [See this guide](GoogleAuthenticator-Authentication-Registration-CouchDb.html).
-| MongoDb          | [See this guide](GoogleAuthenticator-Authentication-Registration-MongoDb.html).
-| DynamoDb         | [See this guide](GoogleAuthenticator-Authentication-Registration-DynamoDb.html).
-| Redis            | [See this guide](GoogleAuthenticator-Authentication-Registration-Redis.html).
-| LDAP             | [See this guide](GoogleAuthenticator-Authentication-Registration-LDAP.html).
-| REST             | [See this guide](GoogleAuthenticator-Authentication-Registration-Rest.html).
-| JSON             | [See this guide](GoogleAuthenticator-Authentication-Registration-JSON.html).
+| Storage     | Description                                                                      |
+|-------------|----------------------------------------------------------------------------------|
+| JPA         | [See this guide](GoogleAuthenticator-Authentication-Registration-JPA.html).      |
+| MongoDb     | [See this guide](GoogleAuthenticator-Authentication-Registration-MongoDb.html).  |
+| DynamoDb    | [See this guide](GoogleAuthenticator-Authentication-Registration-DynamoDb.html). |
+| Redis       | [See this guide](GoogleAuthenticator-Authentication-Registration-Redis.html).    |
+| LDAP        | [See this guide](GoogleAuthenticator-Authentication-Registration-LDAP.html).     |
+| REST        | [See this guide](GoogleAuthenticator-Authentication-Registration-Rest.html).     |
+| JSON        | [See this guide](GoogleAuthenticator-Authentication-Registration-JSON.html).     |
 
 ## REST Protocol Credential Extraction 
 
@@ -81,3 +77,9 @@ In the event that the [CAS REST Protocol](../protocol/REST-Protocol.html) is tur
 is injected into the REST authentication engine in order to recognize credentials and authenticate them as part of the REST request. 
 The expected parameter name in the request body is `gauthotp`. The account identifier may also 
 be passed using the `gauthacct` parameter in the request body.
+
+## Account Profile Management
+
+The integration with Google Authenticator is able to provide user device registration information 
+to the account profile management feature in CAS. [See this guide](../registration/Account-Management-Overview.html) for better details.
+

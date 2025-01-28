@@ -1,4 +1,12 @@
 description = "Apereo CAS X509 REST Implementation"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "REST Protocol",
+            title: "X.509 REST API",
+            aliases: ["rest"]
+    ]
+}
 dependencies {
     implementation project(":support:cas-server-support-rest")
     implementation project(":support:cas-server-support-rest-core")
@@ -12,6 +20,7 @@ dependencies {
     implementation project(":core:cas-server-core-web-api")
 
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-notifications")
     testImplementation project(":core:cas-server-core-web")
@@ -41,4 +50,5 @@ dependencies {
     testImplementation project(path: ":core:cas-server-core-audit-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-reports", configuration: "tests")
+    testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
 }

@@ -19,6 +19,12 @@ The deployment environment and technology expertise generally determine the
 particular `TicketRegistry` component. A cache-backed implementation is 
 recommended for HA deployments, while the default in-memory registry may be suitable for small deployments.
 
+### Actuator Endpoints
+
+The following endpoints are provided by CAS:
+
+{% include_cached actuators.html endpoints="ticketRegistry" casModule="cas-server-support-reports" %}
+
 ### How Do I Choose?
 
 There are a wide range of ticket registries on the menu. The selection criteria are outlined below:
@@ -29,7 +35,8 @@ There are a wide range of ticket registries on the menu. The selection criteria 
 - Choose a technology that shows promising results under *your expected load*, having run [performance and stress tests](../high_availability/High-Availability-Performance-Testing.html).
 - Choose a technology that does not depend on outside processes and systems as much as possible, is self-reliant and self contained.
 
-The above outlines suggestions and guidelines you may wish to consider. Each option presents various pros and cons and in the end, you must decide which drawbacks or advantages provide you with the best experience.
+The above outlines suggestions and guidelines you may wish to consider. Each option presents various pros and cons and 
+in the end, you must decide which drawbacks or advantages provide you with the best experience.
 
 ### Cache-Based Ticket Registries
 
@@ -38,14 +45,20 @@ deployments. Components for the following caching technologies are provided:
 
 * [Default](Default-Ticket-Registry.html)
 * [Hazelcast](Hazelcast-Ticket-Registry.html)
-* [Ehcache](Ehcache-Ticket-Registry.html)
 * [Ignite](Ignite-Ticket-Registry.html)
-* [Memcached](Memcached-Ticket-Registry.html)
-* [Infinispan](Infinispan-Ticket-Registry.html)
+
+### Stateless Ticket Registries
+
+Stateless ticket registries require no backend storage with a few caveats and limitations. 
+Components for the following caching technologies are provided:
+
+* [Stateless](Stateless-Ticket-Registry.html)
 
 ### Message-based Ticket Registries
 
-* [JMS](Messaging-JMS-Ticket-Registry.html)
+* [AMQP](Messaging-AMQP-Ticket-Registry.html)
+* [Google Cloud PubSub](GCP-PubSub-Ticket-Registry.html)
+* [Apache Kafka](Kafka-Ticket-Registry.html)
 
 ### RDBMS Ticket Registries
 
@@ -59,12 +72,10 @@ Components for the following caching technologies are provided:
 CAS also provides support for a variety of other databases, including Redis, MongoDb and Apache
 Cassandra, for ticket storage and persistence:
 
-* [Infinispan](Infinispan-Ticket-Registry.html)
-* [Couchbase](Couchbase-Ticket-Registry.html)
 * [Redis](Redis-Ticket-Registry.html)
-* [CouchDb](CouchDb-Ticket-Registry.html)
 * [MongoDb](MongoDb-Ticket-Registry.html)
 * [DynamoDb](DynamoDb-Ticket-Registry.html)
+* [Google Cloud Firestore](GCP-Firestore-Ticket-Registry.html)
 
 ### Secure Cache Replication
 

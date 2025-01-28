@@ -6,20 +6,21 @@ import org.apereo.cas.adaptors.yubikey.YubiKeyDeviceRegistrationRequest;
 import org.apereo.cas.adaptors.yubikey.YubiKeyRegisteredDevice;
 import org.apereo.cas.configuration.model.support.mfa.yubikey.YubiKeyRestfulMultifactorProperties;
 import org.apereo.cas.util.CollectionUtils;
-import org.apereo.cas.util.HttpUtils;
+import org.apereo.cas.util.http.HttpExecutionRequest;
+import org.apereo.cas.util.http.HttpUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpResponse;
+import org.apache.hc.core5.http.HttpEntityContainer;
+import org.apache.hc.core5.http.HttpResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,9 +65,9 @@ public class RestfulYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
     public boolean update(final YubiKeyAccount account) {
         HttpResponse response = null;
         try {
-            val headers = CollectionUtils.<String, Object>wrap("Content-Type", MediaType.APPLICATION_JSON_VALUE);
+            val headers = CollectionUtils.<String, String>wrap(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
             headers.putAll(restProperties.getHeaders());
-            val exec = HttpUtils.HttpExecutionRequest.builder()
+            val exec = HttpExecutionRequest.builder()
                 .basicAuthPassword(restProperties.getBasicAuthPassword())
                 .basicAuthUsername(restProperties.getBasicAuthUsername())
                 .method(HttpMethod.POST)
@@ -75,7 +76,7 @@ public class RestfulYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
                 .entity(MAPPER.writeValueAsString(account))
                 .build();
             response = HttpUtils.execute(exec);
-            return response != null && HttpStatus.valueOf(response.getStatusLine().getStatusCode()).is2xxSuccessful();
+            return response != null && HttpStatus.valueOf(response.getCode()).is2xxSuccessful();
         } catch (final Exception e) {
             LOGGER.error(e.getMessage(), e);
         } finally {
@@ -91,7 +92,7 @@ public class RestfulYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
             val url = StringUtils.appendIfMissing(restProperties.getUrl(), "/")
                 .concat(username).concat("/").concat(String.valueOf(deviceId));
 
-            val exec = HttpUtils.HttpExecutionRequest.builder()
+            val exec = HttpExecutionRequest.builder()
                 .basicAuthPassword(restProperties.getBasicAuthPassword())
                 .basicAuthUsername(restProperties.getBasicAuthUsername())
                 .method(HttpMethod.DELETE)
@@ -109,7 +110,7 @@ public class RestfulYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
         HttpResponse response = null;
         try {
             val url = StringUtils.appendIfMissing(restProperties.getUrl(), "/").concat(username);
-            val exec = HttpUtils.HttpExecutionRequest.builder()
+            val exec = HttpExecutionRequest.builder()
                 .basicAuthPassword(restProperties.getBasicAuthPassword())
                 .basicAuthUsername(restProperties.getBasicAuthUsername())
                 .method(HttpMethod.DELETE)
@@ -125,7 +126,7 @@ public class RestfulYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
     public void deleteAll() {
         HttpResponse response = null;
         try {
-            val exec = HttpUtils.HttpExecutionRequest.builder()
+            val exec = HttpExecutionRequest.builder()
                 .basicAuthPassword(restProperties.getBasicAuthPassword())
                 .basicAuthUsername(restProperties.getBasicAuthUsername())
                 .method(HttpMethod.DELETE)
@@ -142,7 +143,7 @@ public class RestfulYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
         HttpResponse response = null;
         try {
             val url = StringUtils.appendIfMissing(restProperties.getUrl(), "/").concat(username);
-            val exec = HttpUtils.HttpExecutionRequest.builder()
+            val exec = HttpExecutionRequest.builder()
                 .basicAuthPassword(restProperties.getBasicAuthPassword())
                 .basicAuthUsername(restProperties.getBasicAuthUsername())
                 .method(HttpMethod.GET)
@@ -150,10 +151,12 @@ public class RestfulYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
                 .build();
             response = HttpUtils.execute(exec);
             if (response != null) {
-                val status = HttpStatus.valueOf(response.getStatusLine().getStatusCode());
+                val status = HttpStatus.valueOf(response.getCode());
                 if (status.is2xxSuccessful()) {
-                    val content = IOUtils.toString(response.getEntity().getContent(), StandardCharsets.UTF_8);
-                    return MAPPER.readValue(content, YubiKeyAccount.class);
+                    try (val contis = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val content = IOUtils.toString(contis, StandardCharsets.UTF_8);
+                        return MAPPER.readValue(content, YubiKeyAccount.class);
+                    }
                 }
             }
         } catch (final Exception e) {
@@ -168,7 +171,7 @@ public class RestfulYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
     protected Collection<? extends YubiKeyAccount> getAccountsInternal() {
         HttpResponse response = null;
         try {
-            val exec = HttpUtils.HttpExecutionRequest.builder()
+            val exec = HttpExecutionRequest.builder()
                 .basicAuthPassword(restProperties.getBasicAuthPassword())
                 .basicAuthUsername(restProperties.getBasicAuthUsername())
                 .method(HttpMethod.GET)
@@ -176,11 +179,13 @@ public class RestfulYubiKeyAccountRegistry extends BaseYubiKeyAccountRegistry {
                 .build();
             response = HttpUtils.execute(exec);
             if (response != null) {
-                val status = HttpStatus.valueOf(response.getStatusLine().getStatusCode());
+                val status = HttpStatus.valueOf(response.getCode());
                 if (status.is2xxSuccessful()) {
-                    val content = IOUtils.toString(response.getEntity().getContent(), StandardCharsets.UTF_8);
-                    return MAPPER.readValue(content, new TypeReference<List<YubiKeyAccount>>() {
-                    });
+                    try (val contis = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val content = IOUtils.toString(contis, StandardCharsets.UTF_8);
+                        return MAPPER.readValue(content, new TypeReference<List<YubiKeyAccount>>() {
+                        });
+                    }
                 }
             }
         } catch (final Exception e) {

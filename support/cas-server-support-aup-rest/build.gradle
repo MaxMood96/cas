@@ -1,4 +1,11 @@
 description = "Apereo CAS AUP REST Support"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            title: "Acceptable Usage Policy via REST",
+            category: "Acceptable Usage Policy"
+    ]
+}
 dependencies {
     api project(":api:cas-server-core-api-authentication")
     api project(":api:cas-server-core-api-ticket")
@@ -23,6 +30,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-web")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-logout")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-authentication")
     testImplementation project(":core:cas-server-core-services-authentication")
@@ -38,6 +46,7 @@ dependencies {
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core", configuration: "tests")
 
+    testImplementation project(path: ":support:cas-server-support-person-directory-core", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-aup-core", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-aup-webflow", configuration: "tests")
 }

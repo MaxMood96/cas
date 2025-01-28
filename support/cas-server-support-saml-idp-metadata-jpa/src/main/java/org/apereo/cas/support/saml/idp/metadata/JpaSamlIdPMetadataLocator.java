@@ -1,6 +1,6 @@
 package org.apereo.cas.support.saml.idp.metadata;
 
-import org.apereo.cas.support.saml.idp.metadata.generator.SamlIdPMetadataGenerator;
+import org.apereo.cas.monitor.Monitorable;
 import org.apereo.cas.support.saml.idp.metadata.locator.AbstractSamlIdPMetadataLocator;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.SamlIdPMetadataDocument;
@@ -10,14 +10,14 @@ import com.github.benmanes.caffeine.cache.Cache;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.PersistenceContext;
-import javax.persistence.TypedQuery;
-
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
 import java.util.Optional;
 
 /**
@@ -27,17 +27,19 @@ import java.util.Optional;
  * @since 6.0.0
  */
 
-@EnableTransactionManagement
+@EnableTransactionManagement(proxyTargetClass = false)
 @Transactional(transactionManager = "transactionManagerSamlMetadataIdP")
 @Slf4j
 @Getter
+@Monitorable
 public class JpaSamlIdPMetadataLocator extends AbstractSamlIdPMetadataLocator {
-    @PersistenceContext(unitName = "samlMetadataIdPEntityManagerFactory")
-    private transient EntityManager entityManager;
+    @PersistenceContext(unitName = "jpaSamlMetadataIdPContext")
+    private EntityManager entityManager;
 
     public JpaSamlIdPMetadataLocator(final CipherExecutor<String, String> metadataCipherExecutor,
-                                     final Cache<String, SamlIdPMetadataDocument> metadataCache) {
-        super(metadataCipherExecutor, metadataCache);
+                                     final Cache<String, SamlIdPMetadataDocument> metadataCache,
+                                     final ConfigurableApplicationContext applicationContext) {
+        super(metadataCipherExecutor, metadataCache, applicationContext);
     }
 
     @Override
@@ -47,7 +49,7 @@ public class JpaSamlIdPMetadataLocator extends AbstractSamlIdPMetadataLocator {
                 val query = buildQuery(registeredService);
                 val results = query.getResultList();
                 if (!results.isEmpty()) {
-                    return results.get(0);
+                    return results.getFirst();
                 }
             }
             return buildQuery(Optional.empty()).getSingleResult();
@@ -70,7 +72,7 @@ public class JpaSamlIdPMetadataLocator extends AbstractSamlIdPMetadataLocator {
         }
         val query = getEntityManager().createQuery(sql, SamlIdPMetadataDocument.class);
         if (registeredService.isPresent()) {
-            query.setParameter("appliesTo", SamlIdPMetadataGenerator.getAppliesToFor(registeredService));
+            query.setParameter("appliesTo", getAppliesToFor(registeredService));
         }
         return query.setMaxResults(1);
     }

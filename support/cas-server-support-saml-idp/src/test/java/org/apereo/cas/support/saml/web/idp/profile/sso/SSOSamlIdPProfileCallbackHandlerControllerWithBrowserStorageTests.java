@@ -1,21 +1,23 @@
 package org.apereo.cas.support.saml.web.idp.profile.sso;
 
 import org.apereo.cas.CasProtocolConstants;
+import org.apereo.cas.mock.MockTicketGrantingTicket;
+import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
+import org.apereo.cas.support.saml.SamlIdPConstants;
 import org.apereo.cas.support.saml.SamlProtocolConstants;
-import org.apereo.cas.support.saml.SamlUtils;
-import org.apereo.cas.support.saml.authentication.SamlIdPAuthenticationContext;
+import org.apereo.cas.support.saml.idp.SamlIdPSessionManager;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
-import org.apereo.cas.util.CollectionUtils;
-import org.apereo.cas.util.EncodingUtils;
-import org.apereo.cas.web.BrowserSessionStorage;
+import org.apereo.cas.support.saml.util.Saml20HexRandomIdGenerator;
+import org.apereo.cas.ticket.ServiceTicket;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
+import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
+import org.apereo.cas.web.BrowserStorage;
 import org.apereo.cas.web.flow.CasWebflowConstants;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
-import org.apache.http.HttpStatus;
-import org.jasig.cas.client.authentication.AttributePrincipalImpl;
-import org.jasig.cas.client.validation.AssertionImpl;
-import org.jasig.cas.client.validation.TicketValidator;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
@@ -26,19 +28,15 @@ import org.opensaml.saml.common.SAMLObjectBuilder;
 import org.opensaml.saml.common.xml.SAMLConstants;
 import org.opensaml.saml.saml2.core.AuthnRequest;
 import org.opensaml.saml.saml2.core.Issuer;
-import org.pac4j.core.context.JEEContext;
+import org.pac4j.jee.context.JEEContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
-
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -48,14 +46,16 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Import(SSOSamlIdPProfileCallbackHandlerControllerWithBrowserStorageTests.SamlIdPTestConfiguration.class)
-@Tag("SAML")
+@Tag("SAML2Web")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestPropertySource(properties = {
-    "cas.authn.saml-idp.core.session-storage-type=BROWSER_SESSION_STORAGE",
+    "cas.authn.saml-idp.core.session-storage-type=BROWSER_STORAGE",
     "cas.authn.saml-idp.metadata.file-system.location=file:src/test/resources/metadata"
 })
-public class SSOSamlIdPProfileCallbackHandlerControllerWithBrowserStorageTests extends BaseSamlIdPConfigurationTests {
+class SSOSamlIdPProfileCallbackHandlerControllerWithBrowserStorageTests extends BaseSamlIdPConfigurationTests {
+    private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
+        .defaultTypingEnabled(false).minimal(false).build().toObjectMapper();
+    
     @Autowired
     @Qualifier("ssoPostProfileCallbackHandlerController")
     private SSOSamlIdPProfileCallbackHandlerController controller;
@@ -63,73 +63,80 @@ public class SSOSamlIdPProfileCallbackHandlerControllerWithBrowserStorageTests e
     private SamlRegisteredService samlRegisteredService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         samlRegisteredService = getSamlRegisteredServiceFor(false, false,
             false, "https://cassp.example.org");
         servicesManager.save(samlRegisteredService);
     }
 
     @Test
-    public void verifyReadFromStorage() throws Exception {
+    void verifyReadFromStorage() throws Throwable {
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
 
         val authn = getAuthnRequest();
         authn.setProtocolBinding(SAMLConstants.SAML2_POST_BINDING_URI);
-        val xml = SamlUtils.transformSamlObject(openSamlConfigBean, getAuthnRequest()).toString();
-        request.getSession().setAttribute(SamlProtocolConstants.PARAMETER_SAML_REQUEST, EncodingUtils.encodeBase64(xml));
-        request.getSession().setAttribute(SamlProtocolConstants.PARAMETER_SAML_RELAY_STATE, UUID.randomUUID().toString());
-        request.addParameter(CasProtocolConstants.PARAMETER_TICKET, "ST-1234567890");
+        storeAuthnRequest(request, response, authn);
+
+        val st = getServiceTicket();
+        request.addParameter(CasProtocolConstants.PARAMETER_TICKET, st.getId());
         val mv = controller.handleCallbackProfileRequestGet(response, request);
-        assertEquals(CasWebflowConstants.VIEW_ID_SESSION_STORAGE_READ, mv.getViewName());
+        assertEquals(CasWebflowConstants.VIEW_ID_BROWSER_STORAGE_READ, mv.getViewName());
+        assertTrue(mv.getModel().containsKey(BrowserStorage.PARAMETER_BROWSER_STORAGE));
     }
 
     @Test
-    public void verifyResumeFromStorage() throws Exception {
+    void verifyResumeFromStorage() throws Throwable {
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
+
         val authn = getAuthnRequest();
         authn.setProtocolBinding(SAMLConstants.SAML2_POST_BINDING_URI);
-        val xml = SamlUtils.transformSamlObject(openSamlConfigBean, getAuthnRequest()).toString();
-        request.getSession().setAttribute(SamlProtocolConstants.PARAMETER_SAML_REQUEST, EncodingUtils.encodeBase64(xml));
-        request.getSession().setAttribute(SamlProtocolConstants.PARAMETER_SAML_RELAY_STATE, UUID.randomUUID().toString());
-        val context = new MessageContext();
-        context.setMessage(getAuthnRequest());
-        request.getSession().setAttribute(MessageContext.class.getName(), SamlIdPAuthenticationContext.from(context).encode());
+        storeAuthnRequest(request, response, authn);
 
-        request.addParameter(CasProtocolConstants.PARAMETER_TICKET, "ST-1234567890");
-        val payload = samlIdPDistributedSessionStore.getTrackableSession(new JEEContext(request, response))
-            .map(BrowserSessionStorage.class::cast)
-            .map(BrowserSessionStorage::getPayload)
+        val st = getServiceTicket();
+        request.addParameter(CasProtocolConstants.PARAMETER_TICKET, st.getId());
+        val storage = samlIdPDistributedSessionStore.getTrackableSession(new JEEContext(request, response))
+            .map(BrowserStorage.class::cast)
             .orElseThrow();
-        request.addParameter(BrowserSessionStorage.KEY_SESSION_STORAGE, payload);
+        request.addParameter(BrowserStorage.PARAMETER_BROWSER_STORAGE,
+            MAPPER.writeValueAsString(Map.of(storage.getContext(), storage.getPayload())));
         val mv = controller.handleCallbackProfileRequestPost(response, request);
         assertNull(mv);
         assertEquals(HttpStatus.SC_OK, response.getStatus());
     }
 
-    @TestConfiguration(value = "SamlIdPTestConfiguration", proxyBeanMethods = false)
-    @Lazy(false)
-    public static class SamlIdPTestConfiguration {
-
-        @Bean
-        public TicketValidator samlIdPTicketValidator() throws Exception {
-            val validator = mock(TicketValidator.class);
-            val principal = new AttributePrincipalImpl("casuser", CollectionUtils.wrap("cn", "cas"));
-            when(validator.validate(anyString(), anyString())).thenReturn(new AssertionImpl(principal));
-            return validator;
-        }
+    private void storeAuthnRequest(final MockHttpServletRequest request, final MockHttpServletResponse response,
+                                   final AuthnRequest authnRequest) throws Throwable {
+        val context = new MessageContext();
+        context.setMessage(authnRequest);
+        request.addParameter(SamlIdPConstants.AUTHN_REQUEST_ID, authnRequest.getID());
+        SamlIdPSessionManager.of(openSamlConfigBean, samlIdPDistributedSessionStore)
+            .store(new JEEContext(request, response), Pair.of(authnRequest, context));
     }
-
+    
     private AuthnRequest getAuthnRequest() {
         var builder = (SAMLObjectBuilder) openSamlConfigBean.getBuilderFactory()
             .getBuilder(AuthnRequest.DEFAULT_ELEMENT_NAME);
         var authnRequest = (AuthnRequest) builder.buildObject();
+        authnRequest.setID(Saml20HexRandomIdGenerator.INSTANCE.getNewString());
         builder = (SAMLObjectBuilder) openSamlConfigBean.getBuilderFactory()
             .getBuilder(Issuer.DEFAULT_ELEMENT_NAME);
         val issuer = (Issuer) builder.buildObject();
         issuer.setValue(samlRegisteredService.getServiceId());
         authnRequest.setIssuer(issuer);
         return authnRequest;
+    }
+
+    private ServiceTicket getServiceTicket() throws Throwable {
+        val tgt = new MockTicketGrantingTicket(UUID.randomUUID().toString());
+        ticketRegistry.addTicket(tgt);
+        val trackingPolicy = mock(TicketTrackingPolicy.class);
+        val ticketService = RegisteredServiceTestUtils.getService(samlRegisteredService.getServiceId());
+        ticketService.getAttributes().put(SamlProtocolConstants.PARAMETER_ENTITY_ID, List.of(samlRegisteredService.getServiceId()));
+        val st1 = tgt.grantServiceTicket(ticketService, trackingPolicy);
+        ticketRegistry.addTicket(st1);
+        ticketRegistry.updateTicket(tgt);
+        return st1;
     }
 }

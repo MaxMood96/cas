@@ -2,9 +2,9 @@ package org.apereo.cas.web.cookie;
 
 import org.apereo.cas.authentication.RememberMeCredential;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * This is {@link CasCookieBuilder}.
@@ -13,6 +13,15 @@ import javax.servlet.http.HttpServletResponse;
  * @since 6.1.0
  */
 public interface CasCookieBuilder {
+    /**
+     * Bean name that generates the cookie for the ticket-granting cookie.
+     */
+    String BEAN_NAME_TICKET_GRANTING_COOKIE_BUILDER = "ticketGrantingTicketCookieGenerator";
+    /**
+     * Bean name that generates the warning cookie.
+     */
+    String BEAN_NAME_WARN_COOKIE_BUILDER = "warnCookieGenerator";
+
     /**
      * Adds the cookie, taking into account {@link RememberMeCredential#REQUEST_PARAMETER_REMEMBER_ME}
      * in the request.
@@ -35,14 +44,6 @@ public interface CasCookieBuilder {
      * @return the cookie
      */
     Cookie addCookie(HttpServletRequest request, HttpServletResponse response, String cookieValue);
-
-    /**
-     * Add cookie.
-     *
-     * @param response    the response
-     * @param cookieValue the cookie value
-     */
-    void addCookie(HttpServletResponse response, String cookieValue);
 
     /**
      * Retrieve cookie value.
@@ -97,4 +98,19 @@ public interface CasCookieBuilder {
      * @param response the response
      */
     void removeAll(HttpServletRequest request, HttpServletResponse response);
+
+    /**
+     * Gets cas cookie value manager.
+     *
+     * @return the cas cookie value manager
+     */
+    CookieValueManager getCasCookieValueManager();
+
+    /**
+     * Contains cookie.
+     *
+     * @param request the request
+     * @return true/false
+     */
+    boolean containsCookie(HttpServletRequest request);
 }

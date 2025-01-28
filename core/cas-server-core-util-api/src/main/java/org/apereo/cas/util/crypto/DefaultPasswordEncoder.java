@@ -23,6 +23,7 @@ import java.nio.charset.Charset;
 @RequiredArgsConstructor
 public class DefaultPasswordEncoder implements PasswordEncoder {
     private final String encodingAlgorithm;
+
     private final String characterEncoding;
 
     @Override
@@ -32,7 +33,7 @@ public class DefaultPasswordEncoder implements PasswordEncoder {
         }
 
         if (StringUtils.isBlank(this.encodingAlgorithm)) {
-            LOGGER.warn("No encoding algorithm is defined. Password cannot be encoded; Returning null");
+            LOGGER.warn("No encoding algorithm is defined. Password cannot be encoded;");
             return null;
         }
 

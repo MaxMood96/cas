@@ -29,7 +29,7 @@ public class X509CertificateCredentialsNonInteractiveAction extends AbstractNonI
     /**
      * Attribute to indicate the x509 certificate.
      */
-    public static final String REQUEST_ATTRIBUTE_X509_CERTIFICATE = "javax.servlet.request.X509Certificate";
+    public static final String REQUEST_ATTRIBUTE_X509_CERTIFICATE = "jakarta.servlet.request.X509Certificate";
 
     /**
      * Attribute that indicates an error has occurred. Used to break out of the flow and send user to a page
@@ -62,6 +62,7 @@ public class X509CertificateCredentialsNonInteractiveAction extends AbstractNonI
             return null;
         }
         LOGGER.debug("[{}] Certificate(s) found in request: [{}]", certificates.length, Arrays.toString(certificates));
+        context.getFlowScope().put(X509Certificate.class.getName(), certificates);
         return new X509CertificateCredential(certificates);
     }
 

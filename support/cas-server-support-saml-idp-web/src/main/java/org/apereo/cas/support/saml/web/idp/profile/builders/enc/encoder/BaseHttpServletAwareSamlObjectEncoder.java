@@ -2,11 +2,11 @@ package org.apereo.cas.support.saml.web.idp.profile.builders.enc.encoder;
 
 import org.apereo.cas.support.saml.SamlException;
 import org.apereo.cas.support.saml.SamlIdPUtils;
-import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceServiceProviderMetadataFacade;
+import org.apereo.cas.support.saml.services.idp.metadata.SamlRegisteredServiceMetadataAdaptor;
+import org.apereo.cas.util.function.FunctionUtils;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.val;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.velocity.app.VelocityEngine;
@@ -18,8 +18,8 @@ import org.opensaml.saml.common.messaging.context.SAMLSelfEntityContext;
 import org.opensaml.saml.saml2.binding.encoding.impl.BaseSAML2MessageEncoder;
 import org.opensaml.saml.saml2.core.RequestAbstractType;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * This is {@link BaseHttpServletAwareSamlObjectEncoder}.
@@ -37,7 +37,7 @@ public abstract class BaseHttpServletAwareSamlObjectEncoder<T extends SAMLObject
     /**
      * The Adaptor.
      */
-    protected final SamlRegisteredServiceServiceProviderMetadataFacade adaptor;
+    protected final SamlRegisteredServiceMetadataAdaptor adaptor;
 
     /**
      * The Http response.
@@ -64,7 +64,7 @@ public abstract class BaseHttpServletAwareSamlObjectEncoder<T extends SAMLObject
                           final MessageContext messageContext) throws SamlException {
         if (httpResponse != null) {
             val encoder = getMessageEncoderInstance();
-            encoder.setHttpServletResponse(httpResponse);
+            encoder.setHttpServletResponseSupplier(() -> httpResponse);
 
             val ctx = getEncoderMessageContext(request, samlObject, relayState, messageContext);
             encoder.setMessageContext(ctx);
@@ -88,38 +88,25 @@ public abstract class BaseHttpServletAwareSamlObjectEncoder<T extends SAMLObject
                                                       final String relayState, final MessageContext messageContext) {
         val ctx = new MessageContext();
         ctx.setMessage(samlObject);
-        ctx.addSubcontext(messageContext.getSubcontext(SAMLBindingContext.class, true));
+        ctx.addSubcontext(messageContext.ensureSubcontext(SAMLBindingContext.class));
         SAMLBindingSupport.setRelayState(ctx, relayState);
         SamlIdPUtils.preparePeerEntitySamlEndpointContext(Pair.of(request, messageContext), ctx, adaptor, getBinding());
-        val self = ctx.getSubcontext(SAMLSelfEntityContext.class, true);
+        val self = ctx.ensureSubcontext(SAMLSelfEntityContext.class);
         self.setEntityId(SamlIdPUtils.getIssuerFromSamlObject(samlObject));
         return ctx;
     }
 
-    /**
-     * Finalize encode response.
-     *
-     * @param authnRequest   the authn request
-     * @param encoder        the encoder
-     * @param samlResponse   the saml response
-     * @param relayState     the relay stateSurrogateAuthenticationPostProcessor.java
-     * @param messageContext the message context
-     */
-    @SneakyThrows
     protected void finalizeEncode(final RequestAbstractType authnRequest,
                                   final BaseSAML2MessageEncoder encoder,
                                   final T samlResponse,
                                   final String relayState,
                                   final MessageContext messageContext) {
-        encoder.initialize();
-        encoder.encode();
+        FunctionUtils.doUnchecked(__ -> {
+            encoder.initialize();
+            encoder.encode();
+        });
     }
 
-    /**
-     * Gets binding.
-     *
-     * @return the binding
-     */
     protected abstract String getBinding();
 
     /**

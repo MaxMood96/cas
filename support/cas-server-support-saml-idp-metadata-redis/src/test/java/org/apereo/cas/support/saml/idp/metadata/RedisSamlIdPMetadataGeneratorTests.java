@@ -1,10 +1,11 @@
 package org.apereo.cas.support.saml.idp.metadata;
 
-import org.apereo.cas.redis.core.util.RedisUtils;
+
+import org.apereo.cas.redis.core.CasRedisTemplate;
 import org.apereo.cas.support.saml.BaseRedisSamlMetadataTests;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.SamlIdPMetadataDocument;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,7 +13,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.Optional;
@@ -32,31 +32,32 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.authn.saml-idp.metadata.redis.idp-metadata-enabled=true"
 })
 @Tag("Redis")
-@EnabledIfPortOpen(port = 6379)
-public class RedisSamlIdPMetadataGeneratorTests extends BaseRedisSamlMetadataTests {
+@EnabledIfListeningOnPort(port = 6379)
+class RedisSamlIdPMetadataGeneratorTests extends BaseRedisSamlMetadataTests {
     @Autowired
     @Qualifier("redisSamlIdPMetadataTemplate")
-    protected RedisTemplate<String, SamlIdPMetadataDocument> redisSamlIdPMetadataTemplate;
+    protected CasRedisTemplate<String, SamlIdPMetadataDocument> redisSamlIdPMetadataTemplate;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         val key = RedisSamlIdPMetadataGenerator.CAS_PREFIX + '*';
-        val keys = RedisUtils.keys(redisSamlIdPMetadataTemplate, key, 0).collect(Collectors.toSet());
-        redisSamlIdPMetadataTemplate.delete(keys);
+        try (val keys = redisSamlIdPMetadataTemplate.scan(key, 0L)) {
+            redisSamlIdPMetadataTemplate.delete(keys.collect(Collectors.toSet()));
+        }
     }
 
     @Test
-    public void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         this.samlIdPMetadataGenerator.generate(Optional.empty());
         assertNotNull(samlIdPMetadataLocator.resolveMetadata(Optional.empty()));
-        assertNotNull(samlIdPMetadataLocator.getEncryptionCertificate(Optional.empty()));
+        assertNotNull(samlIdPMetadataLocator.resolveEncryptionCertificate(Optional.empty()));
         assertNotNull(samlIdPMetadataLocator.resolveEncryptionKey(Optional.empty()));
         assertNotNull(samlIdPMetadataLocator.resolveSigningCertificate(Optional.empty()));
         assertNotNull(samlIdPMetadataLocator.resolveSigningKey(Optional.empty()));
     }
 
     @Test
-    public void verifyService() throws Exception {
+    void verifyService() throws Throwable {
         val service = new SamlRegisteredService();
         service.setName("TestShib");
         service.setId(1000);
@@ -64,7 +65,7 @@ public class RedisSamlIdPMetadataGeneratorTests extends BaseRedisSamlMetadataTes
 
         samlIdPMetadataGenerator.generate(registeredService);
         assertNotNull(samlIdPMetadataLocator.resolveMetadata(registeredService));
-        assertNotNull(samlIdPMetadataLocator.getEncryptionCertificate(registeredService));
+        assertNotNull(samlIdPMetadataLocator.resolveEncryptionCertificate(registeredService));
         assertNotNull(samlIdPMetadataLocator.resolveEncryptionKey(registeredService));
         assertNotNull(samlIdPMetadataLocator.resolveSigningCertificate(registeredService));
         assertNotNull(samlIdPMetadataLocator.resolveSigningKey(registeredService));

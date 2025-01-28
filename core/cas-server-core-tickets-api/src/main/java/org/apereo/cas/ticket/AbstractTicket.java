@@ -1,7 +1,6 @@
 package org.apereo.cas.ticket;
 
 import org.apereo.cas.authentication.Authentication;
-
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -13,8 +12,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.ZonedDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -39,8 +41,9 @@ import java.util.Optional;
 @EqualsAndHashCode(of = "id")
 @Setter
 @Slf4j
-public abstract class AbstractTicket implements Ticket, TicketState {
+public abstract class AbstractTicket implements TicketGrantingTicketAwareTicket, PropertiesAwareTicket {
 
+    @Serial
     private static final long serialVersionUID = -8506442397878267555L;
 
     /**
@@ -54,6 +57,9 @@ public abstract class AbstractTicket implements Ticket, TicketState {
      */
     @Getter
     private String id;
+
+    @Getter
+    private String tenantId;
 
     /**
      * The last time this ticket was used.
@@ -83,7 +89,12 @@ public abstract class AbstractTicket implements Ticket, TicketState {
      * Flag to enforce manual expiration.
      */
     private Boolean expired = Boolean.FALSE;
+    
+    private Boolean stateless = Boolean.FALSE;
 
+    @Getter
+    private Map<String, Object> properties = new HashMap<>(0);
+    
     protected AbstractTicket(final String id, final ExpirationPolicy expirationPolicy) {
         this.id = id;
         this.creationTime = ZonedDateTime.now(expirationPolicy.getClock());
@@ -92,14 +103,29 @@ public abstract class AbstractTicket implements Ticket, TicketState {
     }
 
     @Override
-    public void update() {
-        updateTicketState();
-        updateTicketGrantingTicketState();
+    public boolean isExpired() {
+        return this.expirationPolicy.isExpired(this) || isExpiredInternal();
     }
 
     @Override
-    public boolean isExpired() {
-        return this.expirationPolicy.isExpired(this) || isExpiredInternal();
+    public boolean isStateless() {
+        return this.stateless;
+    }
+
+    @Override
+    public void markTicketExpired() {
+        this.expired = Boolean.TRUE;
+    }
+
+    @Override
+    public void markTicketStateless() {
+        this.stateless = Boolean.TRUE;
+    }
+
+    @Override
+    public void update() {
+        updateTicketState();
+        updateTicketGrantingTicketState();
     }
 
     @Override
@@ -116,18 +142,14 @@ public abstract class AbstractTicket implements Ticket, TicketState {
     public Authentication getAuthentication() {
         val ticketGrantingTicket = getTicketGrantingTicket();
         return Optional.ofNullable(ticketGrantingTicket)
-            .map(TicketGrantingTicket::getAuthentication)
+            .map(AuthenticationAwareTicket.class::cast)
+            .map(AuthenticationAwareTicket::getAuthentication)
             .orElse(null);
     }
 
     @Override
-    public TicketGrantingTicket getTicketGrantingTicket() {
+    public Ticket getTicketGrantingTicket() {
         return null;
-    }
-
-    @Override
-    public void markTicketExpired() {
-        this.expired = Boolean.TRUE;
     }
 
     /**
@@ -136,8 +158,7 @@ public abstract class AbstractTicket implements Ticket, TicketState {
     protected void updateTicketGrantingTicketState() {
         val ticketGrantingTicket = getTicketGrantingTicket();
         if (ticketGrantingTicket != null && !ticketGrantingTicket.isExpired()) {
-            val state = TicketState.class.cast(ticketGrantingTicket);
-            state.update();
+            ticketGrantingTicket.update();
         }
     }
 
@@ -149,7 +170,7 @@ public abstract class AbstractTicket implements Ticket, TicketState {
         LOGGER.trace("Before updating ticket [{}]\n\tPrevious time used: [{}]\n\tLast time used: [{}]\n\tUsage count: [{}]",
             getId(), this.previousTimeUsed, this.lastTimeUsed, this.countOfUses);
 
-        this.previousTimeUsed = ZonedDateTime.from(this.lastTimeUsed);
+        this.previousTimeUsed = this.lastTimeUsed;
         this.lastTimeUsed = ZonedDateTime.now(this.expirationPolicy.getClock());
         this.countOfUses++;
 
@@ -160,5 +181,36 @@ public abstract class AbstractTicket implements Ticket, TicketState {
     @JsonIgnore
     protected boolean isExpiredInternal() {
         return this.expired;
+    }
+
+    @Override
+    public void putProperty(final String name, final Serializable value) {
+        this.properties.put(name, value);
+    }
+
+    @Override
+    public void putAllProperties(final Map<String, Serializable> props) {
+        this.properties.putAll(props);
+    }
+
+    @Override
+    public boolean containsProperty(final String name) {
+        return this.properties.containsKey(name);
+    }
+
+    @Override
+    public <T> T getProperty(final String name, final Class<T> clazz) {
+        if (containsProperty(name)) {
+            return clazz.cast(this.properties.get(name));
+        }
+        return null;
+    }
+
+    @Override
+    public <T extends Serializable> T getProperty(final String name, final Class<T> clazz, final T defaultValue) {
+        if (containsProperty(name)) {
+            return clazz.cast(this.properties.getOrDefault(name, defaultValue));
+        }
+        return defaultValue;
     }
 }

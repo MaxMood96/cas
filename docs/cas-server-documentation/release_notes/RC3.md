@@ -4,30 +4,22 @@ title: CAS - Release Notes
 category: Planning
 ---
 
-# RC3 Release Notes
+# 7.2.0-RC3 Release Notes
 
-We strongly recommend that you take advantage of the release candidates as they come out. Waiting
-for a `GA` release is only going to set you up for unpleasant surprises. A `GA`
-is [a tag and nothing more](https://apereo.github.io/2017/03/08/the-myth-of-ga-rel/). Note that CAS
-releases are *strictly* time-based releases; they are not scheduled or based on
-specific benchmarks, statistics or completion of features. To gain confidence in
-a particular release, it is strongly recommended that you start early by
-experimenting with release candidates and/or follow-up snapshots.
+We strongly recommend that you take advantage of the release candidates as they come out. Waiting for a `GA` release is only going to set
+you up for unpleasant surprises. A `GA` is [a tag and nothing more](https://apereo.github.io/2017/03/08/the-myth-of-ga-rel/). Note
+that CAS releases are *strictly* time-based releases; they are not scheduled or based on specific benchmarks,
+statistics or completion of features. To gain confidence in a particular
+release, it is strongly recommended that you start early by experimenting with release candidates and/or follow-up snapshots.
 
 ## Apereo Membership
 
-If you benefit from Apereo CAS as free and open-source software, we
-invite you to [join the Apereo Foundation](https://www.apereo.org/content/apereo-membership)
-and financially support the project at a capacity that best suits your
-deployment. Note that all development activity is performed
-*almost exclusively* on a voluntary basis with no expectations, commitments or strings
-attached. Having the financial means to better sustain engineering activities will allow
-the developer community to allocate *dedicated and committed* time for long-term
-support, maintenance and release planning, especially when it comes to addressing
-critical and security issues in a timely manner. Funding will ensure support for
-the software you rely on and you gain an advantage and say in the way Apereo, and
-the CAS project at that, runs and operates. If you consider your CAS deployment to
-be a critical part of the identity and access management ecosystem, this is a viable option to consider.
+If you benefit from Apereo CAS as free and open-source software, we invite you
+to [join the Apereo Foundation](https://www.apereo.org/content/apereo-membership)
+and financially support the project at a capacity that best suits your deployment. Note that all development activity is performed
+*almost exclusively* on a voluntary basis with no expectations, commitments or strings attached. Having the financial means to better
+sustain engineering activities will allow the developer community to allocate *dedicated and committed* time for long-term support,
+maintenance and release planning, especially when it comes to addressing critical and security issues in a timely manner.
 
 ## Get Involved
 
@@ -40,112 +32,107 @@ be a critical part of the identity and access management ecosystem, this is a vi
 - [Release Schedule](https://github.com/apereo/cas/milestones)
 - [Release Policy](/cas/developer/Release-Policy.html)
 
-## Overlay
+## System Requirements
 
-In the `gradle.properties` of the [CAS WAR Overlay](../installation/WAR-Overlay-Installation.html), adjust the following setting:
-
-```properties
-cas.version=6.5.0-RC3
-```
-
-<div class="alert alert-info">
-<strong>System Requirements</strong><br/>There are no changes to the minimum system/platform requirements for this release.
-</div>
+The JDK baseline requirement for this CAS release is and **MUST** be JDK `21`. All compatible distributions
+such as Amazon Corretto, Zulu, Eclipse Temurin, etc should work and are implicitly supported.
 
 ## New & Noteworthy
 
 The following items are new improvements and enhancements presented in this release.
-     
-### Spring Boot `2.6.x`
 
-CAS has now switched to use the Spring Boot `2.6.x` release line, and all other relevant dependencies
-such as Spring Cloud, Spring Data, Spring Security, etc have also been upgraded. While this is a somewhat significant
-upgrade, its effects and consequences should largely remain invisible to the end-user. Aside from all the usual 
-reasons, this upgrade should allow CAS to be one step closer to native builds using the likes of GraalVM. 
+### Spring Boot 3.4
 
-<div class="alert alert-info">
-<strong>Remember</strong><br/>Be sure to review your CAS Overlay configuration
-to make sure the Spring Boot version correctly matches that of CAS. Creating a CAS Overlay
-project using the CAS Initializr service should already account for this change.
-</div>
+The migration of the entire codebase to Spring Boot `3.4.x` is complete, and most if not all libraries and
+supporting frameworks have shown to be compatible. There may be slight glitches here and there but for the most part,
+CAS is now ready to take advantage of the latest and greatest features of Spring Boot `3.4.x`.
 
-This upgrade affects CAS via the following ways:
+### OpenRewrite Recipes
 
-- By default, circular `@Bean` references are no longer allowed by Spring Boot. The only module affected by this change is the CAS Command-line Shell.
-- The default MVC path matcher is set as `spring.mvc.pathmatch.matching-strategy=ant-path-matcher` to restore and enforce current behavior, particularly for OpenID Connect endpoints.
+CAS continues to produce and publish [OpenRewrite](https://docs.openrewrite.org/) recipes that allow the project to upgrade installations
+in place from one version to the next. [See this guide](../installation/OpenRewrite-Upgrade-Recipes.html) to learn more.
 
-### Account (Self-Service) Registration
+### Graal VM Native Images
 
-CAS provides a modest workflow to 
-handle [self-service account registration](../registration/Account-Registration-Overview.html).
-This capability was developed and first released in `6.5.0-RC1`, and it will be repeatedly refined
-and improved in the future to match and accommodate realistic workflows deployed today as much as possible. 
+A CAS server installation and deployment process can be tuned to build and run
+as a [Graal VM native image](../installation/GraalVM-NativeImage-Installation.html). We continue to polish native runtime hints.
+The collection of end-to-end [browser tests based on Puppeteer](../../developer/Test-Process.html) have selectively switched
+to build and verify Graal VM native images and we plan to extend the coverage to all such scenarios in the coming releases.
 
 ### Testing Strategy
 
-The collection of end-to-end browser tests based on Puppeteer continue to grow to add additional scenarios. At this point, there are
-approximately `215` test scenarios and we'll continue to add more in the coming releases.
+The collection of end-to-end [browser tests based on Puppeteer](../../developer/Test-Process.html) continue to grow to cover more use cases
+and scenarios. At the moment, the total number of jobs stands at approximately `506` distinct scenarios. The overall
+test coverage of the CAS codebase is approximately `94%`. 
 
-### OpenID Connect Key Rotation
-     
-CAS can now be configured to rotate keys in the [OpenID Connect](../authentication/OIDC-Authentication-JWKS.html) 
-keystore automatically based on a predefined schedule. Rotation will include previous keys as well as current and future
-keys to assist with integrations and caching concerns. There is also a revocation schedule for old
-inactive keys that should be removed from the keystore.
+### Java 23
 
-### Chained Service Access Strategies
+CAS is now able to build and run using Java `23`. As described, the JDK baseline requirement for this CAS release is and **MUST** be JDK `21`. 
+This is just a preparatory step to ensure CAS is ready for the next versions of Java.
+       
+### Delegate Authentication Providers
+                 
+The configuration of [delegated authentication providers](../integration/Delegate-Authentication-Provider-Registration.html) 
+is now extended to support SQL databases.
 
-[Service access strategies](../services/Configuring-Service-Access-Strategy.html) can now 
-be chained and grouped together to deliver advanced conditions
-and grouping logic using multiple `AND` or `OR` rules.
-  
-### OpenID Connect JWKS Storage
+### SAML2 IdP Metadata via AWS S3
 
-The generation of the [JWKS resource for OpenID Connect](../authentication/OIDC-Authentication-JWKS.html) 
-can now be outsourced to external REST APIs, Groovy scripts or relational databases. Each storage service implementation
-should also be able to support key rotation and revocation as is handled by CAS itself.
+[SAML2 metadata via AWS S3](../installation/Configuring-SAML2-DynamicMetadata-AmazonS3.html) has changed its strategy 
+for metadata storage to no longer track certificate and keys for signing and encryption operations as part of 
+the *S3 object's metadata*, which may cause failures due to size limitations. Instead, all SAML2 metadata elements are put 
+inside the S3 object's content as a JSON document.
 
-### Audit Log Data Structure
-
-Audit log records and storage services are now modified to include user agent information using the `User-Agent` header.
-This *might* be a breaking change, particularly for relational databases that have a fixed table structure. 
-If you are not allowing CAS to update database schemas automatically, you will need to ensure the audit log table
-contains a `AUD_USERAGENT` database column, preferably set to `varchar(length = 512)`.
+<div class="alert alert-warning">:warning: <strong>Breaking Change</strong><p>
+This may be a breaking change. Consult the documentation to learn more.</p></div>
 
 ## Other Stuff
-            
-- Generation of [SAML2 IdP Metadata](../installation/Configuring-SAML2-DynamicMetadata.html) is now postponed until the application ready event.
-- Minor performance improvements to assist with locating SAML2 services in the service registry.
-- Possible X509 stack overflow errors when fetching X509 certificates from headers are now fixed. 
-- All Redis integrations are now able to support TLS options for encrypted connections and transports.
-- All Hazelcast integrations are now able to support TLS options for encrypted connections and transports.
-- DynamoDb tables names that affect OAuth and OpenID Connect functionality are now customizable via CAS settings.
-- Cache invalidation rules for static resources such as CSS/JS files using `ResourceUrlProviderExposingInterceptor` is now restored.
-- When performing a logout after an OIDC login process, the OIDC session is now properly removed when it is distributed.
-- [Authy MFA](../mfa/AuthyAuthenticator-Authentication.html) configuration is now conditionally activated when Authy API keys are found in CAS configuration.
-- [Passwordless LDAP](../authentication/Passwordless-Authentication-Storage-LDAP.html) configuration is activated when an LDAP url is found in configuration.
-- Identifiers of consent decisions are now fixed to be operable using the consent actuator endpoint. These IDs are now serialized as `String` to avoid rounding issues with long numbers during JSON serialization.
+     
+- Performance tests are now available based on the [Artillery](../high_availability/Performance-Testing-Artillery.html) framework.
+- A dedicated metric, `slow.requests.timer`, is now available once system health monitoring is enabled to track slow requests that take longer than 5 seconds.
+- Additional [theme property](../ux/User-Interface-Customization-Themes-Static.html) to determine whether CAS version details should be displayed in the page footer.
+- [Multifactor provider selection](../mfa/Configuring-Multifactor-Authentication-Triggers.html) is set to utilize ranking strategies when multiple competing MFA triggers vote for different MFA providers.
+- A new configuration option to control whether [JWT access tokens](../authentication/OAuth-Authentication.html) should include additional attributes and claims beyond the standard claims.
+- [DynamoDb ticket registry](../ticketing/DynamoDb-Ticket-Registry.html) is adjusted to not track attributes with empty values when storing tickets in string sets.
+- CAS may not generate refresh tokens if the expiration policy for refresh tokens is set to zero.
+- Redirecting to a destination URL after [CAS logout](../installation/Logout-Single-Signout.html) is now remembered as a `TST` prior to sending SAML2 logout requests to external identity providers.
+- Actuator endpoints can be secured using a static JSON file that may contain user details and roles.
+- Support for [Redis modules via LettuceMod](../ticketing/Redis-Ticket-Registry-RediSearch.html) is now extracted into a dedicated module.
+- Scratch codes may also be used to verify an account during the [Google Authenticator](../mfa/GoogleAuthenticator-Authentication.html) registration flow.
+- Tickets captured via [JPA ticket registry](../ticketing/JPA-Ticket-Registry.html) will also track the ticket expiration time and the last-used time.
+- [Passwordless accounts](../authentication/Passwordless-Authentication.html) can be now customized and post-processed once fetched from the passwordless account store.  
+- [MongoDb Ticket Registry](../ticketing/MongoDb-Ticket-Registry.html) has now removed a "text" index on the full json contents of the ticket to improve performance.
+- Managing tokens for [Simple Multifactor Authentication via REST](../mfa/Simple-Multifactor-Authentication-TokenManagement-REST.html) has switched the HTTP method to `POST` in some cases to better align with RESTful principles. 
+- Various small performance improvements and documentation updates. 
 
 ## Library Upgrades
-
-- Spring Boot
-- Spring Data
-- Spring Security
-- Spring Cloud
-- Micrometer
-- Amazon SDK
-- SpotBugs
-- Spring Session
-- Spring Framework
-- MongoDb Driver
-- Azure CosmosDb
-- Spring Boot Admin
-- Pac4j
-- Bucket4j
-- Maxmind
-- Apache Tomcat
-- Thymeleaf
-- Okta SDK
-- BouncyCastle
-- Twilio
+       
 - Gradle
+- Spring Boot
+- Spring
+- Spring Security
+- Spring Integration
+- Spring Shell
+- JaVers
+- Groovy
+- Swagger
+- JGit
+- Spring Cloud
+- Spring Cloud GCP
+- Apache Kafka
+- MongoDb Driver
+- Oracle Driver
+- Hibernate
+- Apache Tomcat
+- Spring Data
+- Jetty
+- SpringDoc
+- Quartz
+- Hikari
+- Lombok
+- Pac4j
+- Spring Boot Admin
+- Micrometer
+- Twilio
+- Sentry
+- Elastic APM
+- Google Cloud Logging

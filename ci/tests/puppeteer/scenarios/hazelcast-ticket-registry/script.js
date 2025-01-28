@@ -1,32 +1,44 @@
-const puppeteer = require('puppeteer');
-const assert = require('assert');
-const cas = require('../../cas.js');
+const assert = require("assert");
+const cas = require("../../cas.js");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
-    await page.goto("https://localhost:8443/cas/login");
-    await cas.loginWith(page, "casuser", "Mellon");
-    await page.goto("https://localhost:8443/cas/actuator/health");
-    await page.waitForTimeout(1000)
+    await cas.gotoLogin(page, "https://localhost:9859/anything/cas");
+    await cas.loginWith(page);
+    await cas.sleep(1000);
+    await cas.assertTicketParameter(page);
+    await cas.gotoLogin(page);
+    await cas.assertCookie(page);
+
+    await cas.goto(page, "https://localhost:8443/cas/actuator/health");
+    await cas.sleep(1000);
     await cas.doGet("https://localhost:8443/cas/actuator/health",
-        res => {
-            assert(res.data.components.hazelcast !== null);
-            assert(res.data.components.memory !== null);
-            assert(res.data.components.ping !== null);
+        (res) => {
+            assert(res.data.components.hazelcast !== undefined);
+            assert(res.data.components.memory !== undefined);
+            assert(res.data.components.ping !== undefined);
 
-            assert(res.data.components.hazelcast.status !== null);
-            assert(res.data.components.hazelcast.details !== null);
+            assert(res.data.components.hazelcast.status !== undefined);
+            assert(res.data.components.hazelcast.details !== undefined);
 
-            let details = res.data.components.hazelcast.details;
+            const details = res.data.components.hazelcast.details;
             assert(details.name === "HazelcastHealthIndicator");
-            assert(details.proxyGrantingTicketsCache !== null);
-            assert(details.ticketGrantingTicketsCache !== null);
-            assert(details.proxyTicketsCache !== null);
-            assert(details.serviceTicketsCache !== null);
-            assert(details.transientSessionTicketsCache !== null);
-        }, error => {
+            assert(details.proxyGrantingTicketsCache !== undefined);
+            assert(details.ticketGrantingTicketsCache !== undefined);
+            assert(details.proxyTicketsCache !== undefined);
+            assert(details.serviceTicketsCache !== undefined);
+            assert(details.transientSessionTicketsCache !== undefined);
+        }, (error) => {
             throw error;
-        }, { 'Content-Type': "application/json" })
+        }, { "Content-Type": "application/json" });
+
+    await cas.goto(page, "https://localhost:8444/cas/login");
+    await cas.sleep();
+    await cas.assertCookie(page);
+    await cas.sleep();
+    await cas.assertPageTitle(page, "CAS - Central Authentication Service Log In Successful");
+    await cas.assertInnerText(page, "#content div h2", "Log In Successful");
+
     await browser.close();
 })();

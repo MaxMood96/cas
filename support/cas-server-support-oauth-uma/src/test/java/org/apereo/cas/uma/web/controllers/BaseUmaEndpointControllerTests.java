@@ -1,8 +1,7 @@
 package org.apereo.cas.uma.web.controllers;
 
 import org.apereo.cas.AbstractOAuth20Tests;
-import org.apereo.cas.config.CasOAuthUmaComponentSerializationConfiguration;
-import org.apereo.cas.config.CasOAuthUmaConfiguration;
+import org.apereo.cas.config.CasOAuthUmaAutoConfiguration;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.uma.claim.UmaResourceSetClaimPermissionExaminer;
 import org.apereo.cas.uma.discovery.UmaServerDiscoverySettings;
@@ -25,31 +24,27 @@ import org.apereo.cas.uma.web.controllers.resource.UmaResourceRegistrationReques
 import org.apereo.cas.uma.web.controllers.resource.UmaUpdateResourceSetRegistrationEndpointController;
 import org.apereo.cas.uma.web.controllers.rpt.UmaRequestingPartyTokenJwksEndpointController;
 import org.apereo.cas.util.CollectionUtils;
-
+import org.apereo.cas.web.SecurityLogicInterceptor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.http.HttpHeaders;
-import org.pac4j.core.context.JEEContext;
-import org.pac4j.core.context.session.SessionStore;
+import org.apache.hc.core5.http.HttpHeaders;
 import org.pac4j.core.profile.ProfileManager;
 import org.pac4j.core.profile.UserProfile;
-import org.pac4j.springframework.web.SecurityInterceptor;
+import org.pac4j.jee.context.JEEContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -58,11 +53,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.0.0
  */
-@Import({CasOAuthUmaConfiguration.class, CasOAuthUmaComponentSerializationConfiguration.class})
-@TestPropertySource(properties = {
-    "spring.main.allow-bean-definition-overriding=true",
-    "cas.authn.oauth.uma.requesting-party-token.jwks-file.location=classpath:uma-keystore.jwks"
-})
+@ImportAutoConfiguration(CasOAuthUmaAutoConfiguration.class)
+@TestPropertySource(properties = "cas.authn.oauth.uma.requesting-party-token.jwks-file.location=classpath:uma-keystore.jwks")
 @Slf4j
 public abstract class BaseUmaEndpointControllerTests extends AbstractOAuth20Tests {
 
@@ -107,10 +99,6 @@ public abstract class BaseUmaEndpointControllerTests extends AbstractOAuth20Test
     protected UmaFindPolicyForResourceSetEndpointController umaFindPolicyForResourceSetEndpointController;
 
     @Autowired
-    @Qualifier("oauthDistributedSessionStore")
-    protected SessionStore oauthDistributedSessionStore;
-
-    @Autowired
     @Qualifier("umaDeletePolicyForResourceSetEndpointController")
     protected UmaDeletePolicyForResourceSetEndpointController umaDeletePolicyForResourceSetEndpointController;
 
@@ -124,7 +112,7 @@ public abstract class BaseUmaEndpointControllerTests extends AbstractOAuth20Test
 
     @Autowired
     @Qualifier("umaRequestingPartyTokenSecurityInterceptor")
-    protected SecurityInterceptor umaRequestingPartyTokenSecurityInterceptor;
+    protected SecurityLogicInterceptor umaRequestingPartyTokenSecurityInterceptor;
 
     @Autowired
     @Qualifier("umaServerDiscoverySettingsFactory")
@@ -132,7 +120,7 @@ public abstract class BaseUmaEndpointControllerTests extends AbstractOAuth20Test
 
     @Autowired
     @Qualifier("umaAuthorizationApiTokenSecurityInterceptor")
-    protected SecurityInterceptor umaAuthorizationApiTokenSecurityInterceptor;
+    protected SecurityLogicInterceptor umaAuthorizationApiTokenSecurityInterceptor;
 
     @Autowired
     @Qualifier("umaResourceSetClaimPermissionExaminer")
@@ -142,11 +130,11 @@ public abstract class BaseUmaEndpointControllerTests extends AbstractOAuth20Test
     @Qualifier("umaResourceSetRepository")
     protected ResourceSetRepository umaResourceSetRepository;
 
-    protected Triple<HttpServletRequest, HttpServletResponse, String> authenticateUmaRequestWithProtectionScope() {
+    protected Triple<HttpServletRequest, HttpServletResponse, String> authenticateUmaRequestWithProtectionScope() throws Throwable {
         return authenticateUmaRequestWithScope(OAuth20Constants.UMA_PROTECTION_SCOPE, umaRequestingPartyTokenSecurityInterceptor);
     }
 
-    protected Triple<HttpServletRequest, HttpServletResponse, String> authenticateUmaRequestWithAuthorizationScope() {
+    protected Triple<HttpServletRequest, HttpServletResponse, String> authenticateUmaRequestWithAuthorizationScope() throws Throwable {
         return authenticateUmaRequestWithScope(OAuth20Constants.UMA_AUTHORIZATION_SCOPE, umaAuthorizationApiTokenSecurityInterceptor);
     }
 
@@ -211,7 +199,7 @@ public abstract class BaseUmaEndpointControllerTests extends AbstractOAuth20Test
     }
 
     private Triple<HttpServletRequest, HttpServletResponse, String> authenticateUmaRequestWithScope(
-        final String scope, final SecurityInterceptor interceptor) {
+        final String scope, final SecurityLogicInterceptor interceptor) throws Throwable {
         val service = addRegisteredService();
         val pair = assertClientOK(service, false, scope);
         assertNotNull(pair.getKey());
@@ -219,6 +207,7 @@ public abstract class BaseUmaEndpointControllerTests extends AbstractOAuth20Test
 
         val mockRequest = new MockHttpServletRequest(HttpMethod.POST.name(), CONTEXT + OAuth20Constants.UMA_REGISTRATION_URL);
         mockRequest.addHeader(HttpHeaders.AUTHORIZATION, String.format("%s %s", OAuth20Constants.TOKEN_TYPE_BEARER, accessToken));
+        mockRequest.addHeader(HttpHeaders.USER_AGENT, "MSIE");
         val mockResponse = new MockHttpServletResponse();
         interceptor.preHandle(mockRequest, mockResponse, null);
         return Triple.of(mockRequest, mockResponse, accessToken);

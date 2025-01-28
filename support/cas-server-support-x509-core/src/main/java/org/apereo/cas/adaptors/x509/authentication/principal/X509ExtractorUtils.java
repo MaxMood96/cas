@@ -33,7 +33,7 @@ public class X509ExtractorUtils {
     /**
      * Subject Alternative Name field id for RFC822 Email Type.
      */
-    private static int SAN_RFC822_EMAIL_TYPE = 1;
+    private static final int SAN_RFC822_EMAIL_TYPE = 1;
 
     /**
      * Extract common name (CN) from subject DN.
@@ -100,7 +100,7 @@ public class X509ExtractorUtils {
         }
         return subjectAltNames
                 .stream()
-                .filter(s -> s.size() == 2 && (Integer) s.get(0) == SAN_RFC822_EMAIL_TYPE)
+                .filter(name -> name.size() == 2 && (Integer) name.getFirst() == SAN_RFC822_EMAIL_TYPE)
                 .findFirst()
                 .map(objects -> (String) objects.get(1));
     }

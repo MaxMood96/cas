@@ -5,9 +5,10 @@ dependencies {
     implementation project(":core:cas-server-core-authentication-api")
 
     api libraries.ldaptive
-    
-    implementation libraries.pac4jcore
+
+    implementation project(":support:cas-server-support-person-directory-core")
     
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
 }

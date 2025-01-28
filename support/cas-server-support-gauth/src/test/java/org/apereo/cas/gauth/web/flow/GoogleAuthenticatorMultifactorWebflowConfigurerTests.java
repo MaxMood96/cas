@@ -1,10 +1,11 @@
 package org.apereo.cas.gauth.web.flow;
 
 import org.apereo.cas.gauth.BaseGoogleAuthenticatorTests;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.web.flow.configurer.BaseMultifactorWebflowConfigurerTests;
-
 import lombok.Getter;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,15 +24,16 @@ import org.springframework.webflow.definition.registry.FlowDefinitionRegistry;
         "cas.authn.mfa.trusted.core.device-registration-enabled=true"
     })
 @Tag("WebflowMfaConfig")
+@ExtendWith(CasTestExtension.class)
 @Getter
-public class GoogleAuthenticatorMultifactorWebflowConfigurerTests extends BaseMultifactorWebflowConfigurerTests {
+class GoogleAuthenticatorMultifactorWebflowConfigurerTests extends BaseMultifactorWebflowConfigurerTests {
     @Autowired
     @Qualifier("googleAuthenticatorFlowRegistry")
     private FlowDefinitionRegistry multifactorFlowDefinitionRegistry;
-
+    
     @Override
     protected String getMultifactorEventId() {
-        return GoogleAuthenticatorMultifactorWebflowConfigurer.MFA_GAUTH_EVENT_ID;
+        return casProperties.getAuthn().getMfa().getGauth().getId();
     }
 
 }

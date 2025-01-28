@@ -1,33 +1,16 @@
 package org.apereo.cas.pac4j.clients;
 
+import org.apereo.cas.BaseDelegatedAuthenticationTests;
 import org.apereo.cas.pac4j.client.GroovyDelegatedClientIdentityProviderRedirectionStrategy;
-import org.apereo.cas.services.DefaultServicesManager;
-import org.apereo.cas.services.DefaultServicesManagerRegisteredServiceLocator;
-import org.apereo.cas.services.InMemoryServiceRegistry;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
-import org.apereo.cas.services.ServicesManager;
-import org.apereo.cas.services.ServicesManagerConfigurationContext;
-import org.apereo.cas.util.scripting.WatchableGroovyScriptResource;
+import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import org.apereo.cas.web.DelegatedClientIdentityProviderConfiguration;
-
-import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.val;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.support.StaticApplicationContext;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
-
-import java.util.HashSet;
-import java.util.List;
-
+import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -37,31 +20,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.4.0
  */
 @Tag("Groovy")
-public class GroovyDelegatedClientIdentityProviderRedirectionStrategyTests {
-    private ServicesManager servicesManager;
-
-    @BeforeEach
-    public void setup() {
-        val appCtx = new StaticApplicationContext();
-        appCtx.refresh();
-        val context = ServicesManagerConfigurationContext.builder()
-            .serviceRegistry(new InMemoryServiceRegistry(appCtx))
-            .applicationContext(appCtx)
-            .environments(new HashSet<>(0))
-            .servicesCache(Caffeine.newBuilder().build())
-            .registeredServiceLocators(List.of(new DefaultServicesManagerRegisteredServiceLocator()))
-            .build();
-        this.servicesManager = new DefaultServicesManager(context);
-    }
-
+class GroovyDelegatedClientIdentityProviderRedirectionStrategyTests extends BaseDelegatedAuthenticationTests {
     @Test
-    public void verifyOperation() {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
+    void verifyOperation() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
 
         val provider = DelegatedClientIdentityProviderConfiguration.builder()
             .name("SomeClient")
@@ -70,9 +32,12 @@ public class GroovyDelegatedClientIdentityProviderRedirectionStrategyTests {
             .build();
         val service = RegisteredServiceTestUtils.getService();
         val resource = new ClassPathResource("GroovyClientRedirectStrategy.groovy");
-        val strategy = new GroovyDelegatedClientIdentityProviderRedirectionStrategy(this.servicesManager,
-            new WatchableGroovyScriptResource(resource));
-        assertFalse(strategy.getPrimaryDelegatedAuthenticationProvider(context, service, provider).isEmpty());
+
+        val scriptFactory = ExecutableCompiledScriptFactory.getExecutableCompiledScriptFactory();
+        val watchableScript = scriptFactory.fromResource(resource);
+        val strategy = new GroovyDelegatedClientIdentityProviderRedirectionStrategy(servicesManager,
+            watchableScript, applicationContext);
+        assertFalse(strategy.select(context, service, Set.of(provider)).isEmpty());
         assertEquals(0, strategy.getOrder());
     }
 }

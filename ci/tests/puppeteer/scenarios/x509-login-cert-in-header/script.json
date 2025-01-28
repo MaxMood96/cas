@@ -1,7 +1,11 @@
 {
-  "dependencies": "x509-webflow,json-service-registry",
+  "dependencies": "x509-webflow,json-service-registry,scripting",
+  "conditions": {
+    "docker": "true"
+  },
   "properties": [
-    "--logging.level.org.apereo.cas=debug",
+    "--cas.server.name=https://localhost:8443",
+    "--cas.server.prefix=${cas.server.name}/cas",
 
     "--cas.service-registry.core.init-from-json=true",
     "--cas.service-registry.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/services",
@@ -26,5 +30,6 @@
     "--cas.authn.attribute-repository.groovy[0].order=2",
     "--cas.authn.attribute-repository.groovy[0].case-insensitive=false"
   ],
-  "trustStoreCertificateFile": "./ci/tests/puppeteer/scenarios/x509-login-cert-in-header/cert.pem"
+  "trustStoreCertificateFile": "./ci/tests/puppeteer/scenarios/x509-login-cert-in-header/cert.pem",
+  "initScript": "${PWD}/ci/tests/httpbin/run-httpbin-server.sh"
 }

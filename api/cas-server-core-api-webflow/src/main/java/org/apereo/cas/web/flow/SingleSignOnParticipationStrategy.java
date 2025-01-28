@@ -1,7 +1,7 @@
 package org.apereo.cas.web.flow;
 
-import org.apereo.cas.util.model.TriStateBoolean;
-
+import org.apereo.cas.configuration.support.TriStateBoolean;
+import org.apereo.cas.util.NamedObject;
 import org.springframework.core.Ordered;
 
 /**
@@ -11,7 +11,12 @@ import org.springframework.core.Ordered;
  * @since 5.2.0
  */
 @FunctionalInterface
-public interface SingleSignOnParticipationStrategy extends Ordered {
+public interface SingleSignOnParticipationStrategy extends Ordered, NamedObject {
+
+    /**
+     * Default implementation bean name.
+     */
+    String BEAN_NAME = "singleSignOnParticipationStrategy";
 
     /**
      * Always participating single sign on participation strategy.
@@ -39,8 +44,9 @@ public interface SingleSignOnParticipationStrategy extends Ordered {
      *
      * @param ssoRequest the request
      * @return true if authn is renewed
+     * @throws Throwable the throwable
      */
-    boolean isParticipating(SingleSignOnParticipationRequest ssoRequest);
+    boolean isParticipating(SingleSignOnParticipationRequest ssoRequest) throws Throwable;
 
     /**
      * Does strategy support this request or not?
@@ -65,15 +71,5 @@ public interface SingleSignOnParticipationStrategy extends Ordered {
      */
     default TriStateBoolean isCreateCookieOnRenewedAuthentication(final SingleSignOnParticipationRequest context) {
         return TriStateBoolean.UNDEFINED;
-    }
-
-    /**
-     * Returns the friendly name of this strategy.
-     *
-     * @return the name.
-     * @since 6.4.0
-     */
-    default String getName() {
-        return this.getClass().getSimpleName();
     }
 }

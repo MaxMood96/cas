@@ -1,6 +1,6 @@
 package org.apereo.cas.trusted.authentication.storage;
 
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 
 import org.junit.jupiter.api.Tag;
 import org.springframework.test.context.TestPropertySource;
@@ -18,9 +18,9 @@ import org.springframework.test.context.TestPropertySource;
     "cas.authn.mfa.trusted.jpa.password=password",
     "cas.authn.mfa.trusted.jpa.driver-class=org.postgresql.Driver",
     "cas.authn.mfa.trusted.jpa.url=jdbc:postgresql://localhost:5432/mfa",
-    "cas.authn.mfa.trusted.jpa.dialect=org.hibernate.dialect.PostgreSQL10Dialect"
+    "cas.authn.mfa.trusted.jpa.dialect=org.hibernate.dialect.PostgreSQLDialect"
 })
-@EnabledIfPortOpen(port = 5432)
+@EnabledIfListeningOnPort(port = 5432)
 @Tag("Postgres")
-public class PostgresJpaMultifactorAuthenticationTrustStorageTests extends JpaMultifactorAuthenticationTrustStorageTests {
+class PostgresJpaMultifactorAuthenticationTrustStorageTests extends JpaMultifactorAuthenticationTrustStorageTests {
 }

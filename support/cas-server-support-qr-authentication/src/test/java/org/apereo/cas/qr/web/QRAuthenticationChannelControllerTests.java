@@ -5,27 +5,27 @@ import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.qr.BaseQRAuthenticationTokenValidatorServiceTests;
 import org.apereo.cas.qr.QRAuthenticationConstants;
 import org.apereo.cas.qr.authentication.QRAuthenticationDeviceRepository;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.token.JwtBuilder;
 import org.apereo.cas.util.DateTimeUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.LinkedMultiValueMap;
-
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -36,10 +36,11 @@ import static org.mockito.Mockito.*;
  * @since 6.3.0
  */
 @Tag("Web")
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = BaseQRAuthenticationTokenValidatorServiceTests.SharedTestConfiguration.class)
-public class QRAuthenticationChannelControllerTests {
+class QRAuthenticationChannelControllerTests {
     @Autowired
-    @Qualifier("tokenTicketJwtBuilder")
+    @Qualifier(JwtBuilder.TICKET_JWT_BUILDER_BEAN_NAME)
     private JwtBuilder jwtBuilder;
 
     @Autowired
@@ -58,12 +59,12 @@ public class QRAuthenticationChannelControllerTests {
     private QRAuthenticationDeviceRepository qrAuthenticationDeviceRepository;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         qrAuthenticationDeviceRepository.removeAll();
     }
 
     @Test
-    public void verifyOK() {
+    void verifyOK() throws Throwable {
         assertNotNull(qrAuthenticationChannelController);
 
         val tgt = new MockTicketGrantingTicket("casuser");
@@ -76,7 +77,7 @@ public class QRAuthenticationChannelControllerTests {
             .subject("casuser")
             .jwtId(tgt.getId())
             .issuer(casProperties.getServer().getPrefix())
-            .serviceAudience("https://example.com/normal/")
+            .serviceAudience(Set.of("https://example.com/normal/"))
             .validUntilDate(DateTimeUtils.dateOf(LocalDate.now(Clock.systemUTC()).plusDays(1)))
             .attributes(Map.of(QRAuthenticationConstants.QR_AUTHENTICATION_DEVICE_ID, List.of(deviceId)))
             .build();
@@ -94,14 +95,14 @@ public class QRAuthenticationChannelControllerTests {
     }
 
     @Test
-    public void verifyFails() {
+    void verifyFails() throws Throwable {
         val tgt = new MockTicketGrantingTicket("casuser");
         ticketRegistry.addTicket(tgt);
         val payload = JwtBuilder.JwtRequest.builder()
             .subject("unknown-user")
             .jwtId(tgt.getId())
             .issuer(casProperties.getServer().getPrefix())
-            .serviceAudience("https://example.com/normal/")
+            .serviceAudience(Set.of("https://example.com/normal/"))
             .validUntilDate(DateTimeUtils.dateOf(LocalDate.now(Clock.systemUTC()).plusDays(1)))
             .build();
         val jwt = jwtBuilder.build(payload);
@@ -118,7 +119,7 @@ public class QRAuthenticationChannelControllerTests {
     }
 
     @Test
-    public void verifyMissingHeader() {
+    void verifyMissingHeader() {
         assertNotNull(qrAuthenticationChannelController);
         val message = mock(Message.class);
         var headers = new MessageHeaders(Map.of("nativeHeaders", new LinkedMultiValueMap<>()));

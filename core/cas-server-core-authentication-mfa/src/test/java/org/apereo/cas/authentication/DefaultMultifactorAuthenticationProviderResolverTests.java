@@ -7,26 +7,19 @@ import org.apereo.cas.authentication.mfa.trigger.PrincipalAttributeMultifactorAu
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.ticket.UnsatisfiedAuthenticationContextTicketValidationException;
 import org.apereo.cas.util.CollectionUtils;
-
+import org.apereo.cas.util.MockRequestContext;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.binding.expression.support.LiteralExpression;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.StaticApplicationContext;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.engine.Transition;
 import org.springframework.webflow.engine.support.DefaultTargetStateResolver;
 import org.springframework.webflow.engine.support.DefaultTransitionCriteria;
-import org.springframework.webflow.test.MockRequestContext;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -37,9 +30,47 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 
 @Tag("MFA")
-public class DefaultMultifactorAuthenticationProviderResolverTests {
+class DefaultMultifactorAuthenticationProviderResolverTests {
+    private static void assertProviderResolutionFromManyProviders(final MultifactorAuthenticationTrigger trigger,
+                                                                  final ConfigurableApplicationContext applicationContext,
+                                                                  final boolean assertPresence) throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
+
+        val provider1 = new TestMultifactorAuthenticationProvider();
+        provider1.setOrder(10);
+        registerProviderInApplicationContext(applicationContext, context, provider1);
+
+        val provider2 = new TestMultifactorAuthenticationProvider("mfa-other");
+        provider2.setOrder(1);
+        registerProviderInApplicationContext(applicationContext, context, provider2);
+
+        val principal = CoreAuthenticationTestUtils.getPrincipal("casuser",
+            CollectionUtils.wrap("mfa-principal", List.of(provider2.getId())));
+        val result = trigger.isActivated(CoreAuthenticationTestUtils.getAuthentication(principal,
+                CollectionUtils.wrap("mfa-authn", List.of(provider2.getId()))),
+            CoreAuthenticationTestUtils.getRegisteredService(), context.getHttpServletRequest(),
+            context.getHttpServletResponse(),
+            CoreAuthenticationTestUtils.getService());
+        if (assertPresence) {
+            assertTrue(result.isPresent());
+            assertEquals(provider2.getId(), result.get().getId());
+        } else {
+            assertTrue(result.isEmpty());
+        }
+    }
+
+    private static TestMultifactorAuthenticationProvider registerProviderInApplicationContext(final ConfigurableApplicationContext applicationContext,
+                                                                                              final MockRequestContext context,
+                                                                                              final TestMultifactorAuthenticationProvider candidateProvider) {
+        val provider = TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext, candidateProvider);
+        val targetResolver = new DefaultTargetStateResolver(provider.getId());
+        val transition = new Transition(new DefaultTransitionCriteria(new LiteralExpression(provider.getId())), targetResolver);
+        context.getRootFlow().getGlobalTransitionSet().add(transition);
+        return (TestMultifactorAuthenticationProvider) provider;
+    }
+
     @Test
-    public void verifyMultipleProvidersWithPrincipalAttributes() {
+    void verifyMultipleProvidersWithPrincipalAttributes() throws Throwable {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
 
@@ -57,7 +88,7 @@ public class DefaultMultifactorAuthenticationProviderResolverTests {
     }
 
     @Test
-    public void verifyInvalidPrincipalAttributes() {
+    void verifyInvalidPrincipalAttributes() throws Throwable {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
         val casProperties = new CasConfigurationProperties();
@@ -67,9 +98,8 @@ public class DefaultMultifactorAuthenticationProviderResolverTests {
         assertProviderResolutionFromManyProviders(trigger, applicationContext, false);
     }
 
-
     @Test
-    public void verifyMultipleProvidersWithAuthenticationAttributes() {
+    void verifyMultipleProvidersWithAuthenticationAttributes() throws Throwable {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
 
@@ -82,16 +112,12 @@ public class DefaultMultifactorAuthenticationProviderResolverTests {
         assertProviderResolutionFromManyProviders(trigger, applicationContext, true);
     }
 
-
     @Test
-    public void verifyResolutionByAuthenticationAttribute() {
+    void verifyResolutionByAuthenticationAttribute() throws Throwable {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
 
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+        val context = MockRequestContext.create(applicationContext);
 
         val provider = registerProviderInApplicationContext(applicationContext, context, new TestMultifactorAuthenticationProvider());
         val resolver = new DefaultMultifactorAuthenticationProviderResolver(MultifactorAuthenticationPrincipalResolver.identical());
@@ -100,20 +126,18 @@ public class DefaultMultifactorAuthenticationProviderResolverTests {
             CollectionUtils.wrap("authlevel", List.of(provider.getId())));
         val results = resolver.resolveEventViaAuthenticationAttribute(authentication,
             List.of("authlevel"), CoreAuthenticationTestUtils.getRegisteredService(),
-            Optional.of(context), List.of(provider), (input, mfaProvider) -> input.equalsIgnoreCase(provider.getId()));
+            CoreAuthenticationTestUtils.getService(),
+            Optional.of(context), List.of(provider), (input, __) -> input.equalsIgnoreCase(provider.getId()));
         assertNotNull(results);
         assertEquals(provider.getId(), results.iterator().next().getId());
     }
 
     @Test
-    public void verifyResolutionByPrincipalAttribute() {
+    void verifyResolutionByPrincipalAttribute() throws Throwable {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
 
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+        val context = MockRequestContext.create(applicationContext);
 
         val provider = registerProviderInApplicationContext(applicationContext, context, new TestMultifactorAuthenticationProvider());
         val resolver = new DefaultMultifactorAuthenticationProviderResolver(MultifactorAuthenticationPrincipalResolver.identical());
@@ -121,91 +145,50 @@ public class DefaultMultifactorAuthenticationProviderResolverTests {
         val principal = CoreAuthenticationTestUtils.getPrincipal("casuser", CollectionUtils.wrap("authlevel", List.of(provider.getId())));
         var results = resolver.resolveEventViaPrincipalAttribute(principal,
             List.of("authlevel"), CoreAuthenticationTestUtils.getRegisteredService(),
-            Optional.of(context), List.of(provider), (input, mfaProvider) -> input.equalsIgnoreCase(provider.getId()));
+            CoreAuthenticationTestUtils.getService(),
+            Optional.of(context), List.of(provider), (input, __) -> input.equalsIgnoreCase(provider.getId()));
         assertNotNull(results);
         assertEquals(provider.getId(), results.iterator().next().getId());
 
         results = resolver.resolveEventViaPrincipalAttribute(principal,
             List.of("authlevel"), CoreAuthenticationTestUtils.getRegisteredService(),
-            Optional.of(context), List.of(), (input, mfaProvider) -> input.equalsIgnoreCase(provider.getId()));
+            CoreAuthenticationTestUtils.getService(),
+            Optional.of(context), List.of(), (input, __) -> input.equalsIgnoreCase(provider.getId()));
         assertNull(results);
 
         results = resolver.resolveEventViaPrincipalAttribute(principal,
             List.of(), CoreAuthenticationTestUtils.getRegisteredService(),
-            Optional.of(context), List.of(), (input, mfaProvider) -> input.equalsIgnoreCase(provider.getId()));
+            CoreAuthenticationTestUtils.getService(),
+            Optional.of(context), List.of(), (input, __) -> input.equalsIgnoreCase(provider.getId()));
         assertNull(results);
     }
 
     @Test
-    public void verifyNoProvider() {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+    void verifyNoProvider() throws Throwable {
+        val context = MockRequestContext.create();
         val resolver = new DefaultMultifactorAuthenticationProviderResolver(MultifactorAuthenticationPrincipalResolver.identical());
         val principal = CoreAuthenticationTestUtils.getPrincipal("casuser");
         val results = resolver.resolveEventViaAttribute(principal,
             Map.of("authlevel", List.of("strong")),
             List.of(), CoreAuthenticationTestUtils.getRegisteredService(),
-            Optional.of(context), List.of(), (s, mfaProvider) -> false);
+            CoreAuthenticationTestUtils.getService(),
+            Optional.of(context), List.of(), (__, mfaProvider) -> false);
         assertNull(results);
     }
 
     @Test
-    public void verifyNoMatch() {
+    void verifyNoMatch() throws Throwable {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
-
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+        val context = MockRequestContext.create(applicationContext);
         val provider = TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext);
         val resolver = new DefaultMultifactorAuthenticationProviderResolver(MultifactorAuthenticationPrincipalResolver.identical());
         val principal = CoreAuthenticationTestUtils.getPrincipal("casuser");
         val results = resolver.resolveEventViaAttribute(principal,
             Map.of("authlevel", List.of("strong")),
             List.of(), CoreAuthenticationTestUtils.getRegisteredService(),
-            Optional.of(context), List.of(provider), (s, mfaProvider) -> false);
+            CoreAuthenticationTestUtils.getService(),
+            Optional.of(context), List.of(provider), (__, mfaProvider) -> false);
         assertNull(results);
-    }
-
-    private static void assertProviderResolutionFromManyProviders(final MultifactorAuthenticationTrigger trigger,
-        final ConfigurableApplicationContext applicationContext,
-        final boolean assertPresence) {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-
-        val provider1 = new TestMultifactorAuthenticationProvider();
-        provider1.setOrder(10);
-        registerProviderInApplicationContext(applicationContext, context, provider1);
-
-        val provider2 = new TestMultifactorAuthenticationProvider("mfa-other");
-        provider2.setOrder(1);
-        registerProviderInApplicationContext(applicationContext, context, provider2);
-
-        val principal = CoreAuthenticationTestUtils.getPrincipal("casuser",
-            CollectionUtils.wrap("mfa-principal", List.of(provider2.getId())));
-        val result = trigger.isActivated(CoreAuthenticationTestUtils.getAuthentication(principal,
-            CollectionUtils.wrap("mfa-authn", List.of(provider2.getId()))),
-            CoreAuthenticationTestUtils.getRegisteredService(), request, CoreAuthenticationTestUtils.getService());
-        if (assertPresence) {
-            assertTrue(result.isPresent());
-            assertEquals(provider2.getId(), result.get().getId());
-        } else {
-            assertTrue(result.isEmpty());
-        }
-    }
-
-    private static TestMultifactorAuthenticationProvider registerProviderInApplicationContext(final ConfigurableApplicationContext applicationContext,
-        final MockRequestContext context,
-        final TestMultifactorAuthenticationProvider candidateProvider) {
-        val provider = TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext, candidateProvider);
-        val targetResolver = new DefaultTargetStateResolver(provider.getId());
-        val transition = new Transition(new DefaultTransitionCriteria(new LiteralExpression(provider.getId())), targetResolver);
-        context.getRootFlow().getGlobalTransitionSet().add(transition);
-        return (TestMultifactorAuthenticationProvider) provider;
     }
 }

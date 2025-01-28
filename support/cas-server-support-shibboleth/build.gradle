@@ -1,4 +1,11 @@
 description = "Apereo CAS Shibboleth IdP/SP Extensions"
+ext {
+    publishMetadata = true
+    projectMetadata = [
+            category: "SAML2 Protocol",
+            title: "SAML2 Shibboleth IdP Extensions"
+    ]
+}
 dependencies {
 
     implementation project(":support:cas-server-support-saml-core-api")
@@ -23,6 +30,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-cookie")
     testImplementation project(":core:cas-server-core-web")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
 
     testImplementation project(":support:cas-server-support-person-directory")
 

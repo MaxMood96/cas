@@ -1,37 +1,36 @@
-const puppeteer = require('puppeteer');
-const assert = require('assert');
-const cas = require('../../cas.js');
-const fs = require('fs');
-const request = require('request');
+
+const assert = require("assert");
+const cas = require("../../cas.js");
+const fs = require("fs");
+const request = require("request");
 
 (async () => {
-    let browser = await puppeteer.launch(cas.browserOptions());
+    let browser = await cas.newBrowser(cas.browserOptions());
     let page = await cas.newPage(browser);
-    await page.goto("https://localhost:8443/cas/login");
+    await cas.gotoLogin(page);
     await cas.loginWith(page, "aburr", "P@ssw0rd");
-    await cas.assertTicketGrantingCookie(page);
-    await cas.assertInnerText(page, '#content div h2', "Log In Successful");
-    const attributesldap = await cas.innerText(page, '#attribute-tab-0 table#attributesTable tbody');
-    assert(attributesldap.includes("aburr"))
-    assert(attributesldap.includes("someattribute"))
-    assert(attributesldap.includes("ldap-dn"))
+    await cas.assertCookie(page);
+    await cas.assertInnerText(page, "#content div h2", "Log In Successful");
+    const attributesldap = await cas.innerText(page, "#attribute-tab-0 table#attributesTable tbody");
+    assert(attributesldap.includes("aburr"));
+    assert(attributesldap.includes("someattribute"));
+    assert(attributesldap.includes("ldap-dn"));
     await browser.close();
 
-    browser = await puppeteer.launch(cas.browserOptions());
+    browser = await cas.newBrowser(cas.browserOptions());
     page = await cas.newPage(browser);
 
     await page.setRequestInterception(true);
-    let args = process.argv.slice(2);
-    let config = JSON.parse(fs.readFileSync(args[0]));
-    assert(config != null)
+    const args = process.argv.slice(2);
+    const config = JSON.parse(fs.readFileSync(args[0]));
 
-    console.log(`Certificate file: ${config.trustStoreCertificateFile}`);
-    console.log(`Private key file: ${config.trustStorePrivateKeyFile}`);
+    await cas.log(`Certificate file: ${config.trustStoreCertificateFile}`);
+    await cas.log(`Private key file: ${config.trustStorePrivateKeyFile}`);
 
     const cert = fs.readFileSync(config.trustStoreCertificateFile);
     const key = fs.readFileSync(config.trustStorePrivateKeyFile);
 
-    page.on('request', interceptedRequest => {
+    page.on("request", (interceptedRequest) => {
         const options = {
             uri: interceptedRequest.url(),
             method: interceptedRequest.method(),
@@ -43,13 +42,13 @@ const request = require('request');
 
         request(options, (err, resp, body) => {
             if (err) {
-                console.error(`Unable to call ${options.uri}`, err);
-                return interceptedRequest.abort('connectionrefused');
+                cas.logr(`Unable to call ${options.uri}`, err);
+                return interceptedRequest.abort("connectionrefused");
             }
 
             interceptedRequest.respond({
                 status: resp.statusCode,
-                contentType: resp.headers['content-type'],
+                contentType: resp.headers["content-type"],
                 headers: resp.headers,
                 body: body
             });
@@ -57,15 +56,16 @@ const request = require('request');
 
     });
 
-    await page.goto("https://localhost:8443/cas/login");
-    await page.waitForTimeout(5000)
+    await cas.gotoLogin(page);
+    await cas.sleep(5000);
 
-    await cas.assertInnerText(page, '#content div h2', "Log In Successful");
+    await cas.assertInnerText(page, "#content div h2", "Log In Successful");
     await cas.assertInnerTextContains(page, "#content div p", "1234567890@college.edu");
 
     await cas.assertInnerTextContains(page, "#attribute-tab-0 table#attributesTable tbody", "casuserx509");
     await cas.assertInnerTextContains(page, "#attribute-tab-0 table#attributesTable tbody", "someattribute");
     await cas.assertInnerTextContains(page, "#attribute-tab-0 table#attributesTable tbody", "user-account-control");
+    await cas.assertInnerTextDoesNotContain(page, "#attribute-tab-0 table#attributesTable tbody", "shouldntbehere");
 
     await browser.close();
 })();

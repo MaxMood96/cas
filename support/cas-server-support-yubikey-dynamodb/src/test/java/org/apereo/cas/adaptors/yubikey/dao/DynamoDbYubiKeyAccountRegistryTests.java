@@ -3,13 +3,14 @@ package org.apereo.cas.adaptors.yubikey.dao;
 import org.apereo.cas.adaptors.yubikey.AbstractYubiKeyAccountRegistryTests;
 import org.apereo.cas.adaptors.yubikey.BaseYubiKeyTests;
 import org.apereo.cas.adaptors.yubikey.YubiKeyAccountRegistry;
-import org.apereo.cas.config.DynamoDbYubiKeyConfiguration;
+import org.apereo.cas.config.CasDynamoDbYubiKeyAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.crypto.CipherExecutor;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import lombok.Getter;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -23,8 +24,9 @@ import software.amazon.awssdk.core.SdkSystemSetting;
  * @since 5.3.0
  */
 @Tag("DynamoDb")
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = {
-    DynamoDbYubiKeyConfiguration.class,
+    CasDynamoDbYubiKeyAutoConfiguration.class,
     BaseYubiKeyTests.SharedTestConfiguration.class
 },
     properties = {
@@ -37,9 +39,9 @@ import software.amazon.awssdk.core.SdkSystemSetting;
         "cas.authn.mfa.yubikey.secret-key=zAIqhjui12mK8x82oe9qzBEb0As="
     })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-@EnabledIfPortOpen(port = 8000)
+@EnabledIfListeningOnPort(port = 8000)
 @Getter
-public class DynamoDbYubiKeyAccountRegistryTests extends AbstractYubiKeyAccountRegistryTests {
+class DynamoDbYubiKeyAccountRegistryTests extends AbstractYubiKeyAccountRegistryTests {
 
     static {
         System.setProperty(SdkSystemSetting.AWS_ACCESS_KEY_ID.property(), "AKIAIPPIGGUNIO74C63Z");

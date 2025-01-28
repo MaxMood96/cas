@@ -4,89 +4,50 @@ env:
   JAVA_OPTS: "-Xms512m -Xmx6048m -Xss128m -XX:ReservedCodeCacheSize=512m -server"
   GRADLE_OPTS: "-Xms512m -Xmx6048m -Xss128m -XX:ReservedCodeCacheSize=512m -server"
   TERM: xterm-256color
-  GRADLE_BUILDCACHE_USER: ci
-  GRADLE_BUILDCACHE_PSW: ${{ secrets.GRADLE_BUILDCACHE_PSW }}
-  PYTHON_VERSION: 3.8.2
-  JDK_CURRENT: 11.0.13
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#  GRADLE_BUILDCACHE_USER: ci
+#  GRADLE_BUILDCACHE_PSW: ${{ secrets.GRADLE_BUILDCACHE_PSW }}
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
+  GH_PACKAGE_REGISTRY_USER: ${{ secrets.GH_PACKAGE_REGISTRY_USER }}
+  GH_PACKAGE_REGISTRY_TOKEN: ${{ secrets.GH_PACKAGE_REGISTRY_TOKEN }}
+  PYTHON_VERSION: '3.12.3'
+  JDK_CURRENT: 21
+  JDK_DISTRIBUTION: "corretto"
 
 ##########################################################################
 
 on:
-  push:
-    branches:
-      - master
-      - '!**.**.**'
-  pull_request:
-    types: [ labeled ]
-    branches:
-      - master
-      - '!**.**.**'
+  workflow_dispatch:
+  schedule:
+    - cron: "0 22 * * *"
+
+concurrency:
+  group: "workflow = ${{ github.workflow }}, ref = ${{ github.event.ref }}, pr = ${{ github.event.pull_request.id }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.repository != 'apereo/cas' }}
 
 ##########################################################################
 
 jobs:
-  cancel-previous-runs:
-    if: ${{ (github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'CI')) && !contains(github.event.head_commit.message, 'trigger dependency update') && !contains(github.event.head_commit.message, 'documentation update') && !contains(github.event.head_commit.message, 'ci:minimal') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 1
-    steps:
-      - uses: styfle/cancel-workflow-action@0.8.0
-        with:
-          access_token: ${{ github.token }}
-
   initialize:
     runs-on: ubuntu-latest
-    needs: [cancel-previous-runs]
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Set up JDK
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JDK_CURRENT }}
-          distribution: 'temurin'
-      - name: Setup Gradle Wrapper Cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
-      - name: Gradle Wrapper Validation
-        uses: gradle/wrapper-validation-action@v1
+          distribution: ${{ env.JDK_DISTRIBUTION }}
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
       - name: Initialize
-        run: ls ./ci && chmod -R 777 ./ci/*.sh && ./ci/init-build.sh
+        run: ls ./ci && find ./ci -type f -name "*.sh" -exec chmod +x "{}" \; && ./ci/init-build.sh
 
 ##########################################################################
-  cache:
-    runs-on: ubuntu-latest
-    needs: [initialize]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up JDK
-        uses: actions/setup-java@v2
-        with:
-          java-version: ${{ env.JDK_CURRENT }}
-          distribution: 'temurin'
-      - name: Setup Gradle Wrapper Cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
-      - name: Gradle Wrapper Validation
-        uses: gradle/wrapper-validation-action@v1
-      - name: Initialize
-        run: chmod -R 777 ./ci/*.sh && ./ci/init-build.sh
-      - uses: actions/checkout@v2
-      - name: Download Dependencies
-        run: ./gradlew --build-cache --configure-on-demand --no-daemon downloadDependencies --parallel --refresh-dependencies
-      - uses: actions/cache@v2
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-            
+
   tests-performance-locust:
     runs-on: ubuntu-latest
-    needs: [cache]
+    needs: [initialize]
     continue-on-error: false
     strategy:
       fail-fast: false
@@ -97,30 +58,20 @@ jobs:
           - undertow
     name: locust - ${{ matrix.category }}
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Set up JDK
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JDK_CURRENT }}
-          distribution: 'temurin'
-      - uses: actions/setup-python@v2
+          distribution: ${{ env.JDK_DISTRIBUTION }}
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Setup Gradle Wrapper Cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
-      - name: Gradle Wrapper Validation
-        uses: gradle/wrapper-validation-action@v1
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
       - name: Initialize
-        run: chmod -R 777 ./ci/*.sh && ./ci/init-build.sh
-      - uses: actions/cache@v2
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+        run: find ./ci -type f -name "*.sh" -exec chmod +x "{}" \; && ./ci/init-build.sh
       - name: Locust Performance Tests
         run: ./ci/tests/perf/perftests-locust.sh ${{ matrix.category }}
 
@@ -128,7 +79,7 @@ jobs:
 
   tests-performance-jmeter:
     runs-on: ubuntu-latest
-    needs: [cache]
+    needs: [initialize]
     continue-on-error: false
     strategy:
       fail-fast: false
@@ -137,30 +88,71 @@ jobs:
           - tomcat
           - jetty
           - undertow
-    name: jmeter - ${{ matrix.category }}
+        protocols:
+          - cas
+          - oidc
+          - saml
+    name: jmeter - ${{ matrix.category }} - ${{ matrix.protocols }}
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Set up JDK
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JDK_CURRENT }}
-          distribution: 'temurin'
+          distribution: ${{ env.JDK_DISTRIBUTION }}
       - name: Initialize
-        run: chmod -R 777 ./ci/*.sh && ./ci/init-build.sh
-      - name: Setup Gradle Wrapper Cache
-        uses: actions/cache@v2
+        run: find ./ci -type f -name "*.sh" -exec chmod +x "{}" \; && ./ci/init-build.sh
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: JMeter Performance Tests ${{ matrix.protocols }} / ${{ matrix.category }}
+        uses: nick-fields/retry@v3
         with:
-          path: ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
-      - name: Gradle Wrapper Validation
-        uses: gradle/wrapper-validation-action@v1
-      - uses: actions/cache@v2
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-      - name: JMeter Performance Tests
-        run: ./ci/tests/perf/perftests-jmeter.sh ${{ matrix.category }}
+          max_attempts: 2
+          timeout_minutes: 15
+          retry_on: error
+          shell: bash
+          command: |
+            export RUNNER_OS=${{ runner.os }}
+            ./ci/tests/perf/perftests-jmeter.sh ${{ matrix.category }} ${{ matrix.protocols }}
 
-##########################################################################
+  ##########################################################################
+
+  tests-performance-artillery:
+    runs-on: ubuntu-latest
+    needs: [initialize]
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        category:
+          - tomcat
+          - jetty
+          - undertow
+        protocols:
+          - cas
+          - saml
+          - oidc
+    name: artillery - ${{ matrix.category }} - ${{ matrix.protocols }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JDK_CURRENT }}
+          distribution: ${{ env.JDK_DISTRIBUTION }}
+      - name: Initialize
+        run: find ./ci -type f -name "*.sh" -exec chmod +x "{}" \; && ./ci/init-build.sh
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Artillery Performance Tests ${{ matrix.protocols }} / ${{ matrix.category }}
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 2
+          timeout_minutes: 15
+          retry_on: error
+          shell: bash
+          command: |
+            export RUNNER_OS=${{ runner.os }}
+            ./ci/tests/perf/perftests-artillery.sh ${{ matrix.category }} ${{ matrix.protocols }}

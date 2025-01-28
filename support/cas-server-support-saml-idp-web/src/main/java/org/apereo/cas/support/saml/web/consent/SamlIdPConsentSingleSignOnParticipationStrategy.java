@@ -2,6 +2,8 @@ package org.apereo.cas.support.saml.web.consent;
 
 import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.AuthenticationServiceSelectionPlan;
+import org.apereo.cas.authentication.MultifactorAuthenticationContextValidator;
+import org.apereo.cas.authentication.MultifactorAuthenticationTriggerSelectionStrategy;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.consent.ConsentActivationStrategy;
 import org.apereo.cas.services.RegisteredService;
@@ -25,13 +27,16 @@ public class SamlIdPConsentSingleSignOnParticipationStrategy extends SamlIdPSing
         final ServicesManager servicesManager,
         final TicketRegistrySupport ticketRegistrySupport,
         final AuthenticationServiceSelectionPlan serviceSelectionStrategy,
-        final ConsentActivationStrategy consentActivationStrategy) {
-        super(servicesManager, ticketRegistrySupport, serviceSelectionStrategy);
+        final ConsentActivationStrategy consentActivationStrategy,
+        final MultifactorAuthenticationContextValidator authenticationContextValidator,
+        final MultifactorAuthenticationTriggerSelectionStrategy triggerSelectionStrategy) {
+        super(servicesManager, ticketRegistrySupport, serviceSelectionStrategy,
+            authenticationContextValidator, triggerSelectionStrategy);
         this.consentActivationStrategy = consentActivationStrategy;
     }
 
     @Override
-    public boolean isParticipating(final SingleSignOnParticipationRequest ssoRequest) {
+    public boolean isParticipating(final SingleSignOnParticipationRequest ssoRequest) throws Throwable {
         val service = ssoRequest.getAttributeValue(Service.class.getName(), Service.class);
         val registeredService = ssoRequest.getAttributeValue(RegisteredService.class.getName(), RegisteredService.class);
         val authentication = ssoRequest.getAttributeValue(Authentication.class.getName(), Authentication.class);

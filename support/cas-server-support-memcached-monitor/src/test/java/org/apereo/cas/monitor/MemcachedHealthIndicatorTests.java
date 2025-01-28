@@ -1,26 +1,25 @@
 package org.apereo.cas.monitor;
 
-import org.apereo.cas.config.CasCoreUtilSerializationConfiguration;
-import org.apereo.cas.monitor.config.MemcachedMonitorConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
-
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasMemcachedMonitorAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import net.spy.memcached.MemcachedClientIF;
 import org.apache.commons.pool2.ObjectPool;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -29,11 +28,12 @@ import static org.mockito.Mockito.*;
  *
  * @author Misagh Moayyed
  * @since 4.2.0
+ * @deprecated Since 7.0.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    MemcachedMonitorConfiguration.class,
-    CasCoreUtilSerializationConfiguration.class
+    CasMemcachedMonitorAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class
 }, properties = {
     "cas.monitor.memcached.servers=localhost:11212",
     "cas.monitor.memcached.failure-mode=Redistribute",
@@ -41,20 +41,22 @@ import static org.mockito.Mockito.*;
     "cas.monitor.memcached.hash-algorithm=FNV1A_64_HASH"
 })
 @Tag("Memcached")
-@EnabledIfPortOpen(port = 11211)
-public class MemcachedHealthIndicatorTests {
+@ExtendWith(CasTestExtension.class)
+@EnabledIfListeningOnPort(port = 11211)
+@Deprecated(since = "7.0.0")
+class MemcachedHealthIndicatorTests {
     @Autowired
     @Qualifier("memcachedHealthIndicator")
     private HealthIndicator monitor;
 
     @Test
-    public void verifyMonitorNotRunning() {
+    void verifyMonitorNotRunning() {
         val health = monitor.health();
         assertEquals(Status.OUT_OF_SERVICE, health.getStatus());
     }
 
     @Test
-    public void verifyUnavailableServers() throws Exception {
+    void verifyUnavailableServers() throws Throwable {
         val memcached = mock(MemcachedClientIF.class);
         when(memcached.getUnavailableServers()).thenReturn(List.of(new InetSocketAddress(1234)));
         when(memcached.getAvailableServers()).thenReturn(List.of(new InetSocketAddress(11212)));
@@ -66,7 +68,7 @@ public class MemcachedHealthIndicatorTests {
     }
 
     @Test
-    public void verifyMonitorError() throws Exception {
+    void verifyMonitorError() throws Throwable {
         val memcached = mock(MemcachedClientIF.class);
         when(memcached.getUnavailableServers()).thenThrow(new RuntimeException("error"));
         when(memcached.getAvailableServers()).thenThrow(new RuntimeException("error"));
@@ -78,7 +80,7 @@ public class MemcachedHealthIndicatorTests {
     }
 
     @Test
-    public void verifyMonitorSuccess() throws Exception {
+    void verifyMonitorSuccess() throws Throwable {
         val memcached = mock(MemcachedClientIF.class);
         when(memcached.getUnavailableServers()).thenReturn(List.of());
         val socket = new InetSocketAddress("localhost", 11212);

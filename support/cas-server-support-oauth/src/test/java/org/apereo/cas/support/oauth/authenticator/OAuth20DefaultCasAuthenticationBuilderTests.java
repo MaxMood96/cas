@@ -8,7 +8,7 @@ import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.pac4j.cas.profile.CasProfile;
-import org.pac4j.core.context.JEEContext;
+import org.pac4j.jee.context.JEEContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -25,14 +25,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.3.0
  */
 @Tag("OAuth")
-public class OAuth20DefaultCasAuthenticationBuilderTests extends BaseOAuth20AuthenticatorTests {
+class OAuth20DefaultCasAuthenticationBuilderTests extends BaseOAuth20AuthenticatorTests {
 
     @Autowired
     @Qualifier("oauthCasAuthenticationBuilder")
     private OAuth20CasAuthenticationBuilder authenticationBuilder;
 
     @Test
-    public void verifyOperationByService() {
+    void verifyOperationByService() {
         val request = new MockHttpServletRequest();
         request.addHeader("X-".concat(CasProtocolConstants.PARAMETER_SERVICE), service.getServiceId());
         val ctx = new JEEContext(request, new MockHttpServletResponse());
@@ -41,7 +41,7 @@ public class OAuth20DefaultCasAuthenticationBuilderTests extends BaseOAuth20Auth
     }
 
     @Test
-    public void verifyOperationToBuild() {
+    void verifyOperationToBuild() throws Throwable {
         val profile = new CasProfile();
         profile.setId("casuser");
         profile.addAuthenticationAttribute("clazz", "high");

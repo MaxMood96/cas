@@ -7,7 +7,10 @@ import org.apereo.cas.authentication.adaptive.DefaultAdaptiveAuthenticationPolic
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationService;
 import org.apereo.cas.authentication.adaptive.intel.IPAddressIntelligenceService;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,9 +27,11 @@ import org.springframework.context.annotation.ScopedProxyMode;
  * @author Misagh Moayyed
  * @since 5.1.0
  */
-@Configuration(value = "CasCoreAuthenticationPolicyConfiguration", proxyBeanMethods = false)
+@Slf4j
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-public class CasCoreAuthenticationPolicyConfiguration {
+@ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.Authentication)
+@Configuration(value = "CasCoreAuthenticationPolicyConfiguration", proxyBeanMethods = false)
+class CasCoreAuthenticationPolicyConfiguration {
 
     @ConditionalOnMissingBean(name = "ipAddressIntelligenceService")
     @Bean
@@ -38,7 +43,7 @@ public class CasCoreAuthenticationPolicyConfiguration {
 
     @Configuration(value = "CasCoreAuthenticationPolicyPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreAuthenticationPolicyPlanConfiguration {
+    static class CasCoreAuthenticationPolicyPlanConfiguration {
         @ConditionalOnMissingBean(name = "authenticationPolicyExecutionPlanConfigurer")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -48,20 +53,19 @@ public class CasCoreAuthenticationPolicyConfiguration {
                 val policyProps = casProperties.getAuthn().getPolicy();
                 val authPolicy = CoreAuthenticationUtils.newAuthenticationPolicy(policyProps);
                 if (authPolicy != null) {
+                    LOGGER.debug("Activated authentication policies are [{}]", authPolicy);
                     plan.registerAuthenticationPolicies(authPolicy);
                 }
             };
         }
 
-        @ConditionalOnMissingBean(name = "adaptiveAuthenticationPolicy")
+        @ConditionalOnMissingBean(name = AdaptiveAuthenticationPolicy.BEAN_NAME)
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public AdaptiveAuthenticationPolicy adaptiveAuthenticationPolicy(
             final CasConfigurationProperties casProperties,
-            @Qualifier("ipAddressIntelligenceService")
-            final IPAddressIntelligenceService ipAddressIntelligenceService,
-            @Qualifier("geoLocationService")
-            final ObjectProvider<GeoLocationService> geoLocationService) {
+            @Qualifier("ipAddressIntelligenceService") final IPAddressIntelligenceService ipAddressIntelligenceService,
+            @Qualifier(GeoLocationService.BEAN_NAME) final ObjectProvider<GeoLocationService> geoLocationService) {
             return new DefaultAdaptiveAuthenticationPolicy(geoLocationService.getIfAvailable(),
                 ipAddressIntelligenceService, casProperties.getAuthn().getAdaptive());
         }

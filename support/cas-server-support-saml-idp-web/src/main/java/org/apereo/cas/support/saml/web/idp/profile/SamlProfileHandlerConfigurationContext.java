@@ -5,34 +5,32 @@ import org.apereo.cas.authentication.AuthenticationSystemSupport;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.authentication.principal.ServiceFactory;
 import org.apereo.cas.authentication.principal.WebApplicationService;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.logout.slo.SingleLogoutServiceLogoutUrlBuilder;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.saml.OpenSamlConfigBean;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.SamlRegisteredServiceCachingMetadataResolver;
+import org.apereo.cas.support.saml.util.Saml20ObjectBuilder;
 import org.apereo.cas.support.saml.web.idp.profile.builders.SamlProfileObjectBuilder;
 import org.apereo.cas.support.saml.web.idp.profile.builders.enc.SamlIdPObjectEncrypter;
 import org.apereo.cas.support.saml.web.idp.profile.builders.enc.SamlIdPObjectSigner;
 import org.apereo.cas.support.saml.web.idp.profile.builders.enc.validate.SamlObjectSignatureValidator;
-import org.apereo.cas.support.saml.web.idp.profile.slo.SamlIdPLogoutResponseObjectBuilder;
 import org.apereo.cas.support.saml.web.idp.profile.sso.request.SSOSamlHttpRequestExtractor;
 import org.apereo.cas.ticket.TicketFactory;
 import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
 import org.apereo.cas.validation.AuthenticationAttributeReleasePolicy;
+import org.apereo.cas.validation.TicketValidator;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.flow.SingleSignOnParticipationStrategy;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.jasig.cas.client.validation.TicketValidator;
-import org.opensaml.saml.common.SAMLObject;
+import org.opensaml.core.xml.XMLObject;
 import org.pac4j.core.context.session.SessionStore;
-
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * This is {@link SamlProfileHandlerConfigurationContext}.
@@ -68,16 +66,16 @@ public class SamlProfileHandlerConfigurationContext {
     private final OpenSamlConfigBean openSamlConfigBean;
 
     @Nonnull
-    private SamlProfileObjectBuilder<? extends SAMLObject> responseBuilder;
+    private SamlProfileObjectBuilder<? extends XMLObject> responseBuilder;
 
     @Nonnull
-    private final SamlIdPLogoutResponseObjectBuilder logoutResponseBuilder;
+    private final Saml20ObjectBuilder logoutResponseBuilder;
 
     @Nonnull
     private final CasConfigurationProperties casProperties;
 
     @Nonnull
-    private final SamlObjectSignatureValidator samlObjectSignatureValidator;
+    private SamlObjectSignatureValidator samlObjectSignatureValidator;
 
     @Nonnull
     private final Service callbackService;
@@ -89,10 +87,10 @@ public class SamlProfileHandlerConfigurationContext {
     private SSOSamlHttpRequestExtractor samlHttpRequestExtractor;
 
     @Nonnull
-    private HttpServletRequestXMLMessageDecodersMap samlMessageDecoders;
+    private XMLMessageDecodersMap samlMessageDecoders;
 
     @Nonnull
-    private SamlProfileObjectBuilder<? extends SAMLObject> samlFaultResponseBuilder;
+    private SamlProfileObjectBuilder<? extends XMLObject> samlFaultResponseBuilder;
 
     @Nonnull
     private final TicketValidator ticketValidator;
@@ -125,5 +123,5 @@ public class SamlProfileHandlerConfigurationContext {
     private final TicketFactory ticketFactory;
 
     @Nonnull
-    private final IPersonAttributeDao attributeRepository;
+    private final PersonAttributeDao attributeRepository;
 }

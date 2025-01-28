@@ -1,6 +1,7 @@
 package org.apereo.cas.web.flow.client;
 
 import org.apereo.cas.support.spnego.util.ReverseDNSRunnable;
+import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.AllArgsConstructor;
@@ -10,7 +11,6 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.webflow.action.AbstractAction;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 
@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
 @Setter
 @Getter
 @AllArgsConstructor
-public class BaseSpnegoKnownClientSystemsFilterAction extends AbstractAction {
+public class BaseSpnegoKnownClientSystemsFilterAction extends BaseCasWebflowAction {
 
     /**
      * Pattern of ip addresses to check.
@@ -59,7 +59,7 @@ public class BaseSpnegoKnownClientSystemsFilterAction extends AbstractAction {
      * {@link #no()} otherwise.
      */
     @Override
-    protected Event doExecute(final RequestContext context) {
+    protected Event doExecuteInternal(final RequestContext context) throws Exception {
         val remoteIp = getRemoteIp(context);
         LOGGER.debug("Current user IP [{}]", remoteIp);
         if (shouldDoSpnego(remoteIp)) {
@@ -75,8 +75,9 @@ public class BaseSpnegoKnownClientSystemsFilterAction extends AbstractAction {
      *
      * @param remoteIp the remote ip
      * @return true boolean
+     * @throws Exception the exception
      */
-    protected boolean shouldDoSpnego(final String remoteIp) {
+    protected boolean shouldDoSpnego(final String remoteIp) throws Exception {
         return ipPatternCanBeChecked(remoteIp) && ipPatternMatches(remoteIp);
     }
 
@@ -118,10 +119,9 @@ public class BaseSpnegoKnownClientSystemsFilterAction extends AbstractAction {
      */
     protected String getRemoteHostName(final String remoteIp) {
         val revDNS = new ReverseDNSRunnable(remoteIp);
-        val t = new Thread(revDNS);
-        t.start();
+        val thread = Thread.ofVirtual().start(revDNS);
         try {
-            t.join(this.timeout);
+            thread.join(this.timeout);
         } catch (final InterruptedException e) {
             LOGGER.debug("Threaded lookup failed. Defaulting to IP [{}].", remoteIp, e);
             Thread.currentThread().interrupt();

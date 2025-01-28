@@ -6,9 +6,9 @@ import org.apereo.cas.support.saml.SamlUtils;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.util.EncodingUtils;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
-
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.jose4j.jwe.ContentEncryptionAlgorithmIdentifiers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
@@ -20,11 +20,11 @@ import org.opensaml.saml.saml2.core.AuthnRequest;
 import org.opensaml.saml.saml2.core.Issuer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -33,13 +33,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Tag("SAML")
+@Tag("SAML2Web")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestPropertySource(properties = {
     "cas.authn.saml-idp.metadata.file-system.location=file:src/test/resources/metadata",
-    "cas.authn.saml-idp.core.session-storage-type=TICKET_REGISTRY"
+    "cas.authn.saml-idp.core.session-storage-type=TICKET_REGISTRY",
+
+    "cas.authn.saml-idp.core.session-replication.cookie.crypto.alg=" + ContentEncryptionAlgorithmIdentifiers.AES_128_CBC_HMAC_SHA_256,
+    "cas.authn.saml-idp.core.session-replication.cookie.crypto.encryption.key=3RXtt06xYUAli7uU-Z915ZGe0MRBFw3uDjWgOEf1GT8",
+    "cas.authn.saml-idp.core.session-replication.cookie.crypto.signing.key=jIFR-fojN0vOIUcT0hDRXHLVp07CV-YeU8GnjICsXpu65lfkJbiKP028pT74Iurkor38xDGXNcXk_Y1V4rNDqw",
+
+    "cas.authn.saml-idp.core.session-replication.cookie.crypto.enabled=false"
 })
-public class SSOSamlIdPPostProfileHandlerControllerWithTicketRegistryTests extends BaseSamlIdPConfigurationTests {
+class SSOSamlIdPPostProfileHandlerControllerWithTicketRegistryTests extends BaseSamlIdPConfigurationTests {
     @Autowired
     @Qualifier("ssoPostProfileHandlerController")
     private SSOSamlIdPPostProfileHandlerController controller;
@@ -51,16 +57,17 @@ public class SSOSamlIdPPostProfileHandlerControllerWithTicketRegistryTests exten
     private SamlRegisteredService samlRegisteredService;
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         samlRegisteredService = getSamlRegisteredServiceFor(false, false,
             false, "https://cassp.example.org");
         servicesManager.save(samlRegisteredService);
     }
 
     @Test
-    public void verifyPostSignRequest() throws Exception {
+    void verifyPostSignRequest() {
         val request = new MockHttpServletRequest();
         request.setMethod("POST");
+        request.addHeader(HttpHeaders.USER_AGENT, "Firefox");
         samlIdPDistributedSessionCookieGenerator.setCookiePath(StringUtils.EMPTY);
         request.setContextPath("/custompath");
         val response = new MockHttpServletResponse();

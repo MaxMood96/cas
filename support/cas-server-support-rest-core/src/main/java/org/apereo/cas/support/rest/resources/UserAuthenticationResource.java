@@ -19,23 +19,18 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import javax.security.auth.login.FailedLoginException;
-import javax.servlet.http.HttpServletRequest;
 
 /**
- * {@link RestController} implementation of CAS' REST API.
- * <p>
- * This class implements main CAS RESTful resource for vending/deleting TGTs and vending STs:
- * </p>
+ * CAS RESTful resource for validating user credentials.
  * <ul>
- * <li>{@code POST /v1/tickets}</li>
- * <li>{@code POST /v1/tickets/{TGT-id}}</li>
- * <li>{@code GET /v1/tickets/{TGT-id}}</li>
- * <li>{@code DELETE /v1/tickets/{TGT-id}}</li>
+ * <li>{@code POST /v1/users}</li>
  * </ul>
  *
- * @author Dmitriy Kopylenko
- * @since 4.1.0
+ * @author Misagh Moayyed
+ * @since 6.1.0
  */
 @RestController("userAuthenticationResource")
 @Slf4j
@@ -52,6 +47,7 @@ public class UserAuthenticationResource {
      *
      * @param requestBody username and password application/x-www-form-urlencoded values
      * @param request     raw HttpServletRequest used to call this method
+     * @param response    the response
      * @return ResponseEntity representing RESTful response
      */
     @PostMapping(value = RestProtocolConstants.ENDPOINT_USERS,
@@ -64,9 +60,10 @@ public class UserAuthenticationResource {
             MediaType.APPLICATION_JSON_VALUE
         })
     public ResponseEntity<String> authenticateRequest(@RequestBody final MultiValueMap<String, String> requestBody,
-                                                      final HttpServletRequest request) {
+                                                      final HttpServletRequest request,
+                                                      final HttpServletResponse response) throws Throwable {
         try {
-            val authenticationResult = authenticationService.authenticate(requestBody, request);
+            val authenticationResult = authenticationService.authenticate(requestBody, request, response);
             val result = authenticationResult.orElseThrow(FailedLoginException::new);
             return this.userAuthenticationResourceEntityResponseFactory.build(result, request);
         } catch (final AuthenticationException e) {

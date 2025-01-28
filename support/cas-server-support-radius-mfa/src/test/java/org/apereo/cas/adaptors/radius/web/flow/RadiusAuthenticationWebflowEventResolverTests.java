@@ -6,27 +6,20 @@ import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.AuthenticationResultBuilder;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.resolver.CasWebflowEventResolver;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.binding.message.DefaultMessageContext;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.MessageSource;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.test.MockRequestContext;
-
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -44,7 +37,8 @@ import static org.mockito.Mockito.*;
         "cas.authn.mfa.radius.client.inet-address=localhost,localguest"
     })
 @Tag("Radius")
-public class RadiusAuthenticationWebflowEventResolverTests extends BaseCasWebflowMultifactorAuthenticationTests {
+@ExtendWith(CasTestExtension.class)
+class RadiusAuthenticationWebflowEventResolverTests extends BaseCasWebflowMultifactorAuthenticationTests {
     @Autowired
     @Qualifier("radiusAuthenticationWebflowEventResolver")
     private CasWebflowEventResolver radiusAuthenticationWebflowEventResolver;
@@ -52,13 +46,8 @@ public class RadiusAuthenticationWebflowEventResolverTests extends BaseCasWebflo
     private MockRequestContext context;
 
     @BeforeEach
-    public void initialize() {
-        context = new MockRequestContext();
-        val messageContext = (DefaultMessageContext) context.getMessageContext();
-        messageContext.setMessageSource(mock(MessageSource.class));
-        val request = new MockHttpServletRequest();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, new MockHttpServletResponse()));
-
+    void initialize() throws Throwable {
+        this.context = MockRequestContext.create(applicationContext);
         WebUtils.putServiceIntoFlowScope(context, CoreAuthenticationTestUtils.getWebApplicationService());
         TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext);
         val authentication = CoreAuthenticationTestUtils.getAuthentication();
@@ -70,15 +59,15 @@ public class RadiusAuthenticationWebflowEventResolverTests extends BaseCasWebflo
     }
 
     @Test
-    public void verifyOperation() {
-        val event = radiusAuthenticationWebflowEventResolver.resolveSingle(this.context);
+    void verifyOperation() throws Throwable {
+        val event = radiusAuthenticationWebflowEventResolver.resolveSingle(context);
         assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, event.getId());
     }
 
     @Test
-    public void verifyFailsOperation() {
+    void verifyFailsOperation() throws Throwable {
         WebUtils.putCredential(context, new RadiusTokenCredential("token"));
-        val event = radiusAuthenticationWebflowEventResolver.resolveSingle(this.context);
+        val event = radiusAuthenticationWebflowEventResolver.resolveSingle(context);
         assertEquals(CasWebflowConstants.TRANSITION_ID_ERROR, event.getId());
     }
 

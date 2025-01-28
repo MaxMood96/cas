@@ -1,7 +1,6 @@
 package org.apereo.cas.oidc.jwks.rotation;
 
 import org.apereo.cas.oidc.AbstractOidcTests;
-
 import lombok.val;
 import org.apache.commons.io.FileUtils;
 import org.jose4j.jwk.JsonWebKeySet;
@@ -10,9 +9,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.context.TestPropertySource;
-
 import java.io.File;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -22,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.3.0
  */
 @Tag("OIDC")
-public class OidcDefaultJsonWebKeystoreRotationServiceTests {
+class OidcDefaultJsonWebKeystoreRotationServiceTests {
     static {
         try {
             val keystore = new File(FileUtils.getTempDirectoryPath(), "rotation.jwks");
@@ -60,11 +57,10 @@ public class OidcDefaultJsonWebKeystoreRotationServiceTests {
 
     @TestPropertySource(properties = "cas.authn.oidc.jwks.file-system.jwks-file=file:${#systemProperties['java.io.tmpdir']}/rotation.jwks")
     @Nested
-    @SuppressWarnings("ClassCanBeStatic")
-    public class EmptyKeystoreTests extends AbstractOidcTests {
+    class EmptyKeystoreTests extends AbstractOidcTests {
 
         @Test
-        public void verifyOperation() throws Exception {
+        void verifyOperation() {
             var jwks = oidcJsonWebKeystoreRotationService.rotate();
             assertEquals(6, jwks.getJsonWebKeys().size());
 
@@ -94,11 +90,10 @@ public class OidcDefaultJsonWebKeystoreRotationServiceTests {
 
     @TestPropertySource(properties = "cas.authn.oidc.jwks.file-system.jwks-file=file:${#systemProperties['java.io.tmpdir']}/current.jwks")
     @Nested
-    @SuppressWarnings("ClassCanBeStatic")
-    public class ExistingKeystoreTests extends AbstractOidcTests {
+    class ExistingKeystoreTests extends AbstractOidcTests {
 
         @Test
-        public void verifyOperation() throws Exception {
+        void verifyOperation() {
             val jwks = oidcJsonWebKeystoreRotationService.rotate();
             assertEquals(5, jwks.getJsonWebKeys().size());
         }

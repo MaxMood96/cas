@@ -20,9 +20,8 @@ import org.apereo.cas.acct.*
 import org.springframework.context.ApplicationContext
 
 def run(Object[] args) {
-    def registrationRequest = args[0] as AccountRegistrationRequest
-    def applicationContext = args[1] as ApplicationContext
-    def logger = args[2]
+    def (registrationRequest,applicationContext,logger) = args
+    
     logger.info("Provisioning account registration request ${registrationRequest}")
     return AccountRegistrationResponse.success()
 }
@@ -35,3 +34,5 @@ The parameters passed are as follows:
 | `registrationRequest` | The object representing the account registration request.                   |
 | `applicationContext`  | The object representing the Spring `ApplicationContext`.                    |
 | `logger`              | The object responsible for issuing log messages such as `logger.info(...)`. |
+
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).

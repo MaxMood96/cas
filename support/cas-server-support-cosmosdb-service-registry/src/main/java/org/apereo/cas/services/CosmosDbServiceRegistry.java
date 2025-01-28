@@ -10,7 +10,6 @@ import com.azure.cosmos.CosmosException;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
-import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -18,7 +17,6 @@ import org.springframework.http.HttpStatus;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.stream.Collectors;
 
 /**
  * This is {@link CosmosDbServiceRegistry}.
@@ -41,15 +39,15 @@ public class CosmosDbServiceRegistry extends AbstractServiceRegistry {
                                    final ConfigurableApplicationContext applicationContext,
                                    final Collection<ServiceRegistryListener> serviceRegistryListeners) {
         super(applicationContext, serviceRegistryListeners);
-        this.serializer = new RegisteredServiceJsonSerializer(new MinimalPrettyPrinter());
+        this.serializer = new RegisteredServiceJsonSerializer(applicationContext);
         this.container = container;
     }
 
     @Override
     public RegisteredService save(final RegisteredService registeredService) {
+        registeredService.assignIdIfNecessary();
         invokeServiceRegistryListenerPreSave(registeredService);
-        if (registeredService.getId() == RegisteredService.INITIAL_IDENTIFIER_VALUE) {
-            registeredService.setId(System.currentTimeMillis());
+        if (registeredService.getId() == RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE) {
             insert(registeredService);
         } else {
             update(registeredService);
@@ -85,8 +83,7 @@ public class CosmosDbServiceRegistry extends AbstractServiceRegistry {
             .forEach(response -> services.addAll(response.getResults()
                 .stream()
                 .map(this::getRegisteredServiceFromDocumentBody)
-                .peek(this::invokeServiceRegistryListenerPostLoad)
-                .collect(Collectors.toList())));
+                .peek(this::invokeServiceRegistryListenerPostLoad).toList()));
         return services;
     }
 
@@ -103,9 +100,8 @@ public class CosmosDbServiceRegistry extends AbstractServiceRegistry {
                 .map(this::getRegisteredServiceFromDocumentBody)
                 .sorted()
                 .filter(r -> r.matches(id))
-                .peek(this::invokeServiceRegistryListenerPostLoad)
-                .collect(Collectors.toList())));
-        return services.isEmpty() ? null : services.get(0);
+                .peek(this::invokeServiceRegistryListenerPostLoad).toList()));
+        return services.isEmpty() ? null : services.getFirst();
     }
 
     @Override

@@ -1,12 +1,13 @@
 package org.apereo.cas.config;
 
+import org.apereo.cas.test.CasTestExtension;
 import io.swagger.v3.oas.models.OpenAPI;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -15,15 +16,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@SpringBootTest(classes = CasSwaggerConfiguration.class)
+@SpringBootTest(classes = CasSwaggerAutoConfiguration.class)
 @Tag("CasConfiguration")
-public class CasSwaggerConfigurationTests {
+@ExtendWith(CasTestExtension.class)
+class CasSwaggerConfigurationTests {
     @Autowired
     @Qualifier("casSwaggerOpenApi")
     private OpenAPI swaggerOpenApi;
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertNotNull(swaggerOpenApi);
     }
 }

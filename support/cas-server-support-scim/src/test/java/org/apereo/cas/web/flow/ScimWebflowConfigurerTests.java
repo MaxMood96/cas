@@ -1,14 +1,12 @@
 package org.apereo.cas.web.flow;
 
-import org.apereo.cas.config.CasScimConfiguration;
-
+import org.apereo.cas.config.CasScimAutoConfiguration;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.webflow.engine.Flow;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -17,15 +15,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
-@Import({
-    CasScimConfiguration.class,
-    BaseWebflowConfigurerTests.SharedTestConfiguration.class
-})
+@ImportAutoConfiguration(CasScimAutoConfiguration.class)
 @TestPropertySource(properties = "cas.scim.target=http://localhost:8218")
 @Tag("SCIM")
-public class ScimWebflowConfigurerTests extends BaseWebflowConfigurerTests {
+class ScimWebflowConfigurerTests extends BaseWebflowConfigurerTests {
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         assertFalse(casWebflowExecutionPlan.getWebflowConfigurers().isEmpty());
         val flow = (Flow) this.loginFlowDefinitionRegistry.getFlowDefinition(CasWebflowConfigurer.FLOW_ID_LOGIN);
         assertNotNull(flow);

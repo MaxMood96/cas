@@ -75,7 +75,7 @@ as a dynamic attribute whose value is determined by the inline Groovy script att
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "sample",
   "name" : "sample",
   "id" : 300,
@@ -89,6 +89,8 @@ as a dynamic attribute whose value is determined by the inline Groovy script att
 }
 ```
 
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).
+
 ## File-based Groovy Claims
 
 Claims may produce their values from an external Groovy 
@@ -97,7 +99,7 @@ as a dynamic attribute whose value is determined by the Groovy script attribute 
 
 ```json
 {
-  "@class" : "org.apereo.cas.services.RegexRegisteredService",
+  "@class" : "org.apereo.cas.services.CasRegisteredService",
   "serviceId" : "sample",
   "name" : "sample",
   "id" : 300,
@@ -117,13 +119,14 @@ itself may have the following outline:
 
 ```groovy
 def run(final Object... args) {
-    def attributes = args[0]
-    def logger = args[1]
+    def (attributes,logger) = args
 
     logger.info "Attributes currently resolved: ${attributes}"
     return [attributes["cn"][0] + "@example.org"]
 }
 ```
+
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).
 
 ## Custom Claims
 

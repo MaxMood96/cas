@@ -13,7 +13,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Lazy;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,10 +25,10 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("JDBC")
 @Import(JpaServiceRegistryOidcTests.OidcJpaServiceRegistryTestConfiguration.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class JpaServiceRegistryOidcTests extends JpaServiceRegistryTests {
+class JpaServiceRegistryOidcTests extends JpaServiceRegistryTests {
 
     @Test
-    public void verifyConsentPolicyWithScopesSavedAfterLoad() {
+    void verifyConsentPolicyWithScopesSavedAfterLoad() {
         var svc = new OidcRegisteredService();
         svc.setName("Scopes");
         svc.setServiceId("testId");
@@ -56,8 +55,7 @@ public class JpaServiceRegistryOidcTests extends JpaServiceRegistryTests {
     }
 
     @TestConfiguration(value = "OidcJpaServiceRegistryTestConfiguration", proxyBeanMethods = false)
-    @Lazy(false)
-    public static class OidcJpaServiceRegistryTestConfiguration {
+    static class OidcJpaServiceRegistryTestConfiguration {
         @Bean
         public ServiceRegistryListener oidcServiceRegistryListener() {
             return new OidcServiceRegistryListener(new DefaultOidcAttributeReleasePolicyFactory(new CasConfigurationProperties()));

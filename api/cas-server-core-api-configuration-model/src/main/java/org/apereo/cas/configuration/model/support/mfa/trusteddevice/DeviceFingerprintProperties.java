@@ -1,16 +1,15 @@
 package org.apereo.cas.configuration.model.support.mfa.trusteddevice;
 
+import org.apereo.cas.configuration.model.core.util.EncryptionJwtCryptoProperties;
 import org.apereo.cas.configuration.model.core.util.EncryptionJwtSigningJwtCryptographyProperties;
-import org.apereo.cas.configuration.model.support.cookie.PinnableCookieProperties;
+import org.apereo.cas.configuration.model.core.util.SigningJwtCryptoProperties;
+import org.apereo.cas.configuration.model.support.cookie.CookieProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
-import org.apereo.cas.util.crypto.CipherExecutor;
-
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
-
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Duration;
 
@@ -24,14 +23,15 @@ import java.time.Duration;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("DeviceFingerprintProperties")
+
 public class DeviceFingerprintProperties implements Serializable {
+    @Serial
     private static final long serialVersionUID = 747021103142441353L;
 
     /**
-     * Component Separator for device fingerprints.
+     * Core settings for device fingerprinting.
      */
-    private String componentSeparator = "@";
+    private Core core = new Core();
 
     /**
      * Configure usage of client ip within trusted device fingerprints.
@@ -53,11 +53,17 @@ public class DeviceFingerprintProperties implements Serializable {
      */
     private GeoLocation geolocation = new GeoLocation();
 
+    /**
+     * Configure usage of browser within trusted device fingerprints.
+     */
+    private GeoLocation browser = new GeoLocation();
+
     @Getter
     @Setter
     @Accessors(chain = true)
     @RequiresModule(name = "cas-server-support-trusted-mfa")
     public static class ClientIp extends BaseDeviceFingerprintComponentProperties {
+        @Serial
         private static final long serialVersionUID = 785014133279201757L;
 
         public ClientIp() {
@@ -70,13 +76,14 @@ public class DeviceFingerprintProperties implements Serializable {
     @Setter
     @Accessors(chain = true)
     @RequiresModule(name = "cas-server-support-trusted-mfa")
-    public static class Cookie extends PinnableCookieProperties {
+    public static class Cookie extends CookieProperties {
+        @Serial
         private static final long serialVersionUID = -9022498833437602657L;
 
         /**
          * The default max age for the cookie component.
          */
-        private static final int DEFAULT_MAX_AGE_DAYS = 30;
+        private static final Duration DEFAULT_MAX_AGE_DAYS = Duration.ofDays(30);
 
         /**
          * Is this component enabled or not.
@@ -96,10 +103,10 @@ public class DeviceFingerprintProperties implements Serializable {
 
         public Cookie() {
             setName("MFATRUSTED");
-            setMaxAge((int) Duration.ofDays(DEFAULT_MAX_AGE_DAYS).getSeconds());
+            setMaxAge(DEFAULT_MAX_AGE_DAYS.toString());
 
-            crypto.getEncryption().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
-            crypto.getSigning().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
+            crypto.getEncryption().setKeySize(EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
+            crypto.getSigning().setKeySize(SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
         }
     }
 
@@ -108,6 +115,7 @@ public class DeviceFingerprintProperties implements Serializable {
     @Accessors(chain = true)
     @RequiresModule(name = "cas-server-support-trusted-mfa")
     public static class UserAgent extends BaseDeviceFingerprintComponentProperties {
+        @Serial
         private static final long serialVersionUID = -5325531035180836136L;
 
         /**
@@ -126,7 +134,9 @@ public class DeviceFingerprintProperties implements Serializable {
     @Accessors(chain = true)
     @RequiresModule(name = "cas-server-support-trusted-mfa")
     public static class GeoLocation extends BaseDeviceFingerprintComponentProperties {
+        @Serial
         private static final long serialVersionUID = -4125531035180836136L;
+
         /**
          * Default Order for GeoLocation component.
          */
@@ -136,5 +146,37 @@ public class DeviceFingerprintProperties implements Serializable {
             setEnabled(false);
             setOrder(DEFAULT_ORDER);
         }
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true)
+    @RequiresModule(name = "cas-server-support-trusted-mfa")
+    public static class Browser extends BaseDeviceFingerprintComponentProperties {
+        @Serial
+        private static final long serialVersionUID = -4125531035180836136L;
+
+        /**
+         * Default Order for GeoLocation component.
+         */
+        private static final int DEFAULT_ORDER = 5;
+
+        public Browser() {
+            setEnabled(false);
+            setOrder(DEFAULT_ORDER);
+        }
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true)
+    @RequiresModule(name = "cas-server-support-trusted-mfa")
+    public static class Core implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 3290828606869889754L;
+        /**
+         * Component Separator for device fingerprints.
+         */
+        private String componentSeparator = "@";
     }
 }

@@ -2,12 +2,12 @@ package org.apereo.cas.configuration.model.support.jpa;
 
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.util.LinkedCaseInsensitiveMap;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -21,9 +21,10 @@ import java.util.Map;
 @Setter
 @RequiresModule(name = "cas-server-support-jdbc-drivers")
 @Accessors(chain = true)
-@JsonFilter("DatabaseProperties")
+
 public class DatabaseProperties implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 7740236971148591965L;
 
     /**

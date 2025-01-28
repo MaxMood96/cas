@@ -1,6 +1,9 @@
 package org.apereo.cas.ticket.code;
 
 import org.apereo.cas.ticket.OAuth20Token;
+import org.apereo.cas.ticket.ServiceAwareTicket;
+
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 /**
  * An OAuth code is an OAuth token which can be used only once and has a short lifetime.
@@ -9,7 +12,8 @@ import org.apereo.cas.ticket.OAuth20Token;
  * @author Jerome Leleu
  * @since 5.0.0
  */
-public interface OAuth20Code extends OAuth20Token {
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
+public interface OAuth20Code extends OAuth20Token, ServiceAwareTicket {
 
     /**
      * The prefix for OAuth codes.

@@ -27,10 +27,10 @@ import static org.mockito.Mockito.*;
  * @since 6.2.0
  */
 @Tag("MFATrigger")
-public class PrincipalMultifactorAuthenticationProviderBypassEvaluatorTests {
+class PrincipalMultifactorAuthenticationProviderBypassEvaluatorTests {
 
     @Test
-    public void verifyNoMatchOperation() {
+    void verifyNoMatchOperation() {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
         ApplicationContextProvider.holdApplicationContext(applicationContext);
@@ -38,22 +38,23 @@ public class PrincipalMultifactorAuthenticationProviderBypassEvaluatorTests {
             MultifactorAuthenticationPrincipalResolver.identical(), UUID.randomUUID().toString());
         val provider = TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext);
 
-        val eval = new DefaultChainingMultifactorAuthenticationBypassProvider();
+        val eval = new DefaultChainingMultifactorAuthenticationBypassProvider(applicationContext);
         eval.addMultifactorAuthenticationProviderBypassEvaluator(
-            new PrincipalMultifactorAuthenticationProviderBypassEvaluator("cn", "exam.+", TestMultifactorAuthenticationProvider.ID));
+            new PrincipalMultifactorAuthenticationProviderBypassEvaluator("cn", "exam.+",
+                TestMultifactorAuthenticationProvider.ID, applicationContext));
 
         val principal = CoreAuthenticationTestUtils.getPrincipal(Map.of("cn", List.of("unknown")));
         val authentication = CoreAuthenticationTestUtils.getAuthentication(principal);
         val registeredService = CoreAuthenticationTestUtils.getRegisteredService();
         val policy = new DefaultRegisteredServiceMultifactorPolicy();
         policy.setBypassEnabled(true);
-        when(registeredService.getMultifactorPolicy()).thenReturn(policy);
+        when(registeredService.getMultifactorAuthenticationPolicy()).thenReturn(policy);
         assertTrue(eval.shouldMultifactorAuthenticationProviderExecute(authentication,
-            registeredService, provider, new MockHttpServletRequest()));
+            registeredService, provider, new MockHttpServletRequest(), CoreAuthenticationTestUtils.getService()));
     }
 
     @Test
-    public void verifyOperation() {
+    void verifyOperation() {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
         ApplicationContextProvider.holdApplicationContext(applicationContext);
@@ -61,21 +62,23 @@ public class PrincipalMultifactorAuthenticationProviderBypassEvaluatorTests {
             MultifactorAuthenticationPrincipalResolver.identical(), UUID.randomUUID().toString());
         val provider = TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext);
 
-        val eval = new DefaultChainingMultifactorAuthenticationBypassProvider();
+        val eval = new DefaultChainingMultifactorAuthenticationBypassProvider(applicationContext);
         eval.addMultifactorAuthenticationProviderBypassEvaluator(
-            new PrincipalMultifactorAuthenticationProviderBypassEvaluator("cn", "exam.+", TestMultifactorAuthenticationProvider.ID));
+            new PrincipalMultifactorAuthenticationProviderBypassEvaluator("cn", "exam.+",
+                TestMultifactorAuthenticationProvider.ID, applicationContext));
 
         val principal = CoreAuthenticationTestUtils.getPrincipal(Map.of("cn", List.of("example")));
         val authentication = CoreAuthenticationTestUtils.getAuthentication(principal);
         val registeredService = CoreAuthenticationTestUtils.getRegisteredService();
         val policy = new DefaultRegisteredServiceMultifactorPolicy();
         policy.setBypassEnabled(true);
-        when(registeredService.getMultifactorPolicy()).thenReturn(policy);
-        assertFalse(eval.shouldMultifactorAuthenticationProviderExecute(authentication, registeredService, provider, new MockHttpServletRequest()));
+        when(registeredService.getMultifactorAuthenticationPolicy()).thenReturn(policy);
+        assertFalse(eval.shouldMultifactorAuthenticationProviderExecute(authentication, registeredService,
+            provider, new MockHttpServletRequest(), CoreAuthenticationTestUtils.getService()));
     }
 
     @Test
-    public void verifyOperationByProperty() {
+    void verifyOperationByProperty() {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
         ApplicationContextProvider.holdApplicationContext(applicationContext);
@@ -84,17 +87,19 @@ public class PrincipalMultifactorAuthenticationProviderBypassEvaluatorTests {
 
         val provider = TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext);
 
-        val eval = new DefaultChainingMultifactorAuthenticationBypassProvider();
+        val eval = new DefaultChainingMultifactorAuthenticationBypassProvider(applicationContext);
         val bypassProps = new MultifactorAuthenticationProviderBypassProperties();
         bypassProps.setPrincipalAttributeName("cn");
         bypassProps.setAuthenticationAttributeValue("ex.+");
-        eval.addMultifactorAuthenticationProviderBypassEvaluator(new PrincipalMultifactorAuthenticationProviderBypassEvaluator(bypassProps, TestMultifactorAuthenticationProvider.ID));
+        eval.addMultifactorAuthenticationProviderBypassEvaluator(new PrincipalMultifactorAuthenticationProviderBypassEvaluator(
+            bypassProps, TestMultifactorAuthenticationProvider.ID, applicationContext));
 
         val principal = CoreAuthenticationTestUtils.getPrincipal(Map.of("cn", List.of("example")));
         val authentication = CoreAuthenticationTestUtils.getAuthentication(principal);
         val registeredService = CoreAuthenticationTestUtils.getRegisteredService();
         val policy = new DefaultRegisteredServiceMultifactorPolicy();
-        when(registeredService.getMultifactorPolicy()).thenReturn(policy);
-        assertFalse(eval.shouldMultifactorAuthenticationProviderExecute(authentication, registeredService, provider, new MockHttpServletRequest()));
+        when(registeredService.getMultifactorAuthenticationPolicy()).thenReturn(policy);
+        assertFalse(eval.shouldMultifactorAuthenticationProviderExecute(authentication, registeredService,
+            provider, new MockHttpServletRequest(), CoreAuthenticationTestUtils.getService()));
     }
 }

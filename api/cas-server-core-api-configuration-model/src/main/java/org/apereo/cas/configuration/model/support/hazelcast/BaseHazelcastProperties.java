@@ -1,14 +1,14 @@
 package org.apereo.cas.configuration.model.support.hazelcast;
 
-import org.apereo.cas.configuration.support.CasFeatureModule;
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -21,7 +21,7 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("BaseHazelcastProperties")
+
 public class BaseHazelcastProperties implements Serializable, CasFeatureModule {
 
     /**
@@ -66,6 +66,7 @@ public class BaseHazelcastProperties implements Serializable, CasFeatureModule {
      */
     public static final String IPV4_STACK_PROP = "hazelcast.prefer.ipv4.stack";
 
+    @Serial
     private static final long serialVersionUID = 4204884717547468480L;
 
     /**

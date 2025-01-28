@@ -5,39 +5,41 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
-    <title th:text="#{screen.pac4j.unauthz.pagetitle}">Pac4j Stop Webflow View</title>
+    <title th:text="#{screen.pac4j.unauthz.pagetitle}">Delegation Stop Webflow View</title>
     <link href="../../static/css/cas.css" rel="stylesheet" th:remove="tag" />
 </head>
 
 <body>
-    <main role="main" class="container mt-3 mb-3">
+    <main class="container mt-3 mb-3">
         <div id="content" layout:fragment="content"
-             class="banner banner-danger alert alert-danger mdc-card card p-4 m-auto w-lg-66 text-justify">
-            <div>
+             class="mdc-card card p-4 m-auto w-lg-66">
+            <div class="banner banner-danger alert alert-danger">
                 <h2 th:utext="#{screen.pac4j.unauthz.heading}">Unauthorized Access</h2>
                 <p th:utext="#{screen.pac4j.unauthz.message}">Either the authentication request was rejected/cancelled,
                     or the authentication provider denied access due to permissions, etc. Review logs to find the root
                     cause of the issue.</p>
 
                 <p>
-                    <i class="mdi mdi-alert fas fa-exclamation-triangle mr-2"></i>
-                    <span th:if="${rootCauseException}" th:text="#{${'screen.pac4j.authn.' + rootCauseException.class.simpleName}}">
+                    <i class="mdi mdi-alert fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
+                    <span th:if="${rootCauseException}"
+                          th:with="simpleName=${@casThymeleafTemplatesDirector.getExceptionClassSimpleName(rootCauseException)}"
+                          th:text="#{${'screen.pac4j.authn.' + simpleName}}">
                       Authentication response provided to CAS by the external identity provider cannot be accepted.</span>
                     <span th:unless="${rootCauseException}" th:text="#{screen.pac4j.authn.unknown}">
                       Authentication response provided to CAS by the external identity provider cannot be accepted.</span>
                 </p>
-                
-                <div class="mdc-data-table table-responsive">
+
+                <div class="mdc-data-table table-responsive w-100">
                     <table id="errorTable" th:if="${error != null or reason != null or code != null or description != null}"
                         class="table table-striped w-100" aria-label="Error information">
                         <thead>
                             <tr class="mdc-data-table__header-row">
-                                <th class="mdc-data-table__header-cell">Error</th>
-                                <th class="mdc-data-table__header-cell">Reason</th>
-                                <th class="mdc-data-table__header-cell">Code</th>
-                                <th class="mdc-data-table__header-cell">Description</th>
-                                <th class="mdc-data-table__header-cell">Provider</th>
-                                <th class="mdc-data-table__header-cell">Destination</th>
+                                <th class="mdc-data-table__header-cell" th:text="#{screen.delegation.unauthz.error.title}">Error</th>
+                                <th class="mdc-data-table__header-cell" th:text="#{screen.delegation.unauthz.reason.title}">Reason</th>
+                                <th class="mdc-data-table__header-cell" th:text="#{screen.delegation.unauthz.code.title}">Code</th>
+                                <th class="mdc-data-table__header-cell" th:text="#{screen.delegation.unauthz.description.title}">Description</th>
+                                <th class="mdc-data-table__header-cell" th:text="#{screen.delegation.unauthz.provider.title}">Provider</th>
+                                <th class="mdc-data-table__header-cell" th:text="#{screen.delegation.unauthz.description.title}">Destination</th>
                             </tr>
                         </thead>
                         <tbody class="mdc-data-table__content">
@@ -56,17 +58,17 @@
                 </div>
             </div>
             <br/>
-            <div class="d-flex">
-                <a id="loginLink" class="mdc-button mdc-button--raised btn btn-primary mr-2" th:href="@{/login}">
+            <div class="d-flex mt-2">
+                <a id="loginLink" class="mdc-button mdc-button--raised btn btn-primary me-2" th:href="@{/login}">
                     <span class="mdc-button__label" th:text="#{screen.pac4j.unauthz.login}">Back to CAS</span>
                 </a>
-                <a id="appLink" class="mdc-button mdc-button--raised btn btn-primary mr-2" th:href="${service}">
+                <a id="appLink" class="mdc-button mdc-button--raised btn btn-primary me-2" th:href="${service}">
                     <span class="mdc-button__label" th:text="#{screen.pac4j.unauthz.gotoapp}">Goto Application</span>
                 </a>
                 <form method="post" id="fm1">
                     <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
                     <input type="hidden" name="_eventId" value="retry"/>
-                    <button id="retryButton" class="mdc-button mdc-button--raised btn btn-primary mr-2" name="retry" accesskey="r">
+                    <button id="retryButton" class="mdc-button mdc-button--raised btn btn-primary me-2" name="retry" accesskey="r">
                         <span class="mdc-button__label" th:text="#{screen.pac4j.button.retry}">Try Again</span>
                     </button>
                 </form>

@@ -1,21 +1,25 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
+
+const cas = require("../../cas.js");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
 
-    await page.goto("https://localhost:8443/cas/login?locale=de");
-    await cas.assertInnerText(page, "#content #fm1 button[name=submit]", "ANMELDEN")
+    await cas.gotoLoginWithLocale(page, undefined, "de");
+    await cas.assertInnerText(page, "#content #fm1 button[name=submitBtn]", "ANMELDEN");
+    await cas.attributeValue(page, "html", "lang", "de");
 
-    await page.goto("https://localhost:8443/cas/login?service=https://apereo.github.io");
-    await cas.assertInnerText(page, "#content #fm1 button[name=submit]", "SE CONNECTER")
+    const service = "https://localhost:9859/anything/cas";
+    await cas.gotoLogin(page, service);
+    await cas.assertInnerText(page, "#content #fm1 button[name=submitBtn]", "SE CONNECTER");
+    await cas.attributeValue(page, "html", "lang", "fr");
 
-    await page.goto("https://localhost:8443/cas/login");
-    await cas.assertInnerText(page, "#content #fm1 button[name=submit]", "LOGIN")
+    await cas.gotoLogin(page);
+    await cas.assertInnerText(page, "#content #fm1 button[name=submitBtn]", "SE CONNECTER");
 
-    await page.goto("https://localhost:8443/cas/login?locale=es&service=https://apereo.github.io");
-    await cas.assertInnerText(page, "#content #fm1 button[name=submit]", "INICIAR SESIÓN")
-    
+    await cas.gotoLoginWithLocale(page, service, "es");
+    await cas.assertInnerText(page, "#content #fm1 button[name=submitBtn]", "INICIAR SESIÓN");
+    await cas.attributeValue(page, "html", "lang", "es");
+
     await browser.close();
 })();

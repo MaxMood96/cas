@@ -1,33 +1,21 @@
 package org.apereo.cas.acct.webflow;
 
 import org.apereo.cas.acct.AccountRegistrationUtils;
-import org.apereo.cas.config.CasAccountManagementWebflowConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.util.junit.EnabledIfPortOpen;
+import org.apereo.cas.config.CasAccountManagementWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.web.flow.BaseWebflowConfigurerTests;
 import org.apereo.cas.web.flow.CasWebflowConstants;
-
 import lombok.val;
-import org.apache.http.client.utils.URIBuilder;
-import org.apereo.inspektr.common.web.ClientInfo;
-import org.apereo.inspektr.common.web.ClientInfoHolder;
+import org.apache.hc.core5.net.URIBuilder;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -37,13 +25,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.5.0
  */
 @Tag("Mail")
-@EnabledIfPortOpen(port = 25000)
-@Import({
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasAccountManagementWebflowConfiguration.class,
-    BaseWebflowConfigurerTests.SharedTestConfiguration.class
+@EnabledIfListeningOnPort(port = 25000)
+@ImportAutoConfiguration({
+    CasCoreTicketsAutoConfiguration.class,
+    CasAccountManagementWebflowAutoConfiguration.class
 })
 @TestPropertySource(properties = {
     "spring.mail.host=localhost",
@@ -54,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
     "cas.account-registration.sms.from=3477562310",
     "cas.account-registration.core.registration-properties.location=classpath:/custom-registration.json"
 })
-public class ValidateAccountRegistrationTokenActionTests extends BaseWebflowConfigurerTests {
+class ValidateAccountRegistrationTokenActionTests extends BaseWebflowConfigurerTests {
     @Autowired
     @Qualifier(CasWebflowConstants.ACTION_ID_VALIDATE_ACCOUNT_REGISTRATION_TOKEN)
     private Action validateAction;
@@ -64,36 +49,26 @@ public class ValidateAccountRegistrationTokenActionTests extends BaseWebflowConf
     private Action submitAccountRegistrationAction;
 
     @Test
-    public void verifyOperationFails() throws Exception {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
+    void verifyOperationFails() throws Throwable {
+        val context = MockRequestContext.create();
         assertEquals(CasWebflowConstants.TRANSITION_ID_ERROR, validateAction.execute(context).getId());
     }
 
     @Test
-    public void verifyPassRegistrationRequest() throws Exception {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
+    void verifyPassRegistrationRequest() throws Throwable {
+        val context = MockRequestContext.create();
 
-        request.setRemoteAddr("127.0.0.1");
-        request.setLocalAddr("127.0.0.1");
-        ClientInfoHolder.setClientInfo(new ClientInfo(request));
+        context.setRemoteAddr("127.0.0.1");
+        context.setLocalAddr("127.0.0.1");
+        context.setClientInfo();
 
-        request.addParameter("username", "casuser");
-        request.addParameter("email", "cas@example.org");
-        request.addParameter("phone", "3477465432");
+        context.setParameter("username", "casuser");
+        context.setParameter("email", "cas@example.org");
+        context.setParameter("phone", "3477465432");
 
         val results = submitAccountRegistrationAction.execute(context);
-        val token = new URIBuilder(results.getAttributes().get("result", String.class)).getQueryParams().get(0).getValue();
-        request.addParameter(AccountRegistrationUtils.REQUEST_PARAMETER_ACCOUNT_REGISTRATION_ACTIVATION_TOKEN, token);
+        val token = new URIBuilder(results.getAttributes().get("result", String.class)).getQueryParams().getFirst().getValue();
+        context.setParameter(AccountRegistrationUtils.REQUEST_PARAMETER_ACCOUNT_REGISTRATION_ACTIVATION_TOKEN, token);
         assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, validateAction.execute(context).getId());
     }
 }
